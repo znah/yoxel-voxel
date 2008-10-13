@@ -28,6 +28,9 @@ class Window(QtGui.QWidget):
         self.cudaScene = CudaSVO()
         self.cudaScene.SetSVO(self.scene)
         self.renderer.updateScene(self.cudaScene)
+
+        self.sphereSrc = MakeShpereSource(64, (128, 128, 192), False)
+        self.invSphereSrc = MakeShpereSource(64, (192, 128, 128), True)
          
         self.setFixedSize(viewSize[0], viewSize[1])
         self.setWindowTitle(self.tr("Interactive voxel"))
@@ -143,9 +146,9 @@ class Window(QtGui.QWidget):
             pos = self.getTargetPoint() * 2**dstLevel
 
             if self.editState == 1:
-                self.scene.BuildSphere(dstLevel, 64, p3i(pos), BuildMode.GROW) 
+                self.scene.BuildRange(dstLevel, p3i(pos), BuildMode.GROW, self.sphereSrc) 
             else:
-                self.scene.BuildSphere(dstLevel, 64, p3i(pos), BuildMode.CLEAR) 
+                self.scene.BuildRange(dstLevel, p3i(pos), BuildMode.CLEAR, self.invSphereSrc) 
 
             self.updateScene()    
             self.lastEditTime = t

@@ -2,26 +2,17 @@
 
 #include <vector>
 #include <algorithm>
-#include <geometry/primitives/point.h>
+#include "point.h"
 #include "HomoStorage.h"
 
 #include "trace_cu.h"
+#include "VoxelSource.h"
 
 enum BuildMode { BUILD_MODE_GROW, BUILD_MODE_CLEAR };
-enum TryRangeResult { ResStop, ResGoDown, ResEmpty, ResFull, ResSurface };
-
 
 inline bool IsNull(VoxNodeId node) { return node < 0; }
 inline bool IsLeaf(VoxNodeId node) { return !IsNull(node) && (node & VOX_LEAF) != 0; }
 inline bool IsNode(VoxNodeId node) { return !IsNull(node) && !IsLeaf(node); }
-inline int ToIdx(VoxNodeId node) { Assert(!IsNull(node)); return IDX(node); }
-
-
-/*class VoxelSource
-{
-public:
-  virtual TryRangeResult TryRange(const point_3i & blockPos, int blockSize, uchar4 & outColor, char4 & outNormal) = 0;
-};*/
 
 class DynamicSVO
 {
@@ -29,7 +20,7 @@ private:
   typedef HomoStorage<VoxNode> NODES;
   typedef HomoStorage<VoxLeaf> LEAFS;
   
-  template <class RangeSampler> struct TreeBuilder;
+  struct TreeBuilder;
 
   NODES m_nodes;
   LEAFS m_leafs;
@@ -47,9 +38,7 @@ private:
 public:
   explicit DynamicSVO() : m_root(-1), m_curVersion(0) {}
 
-  // alpha 0 - empty, 1 - inside, 255 - surface
-  void BuildRange(int level, const cg::point_3i & origin, const cg::point_3i & size, const uchar4 * colors, const char4 * normals, BuildMode mode);
-  void BuildSphere(int level, int radius, const cg::point_3i & pos, BuildMode mode);
+  void BuildRange(int level, const cg::point_3i & pos, BuildMode mode, VoxelSource * src);
 
   const NODES & GetNodes() const { return m_nodes; }
   const LEAFS & GetLeafs() const { return m_leafs; }

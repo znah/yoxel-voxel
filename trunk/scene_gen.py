@@ -152,7 +152,8 @@ def buildHeightmap(bld, hmap, level, pos):
     for y in xrange(0, hmap.shape[0]/step):
         for x in xrange(0, hmap.shape[1]/step):
             (cmap, nmap, h0, dh) = buildRegion(x*step, y*step, (x+1)*step, (y+1)*step, hmap)
-            bld.BuildRange(level, point_3i(pos[0] + x*step, pos[1] + y*step, pos[2] + h0), point_3i(step, step, dh), cmap, nmap, BuildMode.GROW)
+            src = MakeRawSource(point_3i(step, step, dh), cmap, nmap)
+            bld.BuildRange(level, point_3i(pos[0] + x*step, pos[1] + y*step, pos[2] + h0), BuildMode.GROW, src)
         print y, bld.nodecount
     dt = clock() - start
     print "land build time: %.2f s" % dt
@@ -187,12 +188,14 @@ if __name__ == '__main__':
     print "filling internal space..."
     fillInternal(cmap, nmap)
     print "inserting object into tree..."
+   
+    treeSrc = MakeRawSource(point_3i(256, 256, 256), cmap, nmap)
     print "tree 1"
-    bld.BuildRange(11, point_3i(256, 256, 64), point_3i(256, 256, 256), cmap, nmap, BuildMode.GROW)
+    bld.BuildRange(11, point_3i(256, 256, 64), BuildMode.GROW, treeSrc)
     print "tree 2"
-    bld.BuildRange(11, point_3i(768, 256, 64), point_3i(256, 256, 256), cmap, nmap, BuildMode.GROW)
+    bld.BuildRange(11, point_3i(768, 256, 64), BuildMode.GROW, treeSrc)
     print "tree 3"
-    bld.BuildRange(11, point_3i(256, 768, 32), point_3i(256, 256, 256), cmap, nmap, BuildMode.GROW)
+    bld.BuildRange(11, point_3i(256, 768, 32), BuildMode.GROW, treeSrc)
     
     print "saving tree..."
     bld.Save("data/scene.vox")

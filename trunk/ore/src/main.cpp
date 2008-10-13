@@ -4,7 +4,9 @@
 
 #include "DynamicSVO.h"
 #include "CudaSVO.h"
+#include "builders.h"
 #include "pybuf.h"
+
 
 namespace py = boost::python;
 
@@ -16,28 +18,6 @@ void p_test(py::object obj)
 void ex_test()
 {
   throw std::logic_error("sdfs sdfs");
-}
-
-template<class Bld>
-void BuildRangeTempl(Bld * bld, int level
-                           , const cg::point_3i & origin
-                           , const cg::point_3i & size
-                           , py::object colors
-                           , py::object normals
-                           , BuildMode mode)
-{
-  const void * colorsPtr;
-  const void * normalsPtr;
-  Py_ssize_t len;
-  if (PyObject_AsReadBuffer(colors.ptr(), &colorsPtr, &len))
-    throw py::error_already_set();
-  if (PyObject_AsReadBuffer(normals.ptr(), &normalsPtr, &len))
-    throw py::error_already_set();
-
-  if (size.x*size.y*size.z*sizeof(uchar4) != len)
-    throw std::logic_error("incorrect data buffer size");
-
-  bld->BuildRange(level, origin, size, (const uchar4 *)colorsPtr, (const char4 *)normalsPtr, mode);
 }
 
 py::tuple DynamicSVO_ExportStructTree(DynamicSVO * bld)
@@ -66,6 +46,32 @@ py::tuple CudaSVO_GetData(CudaSVO * svo)
   return res;
 }
 
+RawSource * MakeRawSource(const cg::point_3i & size, py::object colors, py::object normals)
+{
+  const void * colorsPtr;
+  const void * normalsPtr;
+  Py_ssize_t len;
+  if (PyObject_AsReadBuffer(colors.ptr(), &colorsPtr, &len))
+    throw py::error_already_set();
+  if (PyObject_AsReadBuffer(normals.ptr(), &normalsPtr, &len))
+    throw py::error_already_set();
+
+  if (size.x*size.y*size.z*sizeof(uchar4) != len)
+    throw std::logic_error("incorrect data buffer size");
+
+  return new RawSource(size, (const uchar4 *)colorsPtr, (const char4 *)normalsPtr);
+}
+
+SphereSource * MakeShpereSource(int radius, py::object color, bool inverted)
+{
+  uchar r = py::extract<uchar>(color[0]);
+  uchar g = py::extract<uchar>(color[1]);
+  uchar b = py::extract<uchar>(color[2]);
+
+  return new SphereSource(radius, make_uchar4(r, g, b, 255), inverted);
+}
+
+
 BOOST_PYTHON_MODULE(_ore)
 {
     using namespace boost::python;
@@ -88,9 +94,18 @@ BOOST_PYTHON_MODULE(_ore)
       .value("GROW", BUILD_MODE_GROW)
       .value("CLEAR", BUILD_MODE_CLEAR);
 
+    class_<VoxelSource>("VoxelSource", no_init)
+      .def("GetSize", &VoxelSource::GetSize)
+      .def("GetPivot", &VoxelSource::GetPivot);
+
+    class_<RawSource, bases<VoxelSource> >("RawSource", no_init);
+    def("MakeRawSource", MakeRawSource, py::return_value_policy<py::manage_new_object>());
+    def("MakeShpereSource", MakeShpereSource, py::return_value_policy<py::manage_new_object>());
+
+    class_<SphereSource, bases<VoxelSource> >("SphereSource", no_init);
+
     class_<DynamicSVO>("DynamicSVO")
-      .def("BuildRange", &BuildRangeTempl<DynamicSVO>)
-      .def("BuildSphere", &DynamicSVO::BuildSphere)
+      .def("BuildRange", &DynamicSVO::BuildRange)
       .def("ExportStructTree", &DynamicSVO_ExportStructTree)
       .def("Save", &DynamicSVO::Save)
       .def("Load", &DynamicSVO::Load)

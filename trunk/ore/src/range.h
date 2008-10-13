@@ -1,5 +1,7 @@
 #pragma once
 
+#include "point.h"
+
 struct range_3i
 {
   point_3i p1, p2;
@@ -29,7 +31,7 @@ struct range_3i
   bool intersects(const range_3i & other) const
   {
     for (int i = 0; i < 3; ++i)
-      if (p2 <= other.p1 || other.p2 <= p1 )
+      if (p2[i] <= other.p1[i] || other.p2[i] <= p1[i] )
         return false;
     return true;
   }
