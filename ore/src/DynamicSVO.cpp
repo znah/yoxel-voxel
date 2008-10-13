@@ -5,11 +5,13 @@
 
 #include "common/grid_walk.h"
 #include "utils.h"
+#include "range.h"
 
 using namespace cg;
 using std::cout;
 using std::endl;
 
+inline int ToIdx(VoxNodeId node) { Assert(!IsNull(node)); return IDX(node); }
 
 void DynamicSVO::Save(std::string filename)
 {
@@ -145,18 +147,20 @@ VoxNodeId DynamicSVO::UpdateChildren(VoxNodeId node, const VoxNodeId * children)
 }
 
 
-template <class RangeSampler>
 struct DynamicSVO::TreeBuilder
 {
   DynamicSVO & svo;
-  RangeSampler  & sampler;
+  VoxelSource & sampler;
+
   BuildMode mode;
   int destLevel;
+  point_3i pos;
 
-  TreeBuilder(DynamicSVO * svo_, RangeSampler & sampler_, BuildMode mode_) 
+  TreeBuilder(DynamicSVO * svo_, VoxelSource * sampler_) 
     : svo(*svo_) 
-    , sampler(sampler_)
-    , mode(mode_)
+    , sampler(*sampler_)
+    , mode(BUILD_MODE_GROW)
+    , destLevel(8)
   {}
 
   VoxNodeId BuildRange(int level, const point_3i & p, VoxNodeId node)
@@ -166,9 +170,16 @@ struct DynamicSVO::TreeBuilder
     if (mode == BUILD_MODE_CLEAR && node == EmptyNode)
       return node;
 
+    int blockSize = 1 << (destLevel - level);
+    point_3i blockPos = p * blockSize;
+    range_3i rng1(blockPos, blockSize);
+    range_3i rng2(pos-sampler.GetPivot(), sampler.GetSize());
+    if (!rng1.intersects(rng2))
+      return node;
+
     uchar4 col; 
     char4 n;
-    TryRangeResult res = sampler.TryRange(level, p, col, n);
+    TryRangeResult res = sampler.TryRange(blockPos - pos - sampler.GetPivot(), blockSize, col, n);
     if (res == ResEmpty && mode == BUILD_MODE_CLEAR)
     {
       svo.DelNode(node);
@@ -199,50 +210,14 @@ struct DynamicSVO::TreeBuilder
   }
 };
 
-struct RawSampler
-{
-  int destLevel;
-  point_3i p1, p2, size;
-  const uchar4 * colors;
-  const char4 * normals;
-
-  TryRangeResult TryRange(int level, const point_3i & p, uchar4 & outColor, char4 & outNormal)
-  {
-    point_3i pd = p * (1<<(destLevel - level));
-    int sd = 1 << (destLevel - level);
-    if (pd.x >= p2.x || pd.x+sd <= p1.x) return ResStop;
-    if (pd.y >= p2.y || pd.y+sd <= p1.y) return ResStop;
-    if (pd.z >= p2.z || pd.z+sd <= p1.z) return ResStop;
-
-    if (level < destLevel)
-      return ResGoDown;
-
-    point_3i dp = p - p1;
-    int ofs = (dp.z*size.y + dp.y)*size.x + dp.x;
-    outColor = colors[ofs];
-    outNormal = normals[ofs];
-
-    if (outColor.w == 0)
-      return ResEmpty;
-    if (outColor.w == 1)
-      return ResFull;
-    return ResSurface;
-  }
-};
-
-void DynamicSVO::BuildRange(int level, const cg::point_3i & origin, const cg::point_3i & size, const uchar4 * colors, const char4 * normals, BuildMode mode)
+void DynamicSVO::BuildRange(int level, const cg::point_3i & pos, BuildMode mode, VoxelSource * src)
 {
   ++m_curVersion;
-
-  RawSampler sampler;
-  sampler.destLevel = level;
-  sampler.p1 = origin;
-  sampler.p2 = origin + size;
-  sampler.size = size;
-  sampler.colors = colors;
-  sampler.normals = normals;
-
-  TreeBuilder<RawSampler> bld(this, sampler, mode);
+  
+  TreeBuilder bld(this, src);
+  bld.destLevel = level;
+  bld.pos = pos;
+  bld.mode = mode;
   m_root = bld.BuildRange(0, point_3i(0, 0, 0), m_root);
 }
 
@@ -336,91 +311,6 @@ float DynamicSVO::TraceRay(const point_3f & p, point_3f dir) const
   RecTrace(m_root, t1, t2, dirFlags, t);
   
   return t;
-}
-
-
-struct SphereSampler
-{
-  int destLevel;
-  int radius;
-  point_3i pos;
-  uchar4 color;
-  bool inverted;
-
-
-  TryRangeResult TryRange(int level, const point_3i & p, uchar4 & outColor, char4 & outNormal)
-  {
-    int r2 = radius*radius;
-    int eps = 1;
-
-    if (level < destLevel)
-    {
-      point_3i p1 = p * (1<<(destLevel - level));
-      int sd = (1 << (destLevel - level)) - 1;
-      point_3i p2 = p1 + point_3i(sd, sd, sd);
-
-      point_3i nearestPt;
-      point_3i farestPt;
-      for (int i = 0; i < 3; ++i)
-      {
-        int x = pos[i], lo = p1[i], hi = p2[i];
-        if (x < lo)
-        {
-          nearestPt[i] = lo;
-          farestPt[i]  = hi;
-        }
-        else if (hi < x)
-        {
-          nearestPt[i] = hi;
-          farestPt[i]  = lo;
-        }
-        else
-        {
-          nearestPt[i] = x;
-          farestPt[i] = x-lo < hi-x ? hi : lo;
-        }
-      }
-
-      int nearDist2 = norm_sqr(pos - nearestPt);
-      int farDist2 = norm_sqr(pos - farestPt);
-      if (nearDist2 >= r2)
-        return ResStop;
-      if (farDist2 < r2 - 2*radius*eps + eps*eps)
-        return inverted ? ResEmpty : ResFull;
-      return ResGoDown;
-    }
-    else
-    {
-      point_3i dp = p - pos;
-      int dist2 = norm_sqr(dp);
-      if (dist2 >= r2)
-        return ResStop;
-      if (dist2 < r2 - 2*radius*eps + eps*eps)
-        return inverted ? ResEmpty : ResFull;
-
-      point_3f n = inverted ? -dp : dp;
-      normalize(n);
-      n *= 127.0f;
-      outNormal = make_char4((char)n.x, (char)n.y, (char)n.z, 0);
-      outColor = color;
-      return ResSurface;
-    }
-  }
-};
-
-void DynamicSVO::BuildSphere(int level, int radius, const cg::point_3i & pos, BuildMode mode)
-{
-  ++m_curVersion;
-
-  SphereSampler sampler;
-  sampler.destLevel = level;
-  sampler.radius = radius;
-  sampler.pos = pos;
-  sampler.color = make_uchar4((mode == BUILD_MODE_CLEAR) ? 255 : 0, 128, 128, 255);
-  sampler.inverted = (mode == BUILD_MODE_CLEAR);
-
-  TreeBuilder<SphereSampler> bld(this, sampler, mode);
-  m_root = bld.BuildRange(0, point_3i(0, 0, 0), m_root);
 }
 
 int DynamicSVO::CountChangedPages() const

@@ -117,6 +117,9 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
+				RelativePath=".\builders.h">
+			</File>
+			<File
 				RelativePath=".\CudaSVO.cpp">
 				<FileConfiguration
 					Name="Debug|Win32">
@@ -163,7 +166,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\utils.h">
+				RelativePath=".\VoxelSource.h">
 			</File>
 		</Filter>
 		<Filter
@@ -192,20 +195,19 @@
 			<File
 				RelativePath="..\..\cpp\trace_cu.h">
 			</File>
-		</Filter>
-		<Filter
-			Name="Builders"
-			Filter="">
 			<File
-				RelativePath=".\RawBuilder.h">
+				RelativePath=".\utils.h">
 			</File>
-		</Filter>
-		<Filter
-			Name="geom"
-			Filter="">
-			<File
-				RelativePath=".\range.h">
-			</File>
+			<Filter
+				Name="geom"
+				Filter="">
+				<File
+					RelativePath=".\point.h">
+				</File>
+				<File
+					RelativePath=".\range.h">
+				</File>
+			</Filter>
 		</Filter>
 	</Files>
 	<Globals>
