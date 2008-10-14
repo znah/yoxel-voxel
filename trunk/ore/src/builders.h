@@ -1,6 +1,7 @@
 #pragma once
 
 #include "VoxelSource.h"
+#include "range.h"
 
 class RawSource : public VoxelSource
 {
@@ -103,6 +104,115 @@ public:
       n *= 127.0f;
       outNormal = make_char4((char)n.x, (char)n.y, (char)n.z, 0);
       outColor = m_color;
+      return ResSurface;
+    }
+  }
+};
+
+class IsoSource : public VoxelSource
+{
+private:
+  const uchar * m_data;
+  int m_isolevel;
+  bool m_lowInside;
+  uchar4 m_color;
+
+  uchar trans(uchar v) { return m_lowInside ? 255-v : v; }
+
+  int ofs(const point_3i & p) const
+  {
+    point_3i sz = GetSize();
+    return (p.z * sz.y + p.y) * sz.x + p.x;
+  }
+
+  uchar get(point_3i p) const
+  {
+    point_3i sz = GetSize();
+    for (int i = 0; i < 3; ++i)
+      p[i] = cg::bound(p[i], 0, sz[i]-1);
+    return m_data[ofs(p)];
+  }
+
+  void getrange(range_3i rng, int & lo, int & hi)
+  {
+    lo = 255;
+    hi = 0;
+    rng &= range_3i(point_3i(0, 0, 0), GetSize());
+    if (rng.empty())
+      return;
+
+    for (int z = rng.p1.z; z < rng.p2.z; ++z)
+      for (int y = rng.p1.y; y < rng.p2.y; ++y)
+      {
+        int p = ofs(point_3i(0, y, z));
+        for (int x = rng.p1.x; x < rng.p2.x; ++x)
+        {
+          int v = m_data[p+x];
+          lo = cg::min(lo, v);
+          hi = cg::max(hi, v);
+        }
+      }
+  }
+
+public:
+  IsoSource(point_3i size, const uchar * data)
+    : VoxelSource(size, point_3i(0, 0, 0))
+    , m_data(data)
+    , m_isolevel(128)
+    , m_lowInside(false)
+    , m_color(make_uchar4(128, 128, 128, 255))
+  {}
+
+  void SetIsoLevel(int isolevel) { m_isolevel = isolevel; }
+  void SetInside(bool low) { m_lowInside = low; }
+  void SetColor(uchar4 color) { m_color = color; }
+
+  virtual TryRangeResult TryRange(const point_3i & blockStart, int blockSize, uchar4 & outColor, char4 & outNormal)
+  {
+    int level = trans(m_isolevel);
+
+    if (blockSize > 1)
+    {
+      range_3i rng(blockStart - point_3i(1, 1, 1), blockSize+2);
+      int lo, hi;
+      getrange(rng, lo, hi);
+      lo = trans(lo);
+      hi = trans(hi);
+
+      if (hi < level)
+        return ResEmpty;
+      if (level <= lo)
+        return ResFull;
+      outColor = make_uchar4(255, 0, 0, 255);
+      outNormal = make_char4(127, 0, 0, 0);
+      return ResGoDown;
+    }
+    else
+    {
+      const point_3i & p = blockStart;
+      int v = trans(get(p));
+      if (v < level)
+        return ResEmpty;
+
+      point_3f n;
+      bool inside = true;
+      for (int i = 0; i < 3; ++i)
+      {
+        point_3i dp(0, 0, 0);
+        dp[i] = 1;
+        int v1 = trans(get(p - dp));
+        int v2 = trans(get(p + dp));
+        n[i] = -0.5f*(v2-v1);
+        inside = inside && (v1 >= level) && (v2 >= level);
+      }
+
+      if (inside)
+        return ResFull;
+
+      outColor = m_color;
+      normalize(n);
+      n *= 127.0f;
+      outNormal = make_char4((char)n.x, (char)n.y, (char)n.z, 0);
       return ResSurface;
     }
   }

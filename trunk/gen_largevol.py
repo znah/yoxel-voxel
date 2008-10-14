@@ -3,10 +3,10 @@ from ore.ore import *
 
 bld = DynamicSVO()
 
-filesNum = 615
+
 isoLevel = 60
 
-while ()
+
 
 
 

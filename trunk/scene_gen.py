@@ -71,81 +71,6 @@ def buildRegion(x0, y0, x1, y1, hmap):
     return (cmap, nmap, int(h0), int(dh))
 
 
-def buildFromVolumeData(src, threshold):
-    cmap = zeros(src.shape+(4,), uint8)
-    nmap = zeros(src.shape+(4,), int8)
-    code = '''
-        #line 97 "scene_gen.py"
-        using namespace cg;
-
-        int n = Nsrc[0];
-
-        for (walk_3 i(n, n, n); !i.done(); ++i)
-        {
-          if (src(i.z(), i.y(), i.x()) < threshold)
-            continue;
-          
-          unsigned char col[3] = {128, 128, 128};
-          float light = 0.5;
-          float dx(0), dy(0), dz(0);
-          if (i.x() > 0 && i.x() < n-1)
-            dx = 0.5f*( src(i.z(), i.y(), i.x()+1 ) - src(i.z(), i.y(), i.x()-1) );
-
-          if (i.y() > 0 && i.y() < n-1)
-            dy = 0.5f*( src(i.z(), i.y()+1, i.x() ) - src(i.z(), i.y()-1, i.x()) );
-
-          if (i.z() > 0 && i.z() < n-1)
-            dz = 0.5f*( src(i.z()+1, i.y(), i.x() ) - src(i.z()-1, i.y(), i.x()) );
-
-          point_3f nDir(-dx, -dy, -dz);
-          normalize(nDir);
-          nDir *= 127.0f;
-
-          cmap(i.z(), i.y(), i.x(), 0) = col[0];
-          cmap(i.z(), i.y(), i.x(), 1) = col[1];
-          cmap(i.z(), i.y(), i.x(), 2) = col[2];
-          cmap(i.z(), i.y(), i.x(), 3) = 255;
-          
-          nmap(i.z(), i.y(), i.x(), 0) = nDir[0];
-          nmap(i.z(), i.y(), i.x(), 1) = nDir[1];
-          nmap(i.z(), i.y(), i.x(), 2) = nDir[2];
-        }
-    '''
-    weave.inline(code, ["src", "cmap", "nmap", "threshold"], headers=['"common/grid_walk.h"'], include_dirs=['cpp'], type_converters=converters.blitz)
-    return (cmap, nmap)
-
-def fillInternal(cmap, nmap, mark=1):
-    src = cmap.copy()
-    dst = cmap
-    col = array([0, 0, 0, mark], uint8) # 1 means internal
-    n = array([0, 0, 0, 0], int8)
-    code = '''
-        #line 3000 "scene_gen.py"
-        for (walk_3 i(Nsrc[0], Nsrc[1], Nsrc[2]); !i.done(); ++i)
-        {
-            if (src(i.z(), i.y(), i.x(), 3) < 255)
-                continue;
-            if (i.x() > 0 && src(i.z(), i.y(), i.x()-1, 3) < 255 )
-                continue;
-            if (i.y() > 0 && src(i.z(), i.y()-1, i.x(), 3) < 255 )
-                continue;
-            if (i.z() > 0 && src(i.z()-1, i.y(), i.x(), 3) < 255 )
-                continue;
-            if (i.x() < Nsrc[0]-1 && src(i.z(), i.y(), i.x()+1, 3) < 255 )
-                continue;
-            if (i.y() < Nsrc[1]-1 && src(i.z(), i.y()+1, i.x(), 3) < 255 )
-                continue;
-            if (i.z() < Nsrc[2]-1 && src(i.z()+1, i.y(), i.x(), 3) < 255 )
-                continue;
-            
-            dst(i.z(), i.y(), i.x(), blitz::Range::all()) = col;
-            nmap(i.z(), i.y(), i.x(), blitz::Range::all()) = n;
-        }
-
-    '''
-    weave.inline(code, ["src", "dst", "nmap", "col", "n"], headers=['"common/grid_walk.h"'], include_dirs=['cpp'], type_converters=converters.blitz)
-
-
 def buildHeightmap(bld, hmap, level, pos):
     start = clock()
     step = 8
@@ -173,29 +98,34 @@ def addHeightmaps(bld):
     buildHeightmap(bld, hmap, 11, (768, 768, 256))
 
 
+def addTrees(bld):
+    print "loading mri data..."
+    mri = fromfile("data/bonsai.raw", uint8)
+    mri.shape = (256, 256, 256)
+    mri = rot90(mri, -1).copy()
+    
+    print "creating IsoSource..."
+    mriSrc = MakeIsoSource(p3i(mri.shape), mri)
+
+    print "adding tree 1"
+    mriSrc.SetIsoLevel(40)
+    bld.BuildRange(11, point_3i(256, 256, 64), BuildMode.GROW, mriSrc)
+
+    print "adding tree 2"
+    mriSrc.SetIsoLevel(60)
+    bld.BuildRange(11, point_3i(768, 256, 64), BuildMode.GROW, mriSrc)
+    
+    print "adding tree 3"
+    mriSrc.SetIsoLevel(80)
+    bld.BuildRange(11, point_3i(256, 768, 64), BuildMode.GROW, mriSrc)
+
+
 if __name__ == '__main__':
     
     bld = DynamicSVO()
 
     addHeightmaps(bld)
-
-    
-    mri = fromfile("data/bonsai.raw", uint8)
-    mri.shape = (256, 256, 256)
-    mri = rot90(mri, -1)
-    print "processing mri data..."
-    (cmap, nmap) = buildFromVolumeData(mri, 40)
-    print "filling internal space..."
-    fillInternal(cmap, nmap)
-    print "inserting object into tree..."
-   
-    treeSrc = MakeRawSource(point_3i(256, 256, 256), cmap, nmap)
-    print "tree 1"
-    bld.BuildRange(11, point_3i(256, 256, 64), BuildMode.GROW, treeSrc)
-    print "tree 2"
-    bld.BuildRange(11, point_3i(768, 256, 64), BuildMode.GROW, treeSrc)
-    print "tree 3"
-    bld.BuildRange(11, point_3i(256, 768, 32), BuildMode.GROW, treeSrc)
+    addTrees(bld)
     
     print "saving tree..."
     bld.Save("data/scene.vox")

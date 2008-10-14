@@ -10,15 +10,30 @@
 
 namespace py = boost::python;
 
-void p_test(py::object obj)
-{
-  std::cout << py::extract<int>(obj[2]) << std::endl;
-}
 
-void ex_test()
+struct rgba
 {
-  throw std::logic_error("sdfs sdfs");
-}
+  uchar r, g, b, a;
+
+  rgba(uchar r_, uchar g_, uchar b_, uchar a_) 
+    : r(r_), g(g_), b(b_), a(a_) 
+  {}
+
+  rgba(uchar r_, uchar g_, uchar b_) 
+    : r(r_), g(g_), b(b_), a(255) 
+  {}
+
+  rgba(py::object obj)
+  {
+    r = py::extract<uchar>(obj[0]);
+    g = py::extract<uchar>(obj[1]);
+    b = py::extract<uchar>(obj[2]);
+    a = py::extract<uchar>(obj[3]);
+  }
+
+  operator uchar4() { return make_uchar4(r, g, b, a); }
+};
+
 
 py::tuple DynamicSVO_ExportStructTree(DynamicSVO * bld)
 {
@@ -62,14 +77,19 @@ RawSource * MakeRawSource(const cg::point_3i & size, py::object colors, py::obje
   return new RawSource(size, (const uchar4 *)colorsPtr, (const char4 *)normalsPtr);
 }
 
-SphereSource * MakeShpereSource(int radius, py::object color, bool inverted)
+IsoSource * MakeIsoSource(const cg::point_3i & size, py::object data)
 {
-  uchar r = py::extract<uchar>(color[0]);
-  uchar g = py::extract<uchar>(color[1]);
-  uchar b = py::extract<uchar>(color[2]);
+  const void * ptr;
+  Py_ssize_t len;
+  if (PyObject_AsReadBuffer(data.ptr(), &ptr, &len))
+    throw py::error_already_set();
 
-  return new SphereSource(radius, make_uchar4(r, g, b, 255), inverted);
+  if (size.x*size.y*size.z*sizeof(uchar) != len)
+    throw std::logic_error("incorrect data buffer size");
+
+  return new IsoSource(size, (const uchar *)ptr);
 }
+
 
 
 BOOST_PYTHON_MODULE(_ore)
@@ -87,8 +107,12 @@ BOOST_PYTHON_MODULE(_ore)
       .def_readwrite("y", &point_3f::y)
       .def_readwrite("z", &point_3f::z);
 
-    def("p_test", p_test);
-    def("ex_test", ex_test);
+    class_<uchar4>("uchar4", no_init);
+    class_<rgba>("rgba", init<uchar, uchar, uchar, uchar>())
+      .def(init<py::object>())
+      .def(init<uchar, uchar, uchar>());
+    implicitly_convertible<rgba, uchar4>();
+
 
     enum_<BuildMode>("BuildMode")
       .value("GROW", BUILD_MODE_GROW)
@@ -100,9 +124,14 @@ BOOST_PYTHON_MODULE(_ore)
 
     class_<RawSource, bases<VoxelSource> >("RawSource", no_init);
     def("MakeRawSource", MakeRawSource, py::return_value_policy<py::manage_new_object>());
-    def("MakeShpereSource", MakeShpereSource, py::return_value_policy<py::manage_new_object>());
 
-    class_<SphereSource, bases<VoxelSource> >("SphereSource", no_init);
+    class_<SphereSource, bases<VoxelSource> >("SphereSource", init<int, uchar4, bool>());
+
+    class_<IsoSource, bases<VoxelSource> >("IsoSource", no_init)
+      .def("SetIsoLevel", &IsoSource::SetIsoLevel)
+      .def("SetInside", &IsoSource::SetInside)
+      .def("SetColor", &IsoSource::SetColor);
+    def("MakeIsoSource", MakeIsoSource, py::return_value_policy<py::manage_new_object>());
 
     class_<DynamicSVO>("DynamicSVO")
       .def("BuildRange", &DynamicSVO::BuildRange)
