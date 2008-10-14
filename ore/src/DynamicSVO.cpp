@@ -179,7 +179,7 @@ struct DynamicSVO::TreeBuilder
 
     uchar4 col; 
     char4 n;
-    TryRangeResult res = sampler.TryRange(blockPos - pos - sampler.GetPivot(), blockSize, col, n);
+    TryRangeResult res = sampler.TryRange(blockPos - pos, blockSize, col, n);
     if (res == ResEmpty && mode == BUILD_MODE_CLEAR)
     {
       svo.DelNode(node);
