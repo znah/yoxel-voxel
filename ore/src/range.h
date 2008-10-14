@@ -35,4 +35,13 @@ struct range_3i
         return false;
     return true;
   }
+
+  void operator &=(const range_3i & other)
+  {
+    for (int i = 0; i < 3; ++i)
+    {
+      p1[i] = cg::max(p1[i], other.p1[i]);
+      p2[i] = cg::min(p2[i], other.p2[i]);
+    }
+  }
 };
