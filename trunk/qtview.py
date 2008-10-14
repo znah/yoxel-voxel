@@ -29,8 +29,8 @@ class Window(QtGui.QWidget):
         self.cudaScene.SetSVO(self.scene)
         self.renderer.updateScene(self.cudaScene)
 
-        self.sphereSrc = MakeShpereSource(64, (128, 128, 192), False)
-        self.invSphereSrc = MakeShpereSource(64, (192, 128, 128), True)
+        self.sphereSrc = MakeShpereSource(32, (128, 128, 192), False)
+        self.invSphereSrc = MakeShpereSource(32, (192, 128, 128), True)
          
         self.setFixedSize(viewSize[0], viewSize[1])
         self.setWindowTitle(self.tr("Interactive voxel"))
