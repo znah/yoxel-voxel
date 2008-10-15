@@ -166,9 +166,6 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\RangeQuery.h">
-			</File>
-			<File
 				RelativePath=".\VoxelSource.h">
 			</File>
 		</Filter>
