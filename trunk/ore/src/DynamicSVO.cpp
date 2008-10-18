@@ -61,11 +61,9 @@ VoxNodeId DynamicSVO::SetLeaf(VoxNodeId node, uchar4 color, char4 normal)
   }
   VoxLeaf & leaf = m_leafs[ToIdx(node)];
   m_leafs.setItemVer(ToIdx(node), m_curVersion);
-  leaf.color = color;
-
   point_3f nf(normal.x, normal.y, normal.z);
   nf /= 127.0f;
-  leaf.normal = PackNormal(nf.x, nf.y, nf.z);
+  leaf = PackVoxData(color, PackNormal(nf.x, nf.y, nf.z));
   return node;
 }
 
@@ -116,8 +114,7 @@ VoxNodeId DynamicSVO::UpdateChildren(VoxNodeId node, const VoxNodeId * children)
     {
       VoxLeaf & leaf = m_leafs[ToIdx(ch)];
       m_leafs.setItemVer(ToIdx(ch), m_curVersion);
-      c = leaf.color;
-      n = leaf.normal;
+      UnpackVoxData(leaf, c, n);
     }
     else
     {
@@ -125,8 +122,7 @@ VoxNodeId DynamicSVO::UpdateChildren(VoxNodeId node, const VoxNodeId * children)
       m_nodes.setItemVer(ToIdx(ch), m_curVersion);
       nd.parent = node;
       nd.flags.selfChildId = i;
-      c = nd.color;
-      n = nd.normal;
+      UnpackVoxData(nd.data, c, n);
     }
     
     accCol  += point_3i(c.x, c.y, c.z);
@@ -143,8 +139,8 @@ VoxNodeId DynamicSVO::UpdateChildren(VoxNodeId node, const VoxNodeId * children)
 
   VoxNode & nd = m_nodes[ToIdx(node)];
   m_nodes.setItemVer(ToIdx(node), m_curVersion);
-  nd.color = make_uchar4(accCol.x, accCol.y, accCol.z, count >= 1 ? 255 : 0);
-  nd.normal = PackNormal(accNorm.x, accNorm.y, accNorm.z);
+  uchar4 color = make_uchar4(accCol.x, accCol.y, accCol.z, count >= 1 ? 255 : 0);
+  nd.data = PackVoxData(color, PackNormal(accNorm.x, accNorm.y, accNorm.z));
   nd.flags.emptyFlag = false;
   std::copy(children, children+8, nd.child);
 
