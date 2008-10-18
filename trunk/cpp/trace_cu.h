@@ -83,28 +83,24 @@ union VoxNodeInfo
   {
   uchar selfChildId:3;
   bool  emptyFlag:1;
+  uchar leafFlags:8;
   };
 };
 
-#define VOX_LEAF 0x40000000
-#define IDX(id) ((id) & 0x3fffffff)
+typedef uint VoxChild; // VoxData or VoxNodeId
 
 struct VoxNode
 {
   VoxNodeInfo flags;
   VoxNodeId   parent;
   VoxData     data;
-  VoxNodeId   child[8];
+  VoxChild   child[8];
 };
-
-typedef VoxData VoxLeaf;
 
 struct VoxStructTree
 {
   VoxNodeId     root;
-
   VoxNode     * nodes;
-  VoxLeaf     * leafs;
 };
 
 struct RenderParams
@@ -122,6 +118,7 @@ struct RayData
   float3 dir;
   float t;
   VoxNodeId endNode;
+  int endNodeChild;
   float endNodeSize;
 };
 
