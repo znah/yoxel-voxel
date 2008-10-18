@@ -17,7 +17,6 @@ void DynamicSVO::Save(std::string filename)
 {
   std::ofstream file(filename.c_str(), std::ios::binary);
   m_nodes.save(file);
-  m_leafs.save(file);
   write(file, m_root);
 }
 
@@ -25,13 +24,23 @@ bool DynamicSVO::Load(std::string filename)
 {
   std::ifstream file(filename.c_str(), std::ios::binary);
   m_nodes.load(file);
-  m_leafs.load(file);
   read(file, m_root);
 
   m_curVersion = 0;
   return true;
 }
 
+VoxNodeId DynamicSVO::CreateNode()
+{
+  VoxNodeId nodeId = m_nodes.insert();
+  VoxNode & node = m_nodes[nodeId];
+  node.flags.pad = 0;
+  node.flags.emptyFlag = true;
+  node.flags.leafFlags = 0xff;
+
+  node.parent = -1;
+  std::find(node.child, node.child+8, EmptyNode);
+}
 
 void DynamicSVO::DelNode(VoxNodeId node, bool recursive)
 {
@@ -65,19 +74,6 @@ VoxNodeId DynamicSVO::SetLeaf(VoxNodeId node, uchar4 color, char4 normal)
   nf /= 127.0f;
   leaf = PackVoxData(color, PackNormal(nf.x, nf.y, nf.z));
   return node;
-}
-
-void DynamicSVO::FetchChildren(VoxNodeId node, VoxNodeId * dst) const
-{
-  if (IsNull(node))
-    std::fill(dst, dst+8, node);
-  else if (IsLeaf(node))
-    std::fill(dst, dst+8, FullNode);
-  else
-  {
-    const VoxNode & nd = m_nodes[ToIdx(node)];
-    std::copy(nd.child, nd.child+8, dst);
-  }
 }
 
 VoxNodeId DynamicSVO::UpdateChildren(VoxNodeId node, const VoxNodeId * children)
@@ -164,50 +160,154 @@ struct DynamicSVO::TreeBuilder
     , destLevel(8)
   {}
 
-  VoxNodeId BuildRange(int level, const point_3i & p, VoxNodeId node)
+  void SetNodeParent(VoxNodeId dst, VoxNodeId parent, int octant)
   {
-    if (mode == BUILD_MODE_GROW && node == FullNode)
-      return node;
-    if (mode == BUILD_MODE_CLEAR && node == EmptyNode)
-      return node;
+    if (IsNull(dst))
+      return;
+    VoxNode & node = svo.m_nodes[dst];
+    node->flags.selfChildId = octant;
+    node->parent = parent;
+  }
+
+  bool IsInRange(const point_3i & blockPos, int blockSize)
+  {
+    range_3i rng1(blockPos, blockSize);
+    range_3i rng2(pos-sampler.GetPivot(), sampler.GetSize());
+    return rng1.intersects(rng2);
+  }
+  
+  // true if changed
+  bool UpdateNodeLOD(VoxNode * node)
+  {
+
+  }
+  
+  void BuildRange(int level, const point_3i & p, VoxChild & dstChild, bool & dstLeafFlag)
+  {
+    if (!dstLeafFlag)
+    {
+      if (mode == BUILD_MODE_GROW && dstChild == FullNode)
+        return;
+      if (mode == BUILD_MODE_CLEAR && dstChild == EmptyNode)
+        return;
+    }
 
     int blockSize = 1 << (destLevel - level);
     point_3i blockPos = p * blockSize;
-    range_3i rng1(blockPos, blockSize);
-    range_3i rng2(pos-sampler.GetPivot(), sampler.GetSize());
-    if (!rng1.intersects(rng2))
-      return node;
+    if (!IsInRange(blockPos, blockSize))
+      return;
 
     uchar4 col; 
     char4 n;
     TryRangeResult res = sampler.TryRange(blockPos - pos, blockSize, col, n);
+
     if (res == ResEmpty && mode == BUILD_MODE_CLEAR)
     {
-      svo.DelNode(node);
-      node = EmptyNode;
+      dstChild = EmptyNode;
+      dstLeafFlag = false;
+      return;
     }
 
     if (res == ResFull && mode == BUILD_MODE_GROW)
     {
-      svo.DelNode(node);
-      node = FullNode;
+      dstChild = FullNode;
+      dstLeafFlag = false;
+      return;
     }
 
-    if (res == ResSurface)
+    if (res == ResSurface && (mode == BUILD_MODE_GROW || !dstLeafFlag))
     {
-      if (!IsLeaf(node) || mode == BUILD_MODE_GROW)
-        node = svo.SetLeaf(node, col, n);
+      // TODO: optimize
+      point_3f nf(n.x, n.y, n.z);
+      nf /= 127.0;
+      dstChild = PackVoxData(col, PackNormal(nf.x, nf.y, nf.z));
+      dstLeafFlag = true;
+      return;
     }
 
-    if (res == ResGoDown)
+    if (res != ResGoDown)
+      return;
+
+    VoxNode node;
+    node.flags = 0;
+    bool allNull = true;
+    for (walk_3 octant(2, 2, 2); !octant.done(); ++octant)
     {
-      VoxNodeId children[8];
-      svo.FetchChildren(node, children);
-      for (walk_3 i(2, 2, 2); !i.done(); ++i)
-        children[i.flat()] = BuildRange(level+1, p*2+i.p, children[i.flat()]);
-      node = svo.UpdateChildren(node, children);
+      //bool leaf
+      void BuildRange(int level, const point_3i & p, VoxChild & dstChild, bool & dstLeafFlag)
+
+
     }
-    return node;
+  }
+
+  VoxNodeId UpdateRange(int level, const point_3i & p, VoxNodeId nodeId)
+  {
+    int blockSize = 1 << (destLevel - level);
+    point_3i blockPos = p * blockSize;
+    if (!IsInRange(blockPos, blockSize))
+      return nodeId;
+
+    uchar4 col; 
+    char4 n;
+    TryRangeResult res = sampler.TryRange(blockPos - pos, blockSize, col, n);
+
+    if (res == ResEmpty && mode == BUILD_MODE_CLEAR)
+    {
+      svo.DelNode(nodeId);
+      return EmptyNode;
+    }
+
+    if (res == ResFull && mode == BUILD_MODE_GROW)
+    {
+      svo.DelNode(nodeId);
+      return FullNode;
+    }
+
+    if (res != ResGoDown)
+      return nodeId;
+
+    VoxNode node = svo.m_nodes[nodeId];
+    bool changed = false;
+    for (walk_3 octant(2, 2, 2); !octant.done(); ++octant)
+    {
+      uchar chMask = 1 << octant.flat();
+      bool leafFlag = node.flags.leafFlags & chMask != 0;
+      VoxChild & childRef = node.child[octant.flat()];
+      if (!leafFlag && !IsNull(childRef))
+      {
+        childRef = UpdateRange(level+1, p*2+octant.p, childRef);
+        if (IsNull(childRef))
+          changed = true;
+        continue;
+      }
+
+      VoxChild newChild = childRef;
+      bool newLeafFlag = leafFlag;
+      BuildRange(level+1, p*2+octant.p, newChild, newLeafFlag);
+      if (newChild == childRef && newLeafFlag == leafFlag)
+        continue;
+      childRef = newChild;
+      leafFlag = newLeafFlag;
+
+      node.flags.leafFlags &= ~chMask;
+      if (leafFlag)
+        node.flags.leafFlags |= chMask;
+
+      if (!leafFlag)
+        SetNodeParent(childRef, nodeId, octant.flat());
+
+      changed = true;        
+    }
+    
+    if (UpdateNodeLOD(node))
+      changed = true;
+
+    if (changed)
+    {
+      svo.m_nodes[nodeId] = node;
+      svo.m_nodes.setItemVer(nodeId, svo.GetCurVersion());
+    }
+    return nodeId;
   }
 };
 
@@ -219,7 +319,7 @@ void DynamicSVO::BuildRange(int level, const cg::point_3i & pos, BuildMode mode,
   bld.destLevel = level;
   bld.pos = pos;
   bld.mode = mode;
-  m_root = bld.BuildRange(0, point_3i(0, 0, 0), m_root);
+  m_root = bld.UpdateRange(0, point_3i(0, 0, 0), m_root);
 }
 
 
