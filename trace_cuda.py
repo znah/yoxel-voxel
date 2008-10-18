@@ -23,7 +23,7 @@ class CudaRenderer:
         self.InitFishEyeRays = mod.get_function("InitFishEyeRays")
         self.InitShadowRays = mod.get_function("InitShadowRays")
         self.Trace = mod.get_function("Trace")
-        self.ShadeShadow = mod.get_function("ShadeShadow")
+        #self.ShadeShadow = mod.get_function("ShadeShadow")
         self.ShadeSimple = mod.get_function("ShadeSimple")
         self.mod = mod
 
