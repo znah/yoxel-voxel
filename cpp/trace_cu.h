@@ -51,6 +51,25 @@ inline __device__ __host__ void UnpackNormal(ushort packed, float & x, float & y
   if (octant & 4) z = -z;
 }
 
+// color - 16bit, normal - 16bit
+typedef uint VoxData;
+
+inline VoxData PackVoxData(uchar4 c, VoxNormal n)
+{
+  ushort c16 = 0;
+  c16 |= (c.x>>3);          // red
+  c16 |= (c.y>>2) << 5;     // green
+  c16 |= (c.z>>3) << (5+6); // blue
+  return c16 | (n<<16);
+}
+
+inline __device__ __host__  void UnpackVoxData(VoxData vd, uchar4 & c, VoxNormal & n)
+{
+  n = vd>>16;
+  c.x = (vd << 3) & 0xf8;
+  c.y = (vd >> (5-2)) & 0xfc;
+  c.z = (vd >> (5+6-3)) & 0xf8;
+}
 
 typedef int VoxNodeId;
 
@@ -74,18 +93,11 @@ struct VoxNode
 {
   VoxNodeInfo flags;
   VoxNodeId   parent;
-  uchar4      color;
-  VoxNormal   normal;
+  VoxData     data;
   VoxNodeId   child[8];
 };
 
-struct VoxLeaf
-{
-  uchar4      color;
-  VoxNormal   normal;
-  ushort      padding;
-};
-
+typedef VoxData VoxLeaf;
 
 struct VoxStructTree
 {

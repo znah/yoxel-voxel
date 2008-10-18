@@ -33,7 +33,7 @@ texture<uint, 1, cudaReadModeElementType> leafs_tex;
   __device__ bool GetEmptyFlag(VoxNodeId id) { return ((GET_TEXNODE_FIELD( id, 0 )>>3) & 0x1) != 0; }
 
   __device__ VoxNodeId   GetParent (VoxNodeId id) { return GET_TEXNODE_FIELD(id, 1); }
-  __device__ VoxNodeId   GetChild  (VoxNodeId id, int chId) { return GET_TEXNODE_FIELD(id, 4 + chId); }
+  __device__ VoxNodeId   GetChild  (VoxNodeId id, int chId) { return GET_TEXNODE_FIELD(id, 3 + chId); }
 
 #else
 
@@ -44,8 +44,10 @@ texture<uint, 1, cudaReadModeElementType> leafs_tex;
   __device__ VoxNodeId   & GetChild  (VoxNodeId id, int chId) { return tree.nodes[IDX(id)].child[chId]; }
 #endif
 
-__device__ uchar4 GetColor  (VoxNodeId id) { return GET_FIELD(id, color); }
-__device__ VoxNormal GetNormal  (VoxNodeId id) { return GET_FIELD(id, normal); }
+__device__ VoxData GetVoxData  (VoxNodeId id) 
+{ 
+  return ((id)&VOX_LEAF) ? tree.leafs[IDX(id)] : tree.nodes[IDX(id)].data; 
+}
 
 
 __device__ bool IsLeaf(VoxNodeId id) { return (id & VOX_LEAF) != 0; }
@@ -352,11 +354,12 @@ __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, const RayD
   float3 dir = eyeRays[tid].dir;
   float t = eyeRays[tid].t;
 
-  uchar4 col = GetColor(node);
-  //char4 np = GetNormal(node);
-  float3 norm; //= make_float3(np.x, np.y, np.z);
-  UnpackNormal(GetNormal(node), norm.x, norm.y, norm.z);
-  //norm /= 127.0;
+  VoxData vd = GetVoxData(node);
+  uchar4 col;
+  VoxNormal qnorm;
+  UnpackVoxData(vd, col, qnorm);
+  float3 norm;
+  UnpackNormal(qnorm, norm.x, norm.y, norm.z);
 
   float3 pt = p + dir*t;
   float3 lightDir = rp.lightPos - pt;
