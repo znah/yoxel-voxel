@@ -20,11 +20,11 @@ class Window(QtGui.QWidget):
         self.vang = -55.0
         self.calcDir()
 
-        self.renderer = voxel.CudaRenderer( (1024, 768) )
+        self.renderer = voxel.CudaRenderer( (640, 480) )
         viewSize = self.renderer.getViewSize()
 
         self.scene = DynamicSVO()
-        self.scene.Load("data/large_vol.vox")
+        self.scene.Load("data/scene.vox")
         self.cudaScene = CudaSVO()
         self.cudaScene.SetSVO(self.scene)
         self.renderer.updateScene(self.cudaScene)

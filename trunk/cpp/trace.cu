@@ -45,7 +45,7 @@ texture<uint, 1, cudaReadModeElementType> leafs_tex;
 #endif
 
 __device__ uchar4 GetColor  (VoxNodeId id) { return GET_FIELD(id, color); }
-__device__ char4 GetNormal  (VoxNodeId id) { return GET_FIELD(id, normal); }
+__device__ VoxNormal GetNormal  (VoxNodeId id) { return GET_FIELD(id, normal); }
 
 
 __device__ bool IsLeaf(VoxNodeId id) { return (id & VOX_LEAF) != 0; }
@@ -292,7 +292,7 @@ __global__ void Trace(TraceParams tp, RayData * rays)
   }
 }
 
-__global__ void ShadeShadow(RenderParams rp, const RayData * eyeRays, const RayData * shadowRays, uchar4 * img)
+/*__global__ void ShadeShadow(RenderParams rp, const RayData * eyeRays, const RayData * shadowRays, uchar4 * img)
 {
   INIT_THREAD
 
@@ -333,7 +333,7 @@ __global__ void ShadeShadow(RenderParams rp, const RayData * eyeRays, const RayD
   res = fminf(res, make_float3(255));
 
   img[tid] = make_uchar4(res.x, res.y, res.z, 255);
-}
+}*/
 
 
 __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, const RayData * shadowRays, uchar4 * img)
@@ -353,9 +353,11 @@ __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, const RayD
   float t = eyeRays[tid].t;
 
   uchar4 col = GetColor(node);
-  char4 np = GetNormal(node);
-  float3 norm = make_float3(np.x, np.y, np.z);
-  norm /= 127.0;
+  //char4 np = GetNormal(node);
+  float3 norm; //= make_float3(np.x, np.y, np.z);
+  UnpackNormal(GetNormal(node), norm.x, norm.y, norm.z);
+  //norm /= 127.0;
+
   float3 pt = p + dir*t;
   float3 lightDir = rp.lightPos - pt;
   float lightDist = length(lightDir);

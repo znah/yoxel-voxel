@@ -117,7 +117,7 @@ private:
   bool m_lowInside;
   uchar4 m_color;
 
-  uchar trans(uchar v) { return m_lowInside ? 255-v : v; }
+  uchar trans(uchar v) const { return m_lowInside ? 255-v : v; }
 
   int ofs(const point_3i & p) const
   {
@@ -130,7 +130,7 @@ private:
     point_3i sz = GetSize();
     for (int i = 0; i < 3; ++i)
       p[i] = cg::bound(p[i], 0, sz[i]-1);
-    return m_data[ofs(p)];
+    return trans(m_data[ofs(p)]);
   }
 
   void getrange(range_3i rng, int & lo, int & hi)
@@ -147,7 +147,7 @@ private:
         int p = ofs(point_3i(0, y, z));
         for (int x = rng.p1.x; x < rng.p2.x; ++x)
         {
-          int v = m_data[p+x];
+          int v = trans(m_data[p+x]);
           lo = cg::min(lo, v);
           hi = cg::max(hi, v);
         }
@@ -176,21 +176,17 @@ public:
       range_3i rng(blockStart - point_3i(1, 1, 1), blockSize+2);
       int lo, hi;
       getrange(rng, lo, hi);
-      lo = trans(lo);
-      hi = trans(hi);
 
       if (hi < level)
         return ResEmpty;
       if (level <= lo)
         return ResFull;
-      outColor = make_uchar4(255, 0, 0, 255);
-      outNormal = make_char4(127, 0, 0, 0);
       return ResGoDown;
     }
     else
     {
       const point_3i & p = blockStart;
-      int v = trans(get(p));
+      int v = get(p);
       if (v < level)
         return ResEmpty;
 
@@ -200,8 +196,8 @@ public:
       {
         point_3i dp(0, 0, 0);
         dp[i] = 1;
-        int v1 = trans(get(p - dp));
-        int v2 = trans(get(p + dp));
+        int v1 = get(p - dp);
+        int v2 = get(p + dp);
         n[i] = -0.5f*(v2-v1);
         inside = inside && (v1 >= level) && (v2 >= level);
       }

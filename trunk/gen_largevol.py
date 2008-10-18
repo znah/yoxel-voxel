@@ -5,8 +5,6 @@ import gc
 bld = DynamicSVO()
 
 
-isoLevel = 60
-
 start = (3, 4, 4)
 end = (9, 6, 6)
 
@@ -25,8 +23,10 @@ for k, j, i in bricks:
         print "error"
         continue
 
+    data = data
     src = MakeIsoSource(point_3i(256, 256, 128), data)
-    src.SetIsoLevel(60)
+    src.SetIsoLevel(200)
+    #src.SetInside(True)
 
     bld.BuildRange(11, point_3i(i*256, j*256, k*128), BuildMode.GROW, src)
     print bld.nodecount

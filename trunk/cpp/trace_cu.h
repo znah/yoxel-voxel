@@ -6,6 +6,51 @@
 
 typedef unsigned int uint;
 typedef unsigned char uchar;
+typedef unsigned short ushort;
+
+  // octant - 3bit, qx - 7 bit, qy - 6 bit
+typedef ushort VoxNormal;
+
+inline VoxNormal PackNormal(float x, float y, float z)
+{
+  int octant = 0;
+  if (x < 0) { octant |= 1; x = -x; }
+  if (y < 0) { octant |= 2; y = -y; }
+  if (z < 0) { octant |= 4; z = -z; }
+
+  float t = 1.0f / (x + y + z);
+  float px = t*x;
+  float py = t*y;
+
+  int qx = (int)(127.0f*px);
+  int qy = (int)(63.0f*py);
+
+  VoxNormal res = 0;
+  res |= octant;
+  res |= qx << 3;
+  res |= qy << (3+7);
+  return res;
+}
+
+inline __device__ __host__ void UnpackNormal(ushort packed, float & x, float & y, float & z)
+{
+  int octant = packed & 7;
+  int qx = (packed >> 3) & 127;
+  int qy = (packed >> (3+7)) & 63;
+  
+  x = qx / 127.0f;
+  y = qy / 63.0f;
+  z = 1.0f - x - y;
+  float invLen = 1.0f / sqrtf(x*x + y*y + z*z);
+  x *= invLen;
+  y *= invLen;
+  z *= invLen;
+
+  if (octant & 1) x = -x;
+  if (octant & 2) y = -y;
+  if (octant & 4) z = -z;
+}
+
 
 typedef int VoxNodeId;
 
@@ -30,14 +75,15 @@ struct VoxNode
   VoxNodeInfo flags;
   VoxNodeId   parent;
   uchar4      color;
-  char4       normal;
+  VoxNormal   normal;
   VoxNodeId   child[8];
 };
 
 struct VoxLeaf
 {
   uchar4      color;
-  char4       normal;
+  VoxNormal   normal;
+  ushort      padding;
 };
 
 
