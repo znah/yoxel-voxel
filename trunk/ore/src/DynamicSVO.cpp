@@ -213,9 +213,12 @@ struct DynamicSVO::TreeBuilder
     UpdateNodeLOD(node);
     
     VoxNodeId nodeId = svo.CreateNode();
-    //Assert(nodeId != 135299);
     svo.m_nodes[nodeId] = node;
     svo.m_nodes.setItemVer(nodeId, svo.GetCurVersion());
+
+    for (int i = 0; i < 8; ++i)
+      if (!GetLeafFlag(node, i))
+        SetNodeParent(node.child[i], nodeId, i);
 
     dstLeafFlag = false;
     dstChild = nodeId;
@@ -248,7 +251,6 @@ struct DynamicSVO::TreeBuilder
       return nodeId;
 
     VoxNode node = svo.m_nodes[nodeId];
-    //Assert(nodeId != 135299);
     bool changed = false;
     for (walk_3 octant(2, 2, 2); !octant.done(); ++octant)
     {
