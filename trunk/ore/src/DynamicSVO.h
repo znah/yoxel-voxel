@@ -25,9 +25,7 @@ private:
   int m_curVersion;
 
   VoxNodeId CreateNode();
-
-  void DelNode(VoxNodeId node, bool recursive = true);
-  VoxNodeId SetLeaf(VoxNodeId node, uchar4 color, char4 normal);
+  void DelNode(VoxNodeId nodeId);
 
   VoxNodeId RecTrace(VoxNodeId node, cg::point_3f t1, cg::point_3f t2, const uint dirFlags, float & t) const;
 

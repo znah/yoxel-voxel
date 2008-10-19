@@ -10,7 +10,6 @@ private:
   int m_curVersion;
 
   DeviceBuf m_nodes;
-  DeviceBuf m_leafs;
 
   template <class T>
   void UpdatePages(DeviceBuf & buf, const HomoStorage<T> & storage);
@@ -23,5 +22,4 @@ public:
 
   VoxNodeId GetRoot();
   void GetNodes(CUdeviceptr & ptr, int & size);
-  void GetLeafs(CUdeviceptr & ptr, int & size);
 };

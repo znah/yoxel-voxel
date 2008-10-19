@@ -35,16 +35,6 @@ struct rgba
 };
 
 
-py::tuple DynamicSVO_ExportStructTree(DynamicSVO * bld)
-{
-  VoxNodeId root = bld->GetRoot();
-  py::tuple res = py::make_tuple(root, 
-    py::handle<>(ToPyBuffer( bld->GetNodes().GetBuf() )), 
-    py::handle<>(ToPyBuffer( bld->GetLeafs().GetBuf() ))
-    );
-  return res;
-}
-
 py::tuple CudaSVO_GetData(CudaSVO * svo)
 {
   VoxNodeId root = svo->GetRoot();
@@ -54,10 +44,8 @@ py::tuple CudaSVO_GetData(CudaSVO * svo)
 
   svo->GetNodes(ptr, size);
   py::tuple nodes = py::make_tuple(ptr, size);
-  svo->GetLeafs(ptr, size);
-  py::tuple leafs = py::make_tuple(ptr, size);
 
-  py::tuple res = py::make_tuple(root, nodes, leafs);
+  py::tuple res = py::make_tuple(root, nodes);
   return res;
 }
 
@@ -135,7 +123,6 @@ BOOST_PYTHON_MODULE(_ore)
 
     class_<DynamicSVO>("DynamicSVO")
       .def("BuildRange", &DynamicSVO::BuildRange)
-      .def("ExportStructTree", &DynamicSVO_ExportStructTree)
       .def("Save", &DynamicSVO::Save)
       .def("Load", &DynamicSVO::Load)
       .def("TraceRay", &DynamicSVO::TraceRay)
