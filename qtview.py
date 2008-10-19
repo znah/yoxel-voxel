@@ -24,13 +24,13 @@ class Window(QtGui.QWidget):
         viewSize = self.renderer.getViewSize()
 
         self.scene = DynamicSVO()
-        self.scene.Load("data/scene.vox")
+        self.scene.Load("data/large_vol.vox")
         self.cudaScene = CudaSVO()
         self.cudaScene.SetSVO(self.scene)
         self.renderer.updateScene(self.cudaScene)
 
         self.sphereSrc = SphereSource(32, rgba(128, 128, 192), False)
-        self.invSphereSrc = SphereSource(64, rgba(192, 128, 128), True)
+        self.invSphereSrc = SphereSource(40, rgba(192, 128, 128), True)
          
         self.setFixedSize(viewSize[0], viewSize[1])
         self.setWindowTitle(self.tr("Interactive voxel"))
@@ -67,11 +67,8 @@ class Window(QtGui.QWidget):
         return self.pos + self.viewDir * t
 
     def updateScene(self):
-        start = clock()
         self.cudaScene.Update()
         self.renderer.updateScene(self.cudaScene)
-        dt = clock() - start
-        print "update time: %f ms" % (dt*1000)
         print self.scene.CountChangedPages(), "pages changed",
         print "%.2f MB to transfer" % (self.scene.CountTransfrerSize()/1024.0**2)
 
@@ -145,13 +142,17 @@ class Window(QtGui.QWidget):
             dstLevel = 11
             pos = self.getTargetPoint() * 2**dstLevel
 
+            start = clock()
+
             if self.editState == 1:
                 self.scene.BuildRange(dstLevel, p3i(pos), BuildMode.GROW, self.sphereSrc) 
             else:
                 self.scene.BuildRange(dstLevel, p3i(pos), BuildMode.CLEAR, self.invSphereSrc) 
 
             self.updateScene()    
-            self.lastEditTime = t
+
+            dt = clock()-start
+            print "update time: %f ms" % (dt*1000)
 
         self.update()
         

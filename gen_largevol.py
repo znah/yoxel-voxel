@@ -5,8 +5,8 @@ import gc
 bld = DynamicSVO()
 
 
-start = (3, 4, 4)
-end = (9, 6, 6)
+start = (3, 0, 0)
+end = (8, 8, 8)
 
 bricks = [ (k, j, i) for k in range(start[0], end[0]) for j in range(start[1], end[1]) for i in range(start[2], end[2]) ]
 
@@ -23,7 +23,6 @@ for k, j, i in bricks:
         print "error"
         continue
 
-    data = data
     src = MakeIsoSource(point_3i(256, 256, 128), data)
     src.SetIsoLevel(200)
     #src.SetInside(True)

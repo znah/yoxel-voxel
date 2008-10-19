@@ -10,8 +10,6 @@
 
 enum BuildMode { BUILD_MODE_GROW, BUILD_MODE_CLEAR };
 
-inline bool IsNull(VoxNodeId node) { return node < 0; }
-
 class DynamicSVO
 {
 private:

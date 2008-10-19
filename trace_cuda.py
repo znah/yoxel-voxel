@@ -21,7 +21,7 @@ class CudaRenderer:
         mod = cuda.SourceModule(file("cpp/trace.cu").read(), keep=True, options=['-I../cpp'] + opts, no_extern_c=True)
         self.InitEyeRays = mod.get_function("InitEyeRays")
         self.InitFishEyeRays = mod.get_function("InitFishEyeRays")
-        self.InitShadowRays = mod.get_function("InitShadowRays")
+        #self.InitShadowRays = mod.get_function("InitShadowRays")
         self.Trace = mod.get_function("Trace")
         #self.ShadeShadow = mod.get_function("ShadeShadow")
         self.ShadeSimple = mod.get_function("ShadeSimple")
@@ -42,10 +42,11 @@ class CudaRenderer:
           float3 dir;
           float t;
           VoxNodeId endNode;
+          int endNodeChild;
           float endNodeSize;
         };
         '''
-        raySize = struct.calcsize("3f f i f")
+        raySize = struct.calcsize("3f f i i f")
         self.d_rays = ga.empty( (self.resy, self.resx, raySize), uint8 )
         self.d_shadowRays = ga.empty( (self.resy, self.resx, raySize), uint8 )
 
@@ -53,14 +54,14 @@ class CudaRenderer:
         self.detailCoef = 10.0
 
     def updateScene(self, scene):
-        (self.sceneRoot, nodes, leafs) = scene.GetData()
+        (self.sceneRoot, nodes) = scene.GetData()
 
-        self.texrefs = [self.mod.get_texref(name+"_tex") for name in ["nodes", "leafs"]]
-        self.texrefs[0].set_address(nodes[0], nodes[1])
-        self.texrefs[1].set_address(leafs[0], leafs[1])
+        nodes_tex = self.mod.get_texref("nodes_tex")
+        nodes_tex.set_address(nodes[0], nodes[1])
+        self.texrefs = [nodes_tex]
 
-        args = [self.sceneRoot, nodes[0], leafs[0]]
-        st = struct.pack("iPP", *args)
+        args = [self.sceneRoot, nodes[0]]
+        st = struct.pack("iP", *args)
         tree_glb = self.mod.get_global("tree")
         cuda.memcpy_htod(tree_glb[0], st)
 

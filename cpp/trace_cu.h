@@ -72,6 +72,7 @@ inline __device__ __host__  void UnpackVoxData(VoxData vd, uchar4 & c, VoxNormal
 }
 
 typedef int VoxNodeId;
+inline __device__ __host__ bool IsNull(VoxNodeId node) { return node < 0; }
 
 const VoxNodeId EmptyNode = -1;
 const VoxNodeId FullNode  = -2;
@@ -97,12 +98,12 @@ struct VoxNode
   VoxChild   child[8];
 };
 
-inline __device__ __host__ bool GetLeafFlag(const VoxNode & node, int i)
+inline bool GetLeafFlag(const VoxNode & node, int i)
 {
   return (node.flags.leafFlags & (1<<i)) != 0;
 }
 
-inline __device__ __host__ void SetLeafFlag(VoxNode & node, int i, bool leaf)
+inline void SetLeafFlag(VoxNode & node, int i, bool leaf)
 {
   uchar mask = 1 << i;
   node.flags.leafFlags &= ~mask;
