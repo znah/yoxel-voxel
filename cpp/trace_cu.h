@@ -87,7 +87,7 @@ union VoxNodeInfo
   };
 };
 
-typedef uint VoxChild; // VoxData or VoxNodeId
+typedef int VoxChild; // VoxData or VoxNodeId
 
 struct VoxNode
 {
@@ -96,6 +96,20 @@ struct VoxNode
   VoxData     data;
   VoxChild   child[8];
 };
+
+inline __device__ __host__ bool GetLeafFlag(const VoxNode & node, int i)
+{
+  return (node.flags.leafFlags & (1<<i)) != 0;
+}
+
+inline __device__ __host__ void SetLeafFlag(VoxNode & node, int i, bool leaf)
+{
+  uchar mask = 1 << i;
+  node.flags.leafFlags &= ~mask;
+  if (leaf)
+    node.flags.leafFlags |= mask;
+}
+
 
 struct VoxStructTree
 {

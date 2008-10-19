@@ -40,7 +40,6 @@ void CudaSVO::UpdatePages(DeviceBuf & buf, const HomoStorage<T> & storage)
 void CudaSVO::Update()
 {
   UpdatePages(m_nodes, m_svo->GetNodes());
-  UpdatePages(m_leafs, m_svo->GetLeafs());
   m_curVersion = m_svo->GetCurVersion();
 }
 
@@ -54,10 +53,4 @@ void CudaSVO::GetNodes(CUdeviceptr & ptr, int & size)
 {
   ptr = m_nodes.ptr();
   size = m_nodes.size();
-}
-
-void CudaSVO::GetLeafs(CUdeviceptr & ptr, int & size)
-{
-  ptr = m_leafs.ptr();
-  size = m_leafs.size();
 }

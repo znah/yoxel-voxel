@@ -11,8 +11,6 @@ using namespace cg;
 using std::cout;
 using std::endl;
 
-inline int ToIdx(VoxNodeId node) { Assert(!IsNull(node)); return IDX(node); }
-
 void DynamicSVO::Save(std::string filename)
 {
   std::ofstream file(filename.c_str(), std::ios::binary);
@@ -36,113 +34,22 @@ VoxNodeId DynamicSVO::CreateNode()
   VoxNode & node = m_nodes[nodeId];
   node.flags.pad = 0;
   node.flags.emptyFlag = true;
-  node.flags.leafFlags = 0xff;
 
   node.parent = -1;
-  std::find(node.child, node.child+8, EmptyNode);
+  std::fill(node.child, node.child+8, EmptyNode);
+  return nodeId;
 }
 
-void DynamicSVO::DelNode(VoxNodeId node, bool recursive)
+void DynamicSVO::DelNode(VoxNodeId nodeId)
 {
-  if (IsNull(node))
+  if (IsNull(nodeId))
     return;
-  if (IsLeaf(node))
-    m_leafs.erase(ToIdx(node));
-  else
-  {
-    if (recursive)
-    {
-      VoxNodeId children[8];
-      FetchChildren(node, children);
-      for (int i = 0; i < 8; ++i)
-        DelNode(children[i]);
-    }
-    m_nodes.erase(ToIdx(node));
-  }
+  VoxNode & node = m_nodes[nodeId];
+  for (int i = 0; i < 8; ++i)
+    if (!GetLeafFlag(node, i))
+      DelNode(node.child[i]);
+  m_nodes.erase(nodeId);
 }
-
-VoxNodeId DynamicSVO::SetLeaf(VoxNodeId node, uchar4 color, char4 normal)
-{
-  if (!IsLeaf(node))
-  {
-    DelNode(node);
-    node = m_leafs.insert() | VOX_LEAF;
-  }
-  VoxLeaf & leaf = m_leafs[ToIdx(node)];
-  m_leafs.setItemVer(ToIdx(node), m_curVersion);
-  point_3f nf(normal.x, normal.y, normal.z);
-  nf /= 127.0f;
-  leaf = PackVoxData(color, PackNormal(nf.x, nf.y, nf.z));
-  return node;
-}
-
-VoxNodeId DynamicSVO::UpdateChildren(VoxNodeId node, const VoxNodeId * children)
-{
-  if (std::count_if(children, children+8, IsNull) == 8)
-  {
-    DelNode(node, false);
-    return children[0]; // slight cheat;
-  }
-
-  if (!IsNode(node))
-  {
-    DelNode(node, false);
-    node = m_nodes.insert();
-    VoxNode & nd = m_nodes[ToIdx(node)];
-    m_nodes.setItemVer(ToIdx(node), m_curVersion);
-    nd.parent = -1;
-    nd.flags.pad = 0;
-  }
-
-  int count = 0;
-  point_3i accCol;
-  point_3f accNorm;
-  for (int i = 0; i != 8; ++i)
-  {
-    VoxNodeId ch = children[i];
-    if (IsNull(ch))
-      continue;
-
-    uchar4 c;
-    VoxNormal n;
-
-    if (IsLeaf(ch))
-    {
-      VoxLeaf & leaf = m_leafs[ToIdx(ch)];
-      m_leafs.setItemVer(ToIdx(ch), m_curVersion);
-      UnpackVoxData(leaf, c, n);
-    }
-    else
-    {
-      VoxNode & nd = m_nodes[ToIdx(ch)];
-      m_nodes.setItemVer(ToIdx(ch), m_curVersion);
-      nd.parent = node;
-      nd.flags.selfChildId = i;
-      UnpackVoxData(nd.data, c, n);
-    }
-    
-    accCol  += point_3i(c.x, c.y, c.z);
-
-    point_3f nf;
-    UnpackNormal(n, nf.x, nf.y, nf.z);
-    accNorm += nf;
-    ++count;
-  }
-
-  accCol /= count;
-  accNorm /= (float)count;
-  normalize(accNorm);
-
-  VoxNode & nd = m_nodes[ToIdx(node)];
-  m_nodes.setItemVer(ToIdx(node), m_curVersion);
-  uchar4 color = make_uchar4(accCol.x, accCol.y, accCol.z, count >= 1 ? 255 : 0);
-  nd.data = PackVoxData(color, PackNormal(accNorm.x, accNorm.y, accNorm.z));
-  nd.flags.emptyFlag = false;
-  std::copy(children, children+8, nd.child);
-
-  return node;
-}
-
 
 struct DynamicSVO::TreeBuilder
 {
@@ -165,8 +72,8 @@ struct DynamicSVO::TreeBuilder
     if (IsNull(dst))
       return;
     VoxNode & node = svo.m_nodes[dst];
-    node->flags.selfChildId = octant;
-    node->parent = parent;
+    node.flags.selfChildId = octant;
+    node.parent = parent;
   }
 
   bool IsInRange(const point_3i & blockPos, int blockSize)
@@ -177,9 +84,65 @@ struct DynamicSVO::TreeBuilder
   }
   
   // true if changed
-  bool UpdateNodeLOD(VoxNode * node)
+  bool UpdateNodeLOD(VoxNode & node)
   {
+    int count = 0;
+    point_3i accCol;
+    point_3f accNorm;
+    for (int i = 0; i != 8; ++i)
+    {
+      bool isLeaf = GetLeafFlag(node, i);
+      VoxChild child = node.child[i];
+      if (!isLeaf && IsNull(child))
+        continue;
 
+      uchar4 c;
+      VoxNormal n;
+      if (isLeaf)
+        UnpackVoxData(child, c, n);
+      else
+        UnpackVoxData(svo.m_nodes[child].data, c, n);
+
+      accCol  += point_3i(c.x, c.y, c.z);
+
+      point_3f nf;
+      UnpackNormal(n, nf.x, nf.y, nf.z);
+      accNorm += nf;
+      ++count;
+    }
+
+    accCol /= count;
+    accNorm /= (float)count;
+    normalize(accNorm);
+    uchar4 color = make_uchar4(accCol.x, accCol.y, accCol.z, 255);
+    
+    VoxData voxData = PackVoxData(color, PackNormal(accNorm.x, accNorm.y, accNorm.z));
+
+    bool changed = false;
+    if (node.data != voxData)
+    {
+      node.data = voxData;
+      changed = true;
+    }
+
+    // TODO empty nodes on coarse LODs
+    if (node.flags.emptyFlag != false)
+    {
+      node.flags.emptyFlag = false;
+      changed = true;
+    }
+    
+    return changed;
+  }
+
+  bool IsEmptyNode(const VoxNode & node)
+  {
+    if (node.flags.leafFlags != 0)
+      return false;
+    for (int i = 0; i < 8; ++i)
+      if (!IsNull(node.child[i]))
+        return false;
+    return true;
   }
   
   void BuildRange(int level, const point_3i & p, VoxChild & dstChild, bool & dstLeafFlag)
@@ -229,15 +192,33 @@ struct DynamicSVO::TreeBuilder
       return;
 
     VoxNode node;
-    node.flags = 0;
-    bool allNull = true;
+    node.flags.pad = 0;
+    node.parent = -1;
     for (walk_3 octant(2, 2, 2); !octant.done(); ++octant)
     {
-      //bool leaf
-      void BuildRange(int level, const point_3i & p, VoxChild & dstChild, bool & dstLeafFlag)
-
-
+      bool leafFlag = false;
+      VoxChild & child = node.child[octant.flat()];
+      child = dstLeafFlag ? FullNode : dstChild;
+      BuildRange(level+1, 2*p+octant.p, child, leafFlag);
+      SetLeafFlag(node, octant.flat(), leafFlag);
     }
+
+    if (IsEmptyNode(node))
+    {
+      dstChild = node.child[0];
+      dstLeafFlag = false;
+      return;
+    }
+
+    UpdateNodeLOD(node);
+    
+    VoxNodeId nodeId = svo.CreateNode();
+    //Assert(nodeId != 135299);
+    svo.m_nodes[nodeId] = node;
+    svo.m_nodes.setItemVer(nodeId, svo.GetCurVersion());
+
+    dstLeafFlag = false;
+    dstChild = nodeId;
   }
 
   VoxNodeId UpdateRange(int level, const point_3i & p, VoxNodeId nodeId)
@@ -267,11 +248,11 @@ struct DynamicSVO::TreeBuilder
       return nodeId;
 
     VoxNode node = svo.m_nodes[nodeId];
+    //Assert(nodeId != 135299);
     bool changed = false;
     for (walk_3 octant(2, 2, 2); !octant.done(); ++octant)
     {
-      uchar chMask = 1 << octant.flat();
-      bool leafFlag = node.flags.leafFlags & chMask != 0;
+      bool leafFlag = GetLeafFlag(node, octant.flat());
       VoxChild & childRef = node.child[octant.flat()];
       if (!leafFlag && !IsNull(childRef))
       {
@@ -289,24 +270,27 @@ struct DynamicSVO::TreeBuilder
       childRef = newChild;
       leafFlag = newLeafFlag;
 
-      node.flags.leafFlags &= ~chMask;
-      if (leafFlag)
-        node.flags.leafFlags |= chMask;
-
+      SetLeafFlag(node, octant.flat(), leafFlag);
       if (!leafFlag)
         SetNodeParent(childRef, nodeId, octant.flat());
 
       changed = true;        
     }
+
+    if (changed)
+      svo.m_nodes[nodeId] = node;
+
+    if (IsEmptyNode(node))
+    {
+      svo.DelNode(nodeId);
+      return node.child[0];
+    }
     
-    if (UpdateNodeLOD(node))
+    if (UpdateNodeLOD(svo.m_nodes[nodeId]))
       changed = true;
 
     if (changed)
-    {
-      svo.m_nodes[nodeId] = node;
       svo.m_nodes.setItemVer(nodeId, svo.GetCurVersion());
-    }
     return nodeId;
   }
 };
@@ -345,18 +329,13 @@ inline int argmax(const point_3f & p)
 template<class T>
 inline void swap(T & a, T & b) { T c = a; a = b; b = c; }
 
-VoxNodeId DynamicSVO::RecTrace(VoxNodeId node, point_3f t1, point_3f t2, const uint dirFlags, float & t) const
+VoxNodeId DynamicSVO::RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, float & t) const
 {
-  if (IsNull(node))
+  if (IsNull(nodeId))
     return EmptyNode;
   if (min(t2) <= 0)
     return EmptyNode;
   float tEnter = max(t1);
-  if (IsLeaf(node) || node == FullNode)
-  {
-    t = tEnter;
-    return node;
-  }
   
   point_3f tm = 0.5f*(t1+t2);
   int ch = 0;
@@ -371,12 +350,16 @@ VoxNodeId DynamicSVO::RecTrace(VoxNodeId node, point_3f t1, point_3f t2, const u
     }
   }
   
-  VoxNodeId children[8];
-  FetchChildren(node, children);
-
+  VoxNode node = m_nodes[nodeId];
   while (true)
   {
-    VoxNodeId res = RecTrace(children[ch^dirFlags], t1, t2, dirFlags, t);
+    if (GetLeafFlag(node, ch^dirFlags))
+    {
+      t = max(t1);
+      return nodeId;
+    }
+
+    VoxNodeId res = RecTrace(node.child[ch^dirFlags], t1, t2, dirFlags, t);
     if (!IsNull(res))
       return res;
     int exitPlane = argmin(t2);
@@ -416,12 +399,11 @@ float DynamicSVO::TraceRay(const point_3f & p, point_3f dir) const
 
 int DynamicSVO::CountChangedPages() const
 {
-  return m_leafs.countPages(m_curVersion) + m_nodes.countPages(m_curVersion);
+  return m_nodes.countPages(m_curVersion);
 }
 
 int DynamicSVO::CountTransfrerSize() const
 {
-  int count = m_leafs.countPages(m_curVersion) * m_leafs.getPageSize();
-  count += m_nodes.countPages(m_curVersion) * m_nodes.getPageSize();
+  int count = m_nodes.countPages(m_curVersion) * m_nodes.getPageSize();
   return count;
 }
