@@ -125,11 +125,14 @@ class Window(QtGui.QWidget):
         t = clock()
         dt = t - self.lastTime
         self.lastTime = t
-        self.pos += dt*self.viewDir*self.moveFwd * 0.25
+
+        vel = 0.1
+
+        self.pos += dt*self.viewDir*self.moveFwd * vel
 
         a = (self.hang-90.0)/180.0*pi
         sdir = array([cos(a), sin(a), 0])
-        self.pos += dt*sdir*self.moveSide * 0.25
+        self.pos += dt*sdir*self.moveSide * vel
 
         #self.pos = clip(self.pos, 0.0, 0.99999)
 
