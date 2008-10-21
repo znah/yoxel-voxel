@@ -17,10 +17,10 @@ QuickBuild=PDFLaTeX+ViewPDF
 
 [item:main.tex]
 archive=true
-column=67
+column=20
 encoding=UTF-8
 highlight=LaTeX
-line=55
+line=68
 open=true
 order=0
 
