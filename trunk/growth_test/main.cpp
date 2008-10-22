@@ -8,6 +8,7 @@
 using std::vector;
 
 const int FieldSize = 512;
+const float gridStep = 0.001;
 
 inline int ofs(int x, int y) { return y*FieldSize + x; }
 
@@ -18,10 +19,10 @@ struct point_2i
 
 inline float calcPot(const point_2i & p1, const point_2i & p2)
 {
-  int dx = p1.x - p2.x;
-  int dy = p1.y - p2.y;
+  float dx = (p1.x - p2.x);
+  float dy = (p1.y - p2.y);
   float r = sqrtf((float)(dx*dx+dy*dy));
-  return 1.0f - 1.0f / r;
+  return  - 1.0 / sqrtf(r);
 }
 
 int main()
@@ -31,6 +32,7 @@ int main()
   vector<float> candPot;
   vector<int> field(FieldSize*FieldSize, 0);
   int f2 = FieldSize/2;
+  point_2i center = {f2, f2};
   for (int dy = -1; dy < 2; ++dy)
     for (int dx = -1; dx < 2; ++dx)
     {
@@ -40,7 +42,7 @@ int main()
       {
         
         candPos.push_back(p);
-        candPot.push_back(sqrtf((float)(dx*dx+dy*dy)));
+        candPot.push_back(calcPot(center, p));
       }
       else
         cluster.push_back(p);
@@ -48,7 +50,7 @@ int main()
 
 
   vector<float> prob;
-  for (int iter = 0; iter < 10000; ++iter)
+  for (int iter = 0; iter < 4000; ++iter)
   {
     prob.resize(candPot.size());
     float pmin = *std::min_element(candPot.begin(), candPot.end());
@@ -57,7 +59,7 @@ int main()
     float sum = 0;
     for (size_t i = 0; i < candPot.size(); ++i)
     {
-      float v = powf((candPot[i] - pmin) * invdp, 8.0f);
+      float v = powf((candPot[i] - pmin) * invdp, 10.0);
       prob[i] = v;
       sum += v;
     }
@@ -65,8 +67,9 @@ int main()
       prob[i] /= sum;
 
     std::partial_sum(prob.begin(), prob.end(), prob.begin());
-    float r = (float)rand() / RAND_MAX;
-    int chosen = std::lower_bound(prob.begin(), prob.end(), r) - prob.begin();
+    float r = (float)rand() / RAND_MAX + (float)rand() / RAND_MAX / RAND_MAX;
+    int chosen = std::upper_bound(prob.begin(), prob.end(), r) - prob.begin();
+    //int chosen = std::min_element(prob.begin(), prob.end()) - prob.begin();
     
     point_2i p = candPos[chosen];
     field[ofs(p.x, p.y)] = 1;
