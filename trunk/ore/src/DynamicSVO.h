@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-#include <algorithm>
 #include "point.h"
 #include "HomoStorage.h"
 

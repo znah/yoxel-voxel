@@ -1,3 +1,5 @@
+#include "stdafx.h"
+
 #include "CudaSVO.h"
 
 CudaSVO::CudaSVO() : m_svo(NULL), m_curVersion(0)

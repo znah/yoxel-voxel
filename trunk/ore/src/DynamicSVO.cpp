@@ -1,7 +1,6 @@
-#include "DynamicSVO.h"
+#include "stdafx.h"
 
-#include <fstream>
-#include <iostream>
+#include "DynamicSVO.h"
 
 #include "common/grid_walk.h"
 #include "utils.h"
@@ -14,15 +13,15 @@ using std::endl;
 void DynamicSVO::Save(std::string filename)
 {
   std::ofstream file(filename.c_str(), std::ios::binary);
-  m_nodes.save(file);
   write(file, m_root);
+  m_nodes.save(file);
 }
 
 bool DynamicSVO::Load(std::string filename)
 {
   std::ifstream file(filename.c_str(), std::ios::binary);
-  m_nodes.load(file);
   read(file, m_root);
+  m_nodes.load(file);
 
   m_curVersion = 0;
   return true;
@@ -32,10 +31,10 @@ VoxNodeId DynamicSVO::CreateNode()
 {
   VoxNodeId nodeId = m_nodes.insert();
   VoxNode & node = m_nodes[nodeId];
-  node.flags.pad = 0;
-  node.flags.emptyFlag = true;
+  node.flags= 0;
+  SetEmptyFlag(node.flags, true);
 
-  node.parent = -1;
+  node.parent = EmptyNode;
   std::fill(node.child, node.child+8, EmptyNode);
   return nodeId;
 }
@@ -46,7 +45,7 @@ void DynamicSVO::DelNode(VoxNodeId nodeId)
     return;
   VoxNode & node = m_nodes[nodeId];
   for (int i = 0; i < 8; ++i)
-    if (!GetLeafFlag(node, i))
+    if (!GetLeafFlag(node.flags, i))
       DelNode(node.child[i]);
   m_nodes.erase(nodeId);
 }
@@ -72,7 +71,7 @@ struct DynamicSVO::TreeBuilder
     if (IsNull(dst))
       return;
     VoxNode & node = svo.m_nodes[dst];
-    node.flags.selfChildId = octant;
+    SetSelfChildId(node.flags, octant);
     node.parent = parent;
   }
 
@@ -91,22 +90,23 @@ struct DynamicSVO::TreeBuilder
     point_3f accNorm;
     for (int i = 0; i != 8; ++i)
     {
-      bool isLeaf = GetLeafFlag(node, i);
+      bool isLeaf = GetLeafFlag(node.flags, i);
       VoxChild child = node.child[i];
       if (!isLeaf && IsNull(child))
         continue;
 
-      uchar4 c;
-      VoxNormal n;
+      Color16 c16;
+      Normal16 n16;
       if (isLeaf)
-        UnpackVoxData(child, c, n);
+        UnpackVoxData(child, c16, n16);
       else
-        UnpackVoxData(svo.m_nodes[child].data, c, n);
+        UnpackVoxData(svo.m_nodes[child].data, c16, n16);
 
+      uchar4 c = UnpackColor(c16);
       accCol  += point_3i(c.x, c.y, c.z);
 
       point_3f nf;
-      UnpackNormal(n, nf.x, nf.y, nf.z);
+      UnpackNormal(n16, nf.x, nf.y, nf.z);
       accNorm += nf;
       ++count;
     }
@@ -116,7 +116,7 @@ struct DynamicSVO::TreeBuilder
     normalize(accNorm);
     uchar4 color = make_uchar4(accCol.x, accCol.y, accCol.z, 255);
     
-    VoxData voxData = PackVoxData(color, PackNormal(accNorm.x, accNorm.y, accNorm.z));
+    VoxData voxData = PackVoxData(PackColor(color), PackNormal(accNorm.x, accNorm.y, accNorm.z));
 
     bool changed = false;
     if (node.data != voxData)
@@ -126,9 +126,9 @@ struct DynamicSVO::TreeBuilder
     }
 
     // TODO empty nodes on coarse LODs
-    if (node.flags.emptyFlag != false)
+    if (!GetEmptyFlag(node.flags))
     {
-      node.flags.emptyFlag = false;
+      SetEmptyFlag(node.flags, false);
       changed = true;
     }
     
@@ -137,7 +137,7 @@ struct DynamicSVO::TreeBuilder
 
   bool IsEmptyNode(const VoxNode & node)
   {
-    if (node.flags.leafFlags != 0)
+    if (GetLeafFlags(node.flags) != 0)
       return false;
     for (int i = 0; i < 8; ++i)
       if (!IsNull(node.child[i]))
@@ -183,7 +183,7 @@ struct DynamicSVO::TreeBuilder
       // TODO: optimize
       point_3f nf(n.x, n.y, n.z);
       nf /= 127.0;
-      dstChild = PackVoxData(col, PackNormal(nf.x, nf.y, nf.z));
+      dstChild = PackVoxData(PackColor(col), PackNormal(nf.x, nf.y, nf.z));
       dstLeafFlag = true;
       return;
     }
@@ -192,7 +192,7 @@ struct DynamicSVO::TreeBuilder
       return;
 
     VoxNode node;
-    node.flags.pad = 0;
+    node.flags = 0;
     node.parent = -1;
     for (walk_3 octant(2, 2, 2); !octant.done(); ++octant)
     {
@@ -200,7 +200,7 @@ struct DynamicSVO::TreeBuilder
       VoxChild & child = node.child[octant.flat()];
       child = dstLeafFlag ? FullNode : dstChild;
       BuildRange(level+1, 2*p+octant.p, child, leafFlag);
-      SetLeafFlag(node, octant.flat(), leafFlag);
+      SetLeafFlag(node.flags, octant.flat(), leafFlag);
     }
 
     if (IsEmptyNode(node))
@@ -217,7 +217,7 @@ struct DynamicSVO::TreeBuilder
     svo.m_nodes.setItemVer(nodeId, svo.GetCurVersion());
 
     for (int i = 0; i < 8; ++i)
-      if (!GetLeafFlag(node, i))
+      if (!GetLeafFlag(node.flags, i))
         SetNodeParent(node.child[i], nodeId, i);
 
     dstLeafFlag = false;
@@ -254,7 +254,7 @@ struct DynamicSVO::TreeBuilder
     bool changed = false;
     for (walk_3 octant(2, 2, 2); !octant.done(); ++octant)
     {
-      bool leafFlag = GetLeafFlag(node, octant.flat());
+      bool leafFlag = GetLeafFlag(node.flags, octant.flat());
       VoxChild & childRef = node.child[octant.flat()];
       if (!leafFlag && !IsNull(childRef))
       {
@@ -272,7 +272,7 @@ struct DynamicSVO::TreeBuilder
       childRef = newChild;
       leafFlag = newLeafFlag;
 
-      SetLeafFlag(node, octant.flat(), leafFlag);
+      SetLeafFlag(node.flags, octant.flat(), leafFlag);
       if (!leafFlag)
         SetNodeParent(childRef, nodeId, octant.flat());
 
@@ -355,7 +355,7 @@ VoxNodeId DynamicSVO::RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const
   VoxNode node = m_nodes[nodeId];
   while (true)
   {
-    if (GetLeafFlag(node, ch^dirFlags))
+    if (GetLeafFlag(node.flags, ch^dirFlags))
     {
       t = max(t1);
       return nodeId;

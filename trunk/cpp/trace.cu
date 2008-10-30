@@ -1,5 +1,6 @@
+#include "stdafx.h"
+
 #include "trace_cu.h"
-#include "cutil_math.h"
 
 //#define USE_TEXLOOKUP
 
@@ -19,30 +20,18 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
 
 #ifdef USE_TEXLOOKUP
   #define NODE_SZ (sizeof(VoxNode)/4)
-  #define LEAF_SZ (sizeof(VoxLeaf)/4)
   #define GET_TEXNODE_FIELD( id, fld ) ( tex1Dfetch(nodes_tex, id*NODE_SZ+(fld)) )
 
-  __device__ uint GetSelfChildId(VoxNodeId id) { return GET_TEXNODE_FIELD( id, 0 ) & 7; }
-  __device__ bool GetEmptyFlag(VoxNodeId id) { return ((GET_TEXNODE_FIELD( id, 0 )>>3) & 0x1) != 0; }
-  __device__ bool GetLeafFlag(VoxNodeId id, int octant) { return ((GET_TEXNODE_FIELD( id, 0 ) >>8) & (1<<octant)) != 0; }
-
-  __device__ VoxNodeId   GetParent (VoxNodeId id) { return GET_TEXNODE_FIELD(id, 1); }
-  __device__ VoxChild    GetChild  (VoxNodeId id, int chId) { return GET_TEXNODE_FIELD(id, 3 + chId); }
-
+  __device__ VoxNodeInfo GetNodeInfo(VoxNodeId id) { return GET_TEXNODE_FIELD(id, 0); }
+  __device__ VoxNodeId   GetParent  (VoxNodeId id) { return GET_TEXNODE_FIELD(id, 1); }
+  __device__ VoxChild    GetChild   (VoxNodeId id, int chId) { return GET_TEXNODE_FIELD(id, 3 + chId); }
 #else
-
-  __device__ uint GetSelfChildId(VoxNodeId id) { return GET_FIELD(id, flags.selfChildId); }
-  __device__ bool GetEmptyFlag(VoxNodeId id) { return GET_FIELD(id, flags.emptyFlag); }
-  __device__ bool GetLeafFlag(VoxNodeId id, int octant) { return (GET_FIELD(id, flags.leafFlags) & (1<<octant)) != 0; }
-
-  __device__ VoxNodeId   & GetParent (VoxNodeId id) { return GET_FIELD(id, parent); }
-  __device__ VoxChild    & GetChild  (VoxNodeId id, int chId) { return tree.nodes[id].child[chId]; }
+  __device__ VoxNodeInfo & GetNodeInfo(VoxNodeId id) { return tree.nodes[id].flags; }
+  __device__ VoxNodeId   & GetParent  (VoxNodeId id) { return tree.nodes[id].parent; }
+  __device__ VoxChild    & GetChild   (VoxNodeId id, int chId) { return tree.nodes[id].child[chId]; }
 #endif
 
-__device__ VoxData GetVoxData  (VoxNodeId id) 
-{ 
-  return tree.nodes[id].data; 
-}
+__device__ VoxData GetVoxData  (VoxNodeId id) { return tree.nodes[id].data; }
 
 
 struct point_3f : public float3
@@ -95,7 +84,7 @@ __device__ uint FindFrstChild(point_3f & t1, point_3f & t2)
 }
 
 template<int ExitPlane>
-__device__ bool GoNextTempl(uint & childId, point_3f & t1, point_3f & t2)
+__device__ bool GoNextTempl(int & childId, point_3f & t1, point_3f & t2)
 {
   int mask = 1<<ExitPlane;
   if ((childId & mask) != 0)
@@ -109,7 +98,7 @@ __device__ bool GoNextTempl(uint & childId, point_3f & t1, point_3f & t2)
   return true;
 }
 
-__device__ bool GoNext(uint & childId, point_3f & t1, point_3f & t2)
+__device__ bool GoNext(int & childId, point_3f & t1, point_3f & t2)
 {
   // argmin
   if (t2.x > t2.y)
@@ -132,7 +121,7 @@ __global__ void InitEyeRays(RenderParams rp, RayData * rays)
   rays[tid].dir.z = dir.z;
 
   rays[tid].endNode = 0;
-  rays[tid].endNodeChild = -1;
+  rays[tid].endNodeChild = EmptyNode;
 }
 
 
@@ -162,14 +151,14 @@ __global__ void InitFishEyeRays(RenderParams rp, RayData * rays)
   rays[tid].dir.z = dir.z;
 
   rays[tid].endNode = 0;
-  rays[tid].endNodeChild = -1;
+  rays[tid].endNodeChild = EmptyNode;
 }
 
 __global__ void Trace(TraceParams tp, RayData * rays)
 {
   INIT_THREAD
 
-  if (rays[tid].endNode < 0)
+  if (IsNull(rays[tid].endNode))
     return;
 
   const float eps = 1e-8f;
@@ -196,7 +185,7 @@ __global__ void Trace(TraceParams tp, RayData * rays)
   }
 
   VoxNodeId node = tp.startNode;
-  uint childId = 0;
+  int childId = 0;
   int level = tp.startNodeLevel;
   float nodeSize = pow(0.5f, level);
 
@@ -209,7 +198,7 @@ __global__ void Trace(TraceParams tp, RayData * rays)
       case ST_ANALYSE:
       {
         childId = -1;
-        if (max(t1) * tp.detailCoef > nodeSize/2)  { state = GetEmptyFlag(node) ? ST_GOUP : ST_SAVE; break; }
+        if (max(t1) * tp.detailCoef > nodeSize/2)  { state = GetEmptyFlag(GetNodeInfo(node)) ? ST_GOUP : ST_SAVE; break; }
         
         childId = FindFrstChild(t1, t2);
         state = ST_GODOWN;
@@ -220,7 +209,7 @@ __global__ void Trace(TraceParams tp, RayData * rays)
       {
         if (min(t2) < 0) { state = ST_GONEXT; break; }
 
-        if (GetLeafFlag(node, childId^dirFlags)) { state = ST_SAVE; break; }
+        if (GetLeafFlag(GetNodeInfo(node), childId^dirFlags)) { state = ST_SAVE; break; }
         
         VoxNodeId ch = GetChild(node, childId^dirFlags);
         if (IsNull(ch)) {state = ST_GONEXT; break; }
@@ -252,7 +241,7 @@ __global__ void Trace(TraceParams tp, RayData * rays)
           float dt = t2[i] - t1[i];
           ((childId & mask) == 0) ? t2[i] += dt : t1[i] -= dt;
         }
-        childId = GetSelfChildId(node)^dirFlags;
+        childId = GetSelfChildId(GetNodeInfo(node))^dirFlags;
         node = p;
         --level;
         nodeSize *= 2;
@@ -295,11 +284,13 @@ __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, const RayD
   else
     vd = GetChild(node, childId);
 
+  Color16  c16;
+  Normal16 n16;
+  UnpackVoxData(vd, c16, n16);
   uchar4 col;
-  VoxNormal qnorm;
-  UnpackVoxData(vd, col, qnorm);
   float3 norm;
-  UnpackNormal(qnorm, norm.x, norm.y, norm.z);
+  col = UnpackColor(c16);
+  UnpackNormal(n16, norm.x, norm.y, norm.z);
 
   float3 pt = p + dir*t;
   float3 lightDir = rp.lightPos - pt;
