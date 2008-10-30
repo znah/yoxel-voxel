@@ -95,7 +95,7 @@ def addHeightmaps(bld):
     hmap *= 0.5/256
 
     buildHeightmap(bld, hmap, 11, (0, 0, 0))
-    buildHeightmap(bld, hmap, 11, (768, 768, 256))
+    #buildHeightmap(bld, hmap, 11, (768, 768, 256))
 
 
 def addTrees(bld):

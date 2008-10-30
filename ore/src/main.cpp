@@ -1,6 +1,6 @@
+#include "stdafx.h"
+
 #include <boost/python.hpp>
-#include <iostream>
-#include <stdexcept>
 
 #include "DynamicSVO.h"
 #include "CudaSVO.h"
