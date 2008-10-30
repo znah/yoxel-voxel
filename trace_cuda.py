@@ -134,7 +134,7 @@ class CudaRenderer:
 
         stat = "gpu time: %.2f ms\n" % (gpuTime*1000)
         stat += "eye trace time: %.2f ms\n" % (trace1Time*1000)
-        stat += "shadow trace time: %.2f ms\n" % (trace2Time*1000)
+        #stat += "shadow trace time: %.2f ms\n" % (trace2Time*1000)
         stat += "detailCoef: %f\n" % (self.detailCoef)
 
         return stat
