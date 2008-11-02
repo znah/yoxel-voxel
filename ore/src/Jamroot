@@ -25,5 +25,5 @@ import python ;
 
 # Declare a Python extension called hello.
 #python-extension _driver : extending.cpp ;
-python-extension _ore : main.cpp DynamicSVO.cpp CudaSVO.cpp ;
+python-extension _ore : main.cpp ../../cpp/DynamicSVO.cpp ../../cpp/CudaSVO.cpp ;
 
