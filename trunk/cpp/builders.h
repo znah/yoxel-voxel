@@ -6,11 +6,11 @@
 class RawSource : public VoxelSource
 {
 private:
-  const uchar4 * m_colors;
-  const char4 * m_normals;
+  const rgba * m_colors;
+  const char * m_normals;
 
 public:
-  RawSource(point_3i size, const uchar4 * colors, const char4 * normals) 
+  RawSource(point_3i size, const rgba * colors, const char * normals) 
     : VoxelSource(size, point_3i(0, 0, 0)), m_colors(colors), m_normals(normals)
   {}
 

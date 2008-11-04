@@ -11,31 +11,7 @@
 namespace py = boost::python;
 
 
-struct rgba
-{
-  uchar r, g, b, a;
-
-  rgba(uchar r_, uchar g_, uchar b_, uchar a_) 
-    : r(r_), g(g_), b(b_), a(a_) 
-  {}
-
-  rgba(uchar r_, uchar g_, uchar b_) 
-    : r(r_), g(g_), b(b_), a(255) 
-  {}
-
-  rgba(py::object obj)
-  {
-    r = py::extract<uchar>(obj[0]);
-    g = py::extract<uchar>(obj[1]);
-    b = py::extract<uchar>(obj[2]);
-    a = py::extract<uchar>(obj[3]);
-  }
-
-  operator uchar4() { return make_uchar4(r, g, b, a); }
-};
-
-
-py::tuple CudaSVO_GetData(CudaSVO * svo)
+/*py::tuple CudaSVO_GetData(CudaSVO * svo)
 {
   VoxNodeId root = svo->GetRoot();
 
@@ -47,7 +23,7 @@ py::tuple CudaSVO_GetData(CudaSVO * svo)
 
   py::tuple res = py::make_tuple(root, nodes);
   return res;
-}
+}*/
 
 RawSource * MakeRawSource(const cg::point_3i & size, py::object colors, py::object normals)
 {
@@ -59,10 +35,10 @@ RawSource * MakeRawSource(const cg::point_3i & size, py::object colors, py::obje
   if (PyObject_AsReadBuffer(normals.ptr(), &normalsPtr, &len))
     throw py::error_already_set();
 
-  if (size.x*size.y*size.z*sizeof(uchar4) != len)
+  if (size.x*size.y*size.z*4 != len)
     throw std::logic_error("incorrect data buffer size");
 
-  return new RawSource(size, (const uchar4 *)colorsPtr, (const char4 *)normalsPtr);
+  return new RawSource(size, (const rgba *)colorsPtr, (const char *)normalsPtr);
 }
 
 IsoSource * MakeIsoSource(const cg::point_3i & size, py::object data)
@@ -95,11 +71,9 @@ BOOST_PYTHON_MODULE(_ore)
       .def_readwrite("y", &point_3f::y)
       .def_readwrite("z", &point_3f::z);
 
-    class_<uchar4>("uchar4", no_init);
     class_<rgba>("rgba", init<uchar, uchar, uchar, uchar>())
       .def(init<py::object>())
       .def(init<uchar, uchar, uchar>());
-    implicitly_convertible<rgba, uchar4>();
 
 
     enum_<BuildMode>("BuildMode")
@@ -113,7 +87,7 @@ BOOST_PYTHON_MODULE(_ore)
     class_<RawSource, bases<VoxelSource> >("RawSource", no_init);
     def("MakeRawSource", MakeRawSource, py::return_value_policy<py::manage_new_object>());
 
-    class_<SphereSource, bases<VoxelSource> >("SphereSource", init<int, uchar4, bool>());
+    class_<SphereSource, bases<VoxelSource> >("SphereSource", init<int, rgba, bool>());
 
     class_<IsoSource, bases<VoxelSource> >("IsoSource", no_init)
       .def("SetIsoLevel", &IsoSource::SetIsoLevel)
@@ -130,8 +104,8 @@ BOOST_PYTHON_MODULE(_ore)
       .def("CountChangedPages", &DynamicSVO::CountChangedPages)
       .def("CountTransfrerSize", &DynamicSVO::CountTransfrerSize);
 
-    class_<CudaSVO, boost::noncopyable>("CudaSVO")
-      .def("SetSVO", &CudaSVO::SetSVO)
-      .def("Update", &CudaSVO::Update)
-      .def("GetData", &CudaSVO_GetData);
+//    class_<CudaSVO, boost::noncopyable>("CudaSVO")
+//      .def("SetSVO", &CudaSVO::SetSVO)
+//      .def("Update", &CudaSVO::Update)
+//      .def("GetData", &CudaSVO_GetData);
 }
