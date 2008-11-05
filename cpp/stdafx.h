@@ -12,6 +12,9 @@
 
 #include <cmath>
 
+#include "point.h"
+#include "range.h"
+
 #endif
 
 
@@ -39,14 +42,6 @@ struct Color32
 
   Color32() : r(0), g(0), b(0), a(0) {}
   Color32(uchar r_, uchar g_, uchar b_, uchar a_ = 0) : r(r_), g(g_), b(b_), a(a_) {}
-};
-
-struct Normal32
-{
-  char x, y, z, w;
-
-
-
 };
 
 #pragma pack(pop)
