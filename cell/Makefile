@@ -57,6 +57,8 @@ PROGRAM_ppu	:= 	trace
 #                       Local Defines
 ########################################################################
 
+
+
 IMPORTS         = spu/lib_trace_spu.a -lspe2 -lpthread
 
 INSTALL_DIR	= ./out
