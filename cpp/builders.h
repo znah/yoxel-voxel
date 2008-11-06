@@ -6,16 +6,16 @@
 class RawSource : public VoxelSource
 {
 private:
-  const rgba * m_colors;
-  const char * m_normals;
+  const Color32 * m_colors;
+  const Normal32 * m_normals;
 
 public:
-  RawSource(point_3i size, const rgba * colors, const char * normals) 
+  RawSource(point_3i size, const Color32 * colors, const Normal32 * normals) 
     : VoxelSource(size, point_3i(0, 0, 0)), m_colors(colors), m_normals(normals)
   {}
 
   // alpha 0 - empty, 1 - inside, 255 - surface
-  virtual TryRangeResult TryRange(const point_3i & blockStart, int blockSize, uchar4 & outColor, char4 & outNormal)
+  virtual TryRangeResult TryRange(const point_3i & blockStart, int blockSize, Color32 & outColor, Normal32 & outNormal)
   {
     if (blockSize > 1)
       return ResGoDown;
@@ -39,18 +39,18 @@ class SphereSource : public VoxelSource
 {
 private:
   int m_radius;
-  uchar4 m_color;
+  Color32 m_color;
   bool m_inverted;
 
 public:
-  SphereSource(int radius, uchar4 color, bool inverted) 
+  SphereSource(int radius, Color32 color, bool inverted) 
     : VoxelSource(point_3i(2*radius, 2*radius, 2*radius), point_3i(radius, radius, radius))
     , m_radius(radius)
     , m_color(color)
     , m_inverted(inverted)
   {}
 
-  virtual TryRangeResult TryRange(const point_3i & blockStart, int blockSize, uchar4 & outColor, char4 & outNormal)
+  virtual TryRangeResult TryRange(const point_3i & blockStart, int blockSize, Color32 & outColor, Normal32 & outNormal)
   {
     int r2 = m_radius*m_radius;
     int eps = 1;
@@ -102,7 +102,7 @@ public:
       point_3f n = m_inverted ? -dp : dp;
       normalize(n);
       n *= 127.0f;
-      outNormal = make_char4((char)n.x, (char)n.y, (char)n.z, 0);
+      outNormal = Normal32((char)n.x, (char)n.y, (char)n.z, 0);
       outColor = m_color;
       return ResSurface;
     }
@@ -115,7 +115,7 @@ private:
   const uchar * m_data;
   int m_isolevel;
   bool m_lowInside;
-  uchar4 m_color;
+  Color32 m_color;
 
   uchar trans(uchar v) const { return m_lowInside ? 255-v : v; }
 
@@ -160,14 +160,14 @@ public:
     , m_data(data)
     , m_isolevel(128)
     , m_lowInside(false)
-    , m_color(make_uchar4(128, 128, 128, 255))
+    , m_color(128, 128, 128, 255)
   {}
 
   void SetIsoLevel(int isolevel) { m_isolevel = isolevel; }
   void SetInside(bool low) { m_lowInside = low; }
-  void SetColor(uchar4 color) { m_color = color; }
+  void SetColor(Color32 color) { m_color = color; }
 
-  virtual TryRangeResult TryRange(const point_3i & blockStart, int blockSize, uchar4 & outColor, char4 & outNormal)
+  virtual TryRangeResult TryRange(const point_3i & blockStart, int blockSize, Color32 & outColor, Normal32 & outNormal)
   {
     int level = trans(m_isolevel);
 
@@ -208,7 +208,7 @@ public:
       outColor = m_color;
       normalize(n);
       n *= 127.0f;
-      outNormal = make_char4((char)n.x, (char)n.y, (char)n.z, 0);
+      outNormal = Normal32((char)n.x, (char)n.y, (char)n.z, 0);
       return ResSurface;
     }
   }
