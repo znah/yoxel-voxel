@@ -30,6 +30,7 @@ namespace cg
    typedef     point_t< unsigned short,   3 >       point_3us;
 
    typedef     point_t< unsigned char,    4 >       point_4b;
+   typedef     point_t< char,             4 >       point_4sb;
    typedef     point_t< short,            4 >       point_4s;
    typedef     point_t< unsigned short,   4 >       point_4us;
 

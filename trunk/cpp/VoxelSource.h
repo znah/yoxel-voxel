@@ -14,7 +14,7 @@ public:
   point_3i GetSize() const { return m_size; }
   point_3i GetPivot() const { return m_pivot; }
 
-  virtual TryRangeResult TryRange(const point_3i & blockStart, int blockSize, uchar4 & outColor, char4 & outNormal)
+  virtual TryRangeResult TryRange(const point_3i & blockStart, int blockSize, Color32 & outColor, Normal32 & outNormal)
   {
     return ResStop;
   }

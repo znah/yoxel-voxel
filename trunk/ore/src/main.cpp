@@ -25,6 +25,15 @@ namespace py = boost::python;
   return res;
 }*/
 
+inline Color32 extractColor32(py::object obj)
+{
+  Color32 res;
+  for (int i = 0; i < 3; ++i)
+    res[i] = py::extract<uchar>(obj[i]);
+  res[3] = 255;
+  return res;
+}
+
 RawSource * MakeRawSource(const cg::point_3i & size, py::object colors, py::object normals)
 {
   const void * colorsPtr;
@@ -38,7 +47,7 @@ RawSource * MakeRawSource(const cg::point_3i & size, py::object colors, py::obje
   if (size.x*size.y*size.z*4 != len)
     throw std::logic_error("incorrect data buffer size");
 
-  return new RawSource(size, (const rgba *)colorsPtr, (const char *)normalsPtr);
+  return new RawSource(size, (const Color32 *)colorsPtr, (const Normal32 *)normalsPtr);
 }
 
 IsoSource * MakeIsoSource(const cg::point_3i & size, py::object data)
@@ -54,6 +63,15 @@ IsoSource * MakeIsoSource(const cg::point_3i & size, py::object data)
   return new IsoSource(size, (const uchar *)ptr);
 }
 
+SphereSource * MakeSphereSource(int radius, py::object color, bool inverted)
+{
+  return new SphereSource(radius, extractColor32(color), inverted);
+}
+
+void IsoSource_SetColor(IsoSource * dst, py::object color)
+{
+  dst->SetColor(extractColor32(color));
+}
 
 
 BOOST_PYTHON_MODULE(_ore)
@@ -71,10 +89,6 @@ BOOST_PYTHON_MODULE(_ore)
       .def_readwrite("y", &point_3f::y)
       .def_readwrite("z", &point_3f::z);
 
-    class_<rgba>("rgba", init<uchar, uchar, uchar, uchar>())
-      .def(init<py::object>())
-      .def(init<uchar, uchar, uchar>());
-
 
     enum_<BuildMode>("BuildMode")
       .value("GROW", BUILD_MODE_GROW)
@@ -87,12 +101,13 @@ BOOST_PYTHON_MODULE(_ore)
     class_<RawSource, bases<VoxelSource> >("RawSource", no_init);
     def("MakeRawSource", MakeRawSource, py::return_value_policy<py::manage_new_object>());
 
-    class_<SphereSource, bases<VoxelSource> >("SphereSource", init<int, rgba, bool>());
+    class_<SphereSource, bases<VoxelSource> >("SphereSource", no_init);
+    def("MakeRawSource", MakeSphereSource, py::return_value_policy<py::manage_new_object>());
 
     class_<IsoSource, bases<VoxelSource> >("IsoSource", no_init)
       .def("SetIsoLevel", &IsoSource::SetIsoLevel)
       .def("SetInside", &IsoSource::SetInside)
-      .def("SetColor", &IsoSource::SetColor);
+      .def("SetColor", IsoSource_SetColor);
     def("MakeIsoSource", MakeIsoSource, py::return_value_policy<py::manage_new_object>());
 
     class_<DynamicSVO>("DynamicSVO")

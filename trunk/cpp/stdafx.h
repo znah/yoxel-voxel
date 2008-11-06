@@ -33,15 +33,7 @@ typedef unsigned int uint;
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 
-
-#pragma pack(push, 1)
-
-struct Color32
-{
-  uchar r, g, b, a;
-
-  Color32() : r(0), g(0), b(0), a(0) {}
-  Color32(uchar r_, uchar g_, uchar b_, uchar a_ = 0) : r(r_), g(g_), b(b_), a(a_) {}
-};
-
-#pragma pack(pop)
+#ifndef __CUDACC__
+typedef cg::point_4b Color32;
+typedef cg::point_4sb Normal32;
+#endif

@@ -102,7 +102,7 @@ struct DynamicSVO::TreeBuilder
       else
         UnpackVoxData(svo.m_nodes[child].data, c16, n16);
 
-      uchar4 c = UnpackColor(c16);
+      Color32 c = UnpackColor(c16);
       accCol  += point_3i(c.x, c.y, c.z);
 
       point_3f nf;
@@ -114,7 +114,7 @@ struct DynamicSVO::TreeBuilder
     accCol /= count;
     accNorm /= (float)count;
     normalize(accNorm);
-    uchar4 color = make_uchar4(accCol.x, accCol.y, accCol.z, 255);
+    Color32 color(accCol.x, accCol.y, accCol.z, 255);
     
     VoxData voxData = PackVoxData(PackColor(color), PackNormal(accNorm.x, accNorm.y, accNorm.z));
 
@@ -160,8 +160,8 @@ struct DynamicSVO::TreeBuilder
     if (!IsInRange(blockPos, blockSize))
       return;
 
-    uchar4 col; 
-    char4 n;
+    Color32 col; 
+    Normal32 n;
     TryRangeResult res = sampler.TryRange(blockPos - pos, blockSize, col, n);
 
     if (res == ResEmpty && mode == BUILD_MODE_CLEAR)
@@ -231,8 +231,8 @@ struct DynamicSVO::TreeBuilder
     if (!IsInRange(blockPos, blockSize))
       return nodeId;
 
-    uchar4 col; 
-    char4 n;
+    Color32 col; 
+    Normal32 n;
     TryRangeResult res = sampler.TryRange(blockPos - pos, blockSize, col, n);
 
     if (res == ResEmpty && mode == BUILD_MODE_CLEAR)
