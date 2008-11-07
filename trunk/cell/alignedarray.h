@@ -11,7 +11,7 @@ private:
 
 public:
   AlignedArray() : m_ptr(0), m_size(0) {}
-  AlignedArray(int size) : m_ptr(0), m_size(0) { resize(size); }
+  explicit AlignedArray(int size) : m_ptr(0), m_size(0) { resize(size); }
   ~AlignedArray() { resize(0); }
 
   void resize(int size)
