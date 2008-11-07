@@ -57,7 +57,7 @@ PROGRAM_ppu	:= 	trace
 #                       Local Defines
 ########################################################################
 
-
+CPPFLAGS        = -I../cpp
 
 IMPORTS         = spu/lib_trace_spu.a -lspe2 -lpthread
 
