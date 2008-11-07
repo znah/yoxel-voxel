@@ -3,15 +3,15 @@
 #include <libmisc.h>
 
 template <class T, int Log2Align>
-class AllignedArray
+class AlignedArray
 {
 private:
   T * m_ptr;
   int m_size;
 
 public:
-  AllignedArray() : m_ptr(0), m_size(0) {}
-  AllignedArray(int size) : m_ptr(0), m_size(0) { resize(size); }
+  AlignedArray() : m_ptr(0), m_size(0) {}
+  AlignedArray(int size) : m_ptr(0), m_size(0) { resize(size); }
   ~AlignedArray() { resize(0); }
 
   void resize(int size)
