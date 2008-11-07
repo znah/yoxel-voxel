@@ -1,6 +1,8 @@
 #include "stdafx.h"
-
 #include "vox_node.h"
+#include "alignedarray.h"
+
+
 
 
 int main()
