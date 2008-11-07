@@ -1,7 +1,5 @@
 #pragma once
 
-#include "point.h"
-
 struct range_3i
 {
   point_3i p1, p2;
