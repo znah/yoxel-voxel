@@ -1,4 +1,4 @@
-//#include 
+#include "stdafx.h"
 #include <iostream>
 
 //#include "../cpp/vox_node.h"
