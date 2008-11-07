@@ -1,5 +1,7 @@
 #pragma once
 
+#include <libmisc.h>
+
 template <class T, int Log2Align>
 class AllignedArray
 {
