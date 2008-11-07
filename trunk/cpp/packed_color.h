@@ -2,7 +2,7 @@
 
 typedef ushort Color16;
 
-inline GLOBAL_FUNC COLOR16 PackColor(uchar r, uchar g, uchar b)
+inline GLOBAL_FUNC Color16 PackColor(uchar r, uchar g, uchar b)
 {
   Color16 c16 = 0;
   c16 |= (r>>3);          // red
