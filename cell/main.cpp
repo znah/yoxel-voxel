@@ -1,7 +1,6 @@
 #include "stdafx.h"
-#include <iostream>
 
-//#include "../cpp/vox_node.h"
+#include "vox_node.h"
 
 
 int main()
