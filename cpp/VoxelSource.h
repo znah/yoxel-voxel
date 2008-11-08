@@ -1,7 +1,5 @@
 #pragma once
 
-#include "point.h"
-
 enum TryRangeResult { ResStop, ResGoDown, ResEmpty, ResFull, ResSurface };
 
 class VoxelSource
