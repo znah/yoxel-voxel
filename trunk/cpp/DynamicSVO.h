@@ -3,7 +3,7 @@
 #include "point.h"
 #include "HomoStorage.h"
 
-#include "trace_cu.h"
+#include "vox_node.h"
 #include "VoxelSource.h"
 
 enum BuildMode { BUILD_MODE_GROW, BUILD_MODE_CLEAR };
