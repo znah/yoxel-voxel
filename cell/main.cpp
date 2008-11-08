@@ -10,7 +10,7 @@ int main()
   scene.Load("../data/scene.vox");
 
   shared_ptr<ISVORenderer> renderer = CreateSimpleRenderer();
-  renderer->SetScene(scene);
+  renderer->SetScene(&scene);
 
 
   return 0;
