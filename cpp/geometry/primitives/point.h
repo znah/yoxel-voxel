@@ -236,8 +236,8 @@ namespace cg
       Scalar   w;
 
       // -------------------------------------------------------------- data accessors
-      Scalar         & operator [] ( size_t i )       { Assert( i < 4 ); return (&x)[i]; }
-      Scalar const   & operator [] ( size_t i ) const { Assert( i < 4 ); return (&x)[i]; }
+      Scalar         & operator [] ( size_t i )       { Assert( i < 4 ); return (&this->x)[i]; }
+      Scalar const   & operator [] ( size_t i ) const { Assert( i < 4 ); return (&this->x)[i]; }
    };
 
    template < class Scalar, size_t Dim >
@@ -695,9 +695,9 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 3 > & point_t< Scalar, 3 > :: operator += ( point_t< Scalar, 3 > const & point )
    {
-      x += point.x;
-      y += point.y;
-      z += point.z;
+      this->x += point.x;
+      this->y += point.y;
+      this->z += point.z;
 
       return *this;
    }
@@ -705,9 +705,9 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 3 > & point_t< Scalar, 3 > :: operator -= ( point_t< Scalar, 3 > const & point )
    {
-      x -= point.x;
-      y -= point.y;
-      z -= point.z;
+      this->x -= point.x;
+      this->y -= point.y;
+      this->z -= point.z;
 
       return *this;
    }
@@ -715,9 +715,9 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 3 > & point_t< Scalar, 3 > :: operator *= ( Scalar alpha )
    {
-      x *= alpha;
-      y *= alpha;
-      z *= alpha;
+      this->x *= alpha;
+      this->y *= alpha;
+      this->z *= alpha;
 
       return *this;
    }
@@ -725,9 +725,9 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 3 > & point_t< Scalar, 3 > :: operator /= ( Scalar alpha )
    {
-      x /= alpha;
-      y /= alpha;
-      z /= alpha;
+      this->x /= alpha;
+      this->y /= alpha;
+      this->z /= alpha;
 
       return *this;
    }
@@ -735,9 +735,9 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 3 > & point_t< Scalar, 3 > :: operator %= ( Scalar alpha )
    {
-      x = cg::mod(x,alpha);
-      y = cg::mod(y,alpha);
-      z = cg::mod(z,alpha);
+      this->x = cg::mod(x,alpha);
+      this->y = cg::mod(y,alpha);
+      this->z = cg::mod(z,alpha);
 
       return *this;
    }
@@ -745,9 +745,9 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 3 > & point_t< Scalar, 3 > :: operator &= ( point_t< Scalar, 3 > const & point )
    {
-      x *= point.x;
-      y *= point.y;
-      z *= point.z;
+      this->x *= point.x;
+      this->y *= point.y;
+      this->z *= point.z;
 
       return *this;
    }
