@@ -21,7 +21,7 @@ private:
 public:
   SVOData() : m_root(EmptyNode) {}
  
-  bool Load(const char * fn)
+  void Load(const char * fn)
   {
     std::ifstream input(fn, std::ios::binary);
     input >> m_root; reverseBytes(m_root);
