@@ -5,7 +5,7 @@
 class ISVORenderer
 {
 public:
-  void SetSVO(SVOData * svo) = 0;
+  virtual void SetSVO(SVOData * svo) = 0;
   
 
   
