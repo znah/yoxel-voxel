@@ -4,9 +4,9 @@
 
 #ifndef SIMPLE_STRUCTS
 
-#include <common\no_deduce.h>
-#include <common\assert.h>
-#include <geometry\xmath.h>
+#include <common/no_deduce.h>
+#include <common/assert.h>
+#include <geometry/xmath.h>
 
 namespace cg
 {
