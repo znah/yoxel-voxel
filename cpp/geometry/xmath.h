@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <limits>
 
-#include <common/meta.h>
+//#include <common/meta.h>
 
 #include "scalar_traits.h"
 
@@ -240,7 +240,7 @@ namespace cg
     return res;
   }
   
-  template <class T, class D = T>
+/*  template <class T, class D = T>
     struct Lerp
   {
     typedef 
@@ -270,7 +270,7 @@ namespace cg
   template <class T, class D> inline Lerp<T,D> lerp_d(T x0, T x1, D y0, D y1) 
   {
     return Lerp<T,D>(x0,x1,y0,y1);
-  }
+  }*/
 
   template <class V, class S> inline V slerp(S x0, S x1, V y0, V y1, S x) 
   {
