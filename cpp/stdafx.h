@@ -8,7 +8,7 @@
 #define USE_STL
 #endif
 
-#if !defined(TARGET_CUDA) && !defined(TARGET_PPU) && !defined(TARGET_SPU)
+#if !defined(TARGET_CUDA)// && !defined(TARGET_PPU) && !defined(TARGET_SPU)
 #define USE_CG
 #endif
 

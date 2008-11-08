@@ -2,6 +2,8 @@
 #include "svodata.h"
 
 
+class 
+
 
 int main()
 {
