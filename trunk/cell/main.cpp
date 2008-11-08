@@ -1,8 +1,7 @@
 #include "stdafx.h"
 #include "svodata.h"
+#include "svorenderer.h"
 
-
-class 
 
 
 int main()
