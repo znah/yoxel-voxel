@@ -36,5 +36,5 @@ public:
       reverseBytes(*(p+i));
   }
 
-  const VoxNode & operator[](VoxNodeId id) const { assert(!IsNull(id); return m_data[id]); }
+  const VoxNode & operator[](VoxNodeId id) const { assert(!IsNull(id)svodata.h); return m_data[id]); }
 };
