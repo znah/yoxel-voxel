@@ -19,7 +19,7 @@ private:
   AlignedArray<VoxNode, 4> m_data;
 
 public:
-  SVOData() : m_root(EmptyNode), m_nodeCount(0) {}
+  SVOData() : m_root(EmptyNode) {}
  
   bool Load(const char * fn)
   {
