@@ -23,6 +23,8 @@ public:
  
   void Load(const char * fn)
   {
+    std::cout << "Loading " << fn << " ... ";
+
     std::ifstream input(fn, std::ios::binary);
     input >> m_root; reverseBytes(m_root);
     uint t, size;
@@ -34,6 +36,8 @@ public:
     uint * p = (uint*) &m_data[0];
     for (int i = 0; i < intNum; ++i)
       reverseBytes(*(p+i));
+
+    std::cout << "DONE" << std::endl;
   }
 
   const VoxNode & operator[](VoxNodeId id) const { assert(!IsNull(id)); return m_data[id]; }
