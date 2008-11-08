@@ -26,7 +26,7 @@ public:
     }
     if (size > 0)
     {
-      m_ptr = malloc_align(sizeof(T)*size, Log2Align);
+      m_ptr = (VoxNode*)malloc_align(sizeof(T)*size, Log2Align);
       m_size = size;
     }
   }
