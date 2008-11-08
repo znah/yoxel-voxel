@@ -21,6 +21,10 @@
   #include <numeric>
   #include <cmath>
   #include <cassert>
+
+  #include <tr1/memery>
+  using std::tr1::shared_ptr;
+
 #endif
 
 #ifdef _MSC_VER
@@ -35,6 +39,7 @@
 #ifdef USE_CG
   #include "points.h"
   #include "range.h"
+  #include "rotation.h"
 #endif
 
 
