@@ -189,8 +189,8 @@ namespace cg
       Scalar   z;
 
       // -------------------------------------------------------------- data accessors
-      Scalar         & operator [] ( size_t i )       { Assert( i < 3 ); return (&x)[i]; }
-      Scalar const   & operator [] ( size_t i ) const { Assert( i < 3 ); return (&x)[i]; }
+      Scalar         & operator [] ( size_t i )       { Assert( i < 3 ); return (&this->x)[i]; }
+      Scalar const   & operator [] ( size_t i ) const { Assert( i < 3 ); return (&this->x)[i]; }
    };
 
 
