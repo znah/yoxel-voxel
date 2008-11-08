@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#incldue "svorenderer.h"
+#include "svorenderer.h"
 
 
 class SimpleRenderer : public ISVORenderer
