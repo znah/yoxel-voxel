@@ -1,8 +1,6 @@
 #pragma once
 
-#include "point.h"
 #include "HomoStorage.h"
-
 #include "vox_node.h"
 #include "VoxelSource.h"
 

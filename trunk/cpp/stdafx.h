@@ -33,7 +33,7 @@
 
 
 #ifdef USE_CG
-  #include "point.h"
+  #include "points.h"
   #include "range.h"
 #endif
 
