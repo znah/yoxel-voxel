@@ -23,6 +23,15 @@
   #include <cassert>
 #endif
 
+#ifdef _MSC_VER
+  typedef __int64 int64;
+  typedef unsigned __int64 uint64;
+#else
+  typedef long long int64;
+  typedef unsigned long long uint64;
+#endif
+
+
 #ifdef USE_CG
   #include "point.h"
   #include "range.h"
@@ -42,12 +51,6 @@
 typedef unsigned int uint;
 typedef unsigned char uchar;
 typedef unsigned short ushort;
-
-#ifdef _MSC_VER
-  typedef __int64 int64;
-#else
-  typedef long long int64;
-#endif
 
 #ifdef USE_CG
 typedef cg::point_4b Color32;

@@ -202,8 +202,8 @@ namespace cg
   inline int64 min(int64 a, int64 b) { return a < b ? a : b; }
   inline int64 max(int64 a, int64 b) { return a > b ? a : b; }
   
-  inline unsigned int64 min(unsigned int64 a, unsigned int64 b) { return a < b ? a : b; }
-  inline unsigned int64 max(unsigned int64 a, unsigned int64 b) { return a > b ? a : b; }
+  inline uint64 min(uint64 a, uint64 b) { return a < b ? a : b; }
+  inline uint64 max(uint64 a, uint64 b) { return a > b ? a : b; }
 
   inline double min(double a, double b) { return a < b ? a : b; }
   inline double max(double a, double b) { return a > b ? a : b; }
