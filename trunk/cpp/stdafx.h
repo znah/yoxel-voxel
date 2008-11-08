@@ -43,6 +43,12 @@ typedef unsigned int uint;
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 
+#ifdef _MSC_VER
+  typedef __int64 int64;
+#else
+  typedef long long int64;
+#endif
+
 #ifdef USE_CG
 typedef cg::point_4b Color32;
 typedef cg::point_4sb Normal32;

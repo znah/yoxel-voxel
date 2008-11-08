@@ -151,8 +151,8 @@ namespace cg
     return f > 0 ? int(f) : int(f - 0.9999999999);
   }
   
-  inline __int64 nfloor64(double f) {
-    return f > 0 ? __int64(f) : __int64(f - 0.9999999999);
+  inline int64 nfloor64(double f) {
+    return f > 0 ? int64(f) : int64(f - 0.9999999999);
   }
   
   inline int floor(double f) { return nfloor(f); }
@@ -199,11 +199,11 @@ namespace cg
   inline unsigned long min(unsigned long a, unsigned long b) { return a < b ? a : b; }
   inline unsigned long max(unsigned long a, unsigned long b) { return a > b ? a : b; }
 
-  inline __int64 min(__int64 a, __int64 b) { return a < b ? a : b; }
-  inline __int64 max(__int64 a, __int64 b) { return a > b ? a : b; }
+  inline int64 min(int64 a, int64 b) { return a < b ? a : b; }
+  inline int64 max(int64 a, int64 b) { return a > b ? a : b; }
   
-  inline unsigned __int64 min(unsigned __int64 a, unsigned __int64 b) { return a < b ? a : b; }
-  inline unsigned __int64 max(unsigned __int64 a, unsigned __int64 b) { return a > b ? a : b; }
+  inline unsigned int64 min(unsigned int64 a, unsigned int64 b) { return a < b ? a : b; }
+  inline unsigned int64 max(unsigned int64 a, unsigned int64 b) { return a > b ? a : b; }
 
   inline double min(double a, double b) { return a < b ? a : b; }
   inline double max(double a, double b) { return a > b ? a : b; }
@@ -325,7 +325,7 @@ namespace cg
           std::swap(v1, v2);
   }
   
-  template <class T, class D = T>
+  /*template <class T, class D = T>
     struct Clamp
   {
     Clamp(T x0, T x1, D y0, D y1) 
@@ -352,7 +352,7 @@ namespace cg
   template <class T, class D> inline Clamp<T,D> clamp_d(T x0, T x1, D y0, D y1) 
   {
     return Clamp<T,D>(x0,x1,y0,y1);
-  }
+  }*/
 
   template <class V, class S> inline V sclamp(S x0, S x1, V y0, V y1, S x) 
   {
@@ -533,11 +533,11 @@ namespace cg
   {   return fabs(A - B); }
 
   // greatest common divisor
-  template<class T>
+  /*template<class T>
       inline T gcd( T a, T b )
   {
       STATIC_ASSERT(meta::_is_integral<T>::value, T_must_be_integral)
       if ( b == 0 ) return a;
       return gcd( b, a % b );
-  }
+  }*/
 }
