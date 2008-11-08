@@ -18,11 +18,11 @@ namespace cg
 
    template < class T, class U > struct max_type_f ; 
 
-   #pragma push_macro ( "DECLARE_EQUAL" )
-   #pragma push_macro ( "DECLARE_LESS" )
-   #pragma push_macro ( "DECLARE_INTEGRAL" )
-   #pragma push_macro ( "DECLARE_INTEGER" )
-   #pragma push_macro ( "DECLARE_FLOATING" )
+   //#pragma push_macro ( "DECLARE_EQUAL" )
+   //#pragma push_macro ( "DECLARE_LESS" )
+   //#pragma push_macro ( "DECLARE_INTEGRAL" )
+   //#pragma push_macro ( "DECLARE_INTEGER" )
+   //#pragma push_macro ( "DECLARE_FLOATING" )
 
    #define DECLARE_INTEGER(S)  template <> struct is_integer_f<S>         { static const bool value = true; };
    #define DECLARE_FLOATING(S) template <> struct is_floating_point_f<S>  { static const bool value = true; };
@@ -52,10 +52,10 @@ namespace cg
    DECLARE_INTEGRAL(short)                                            
    DECLARE_INTEGRAL(char)                                            
 
-   #pragma pop_macro ( "DECLARE_FLOATING" )
-   #pragma pop_macro ( "DECLARE_INTEGER" )
-   #pragma pop_macro ( "DECLARE_INTEGRAL" )
-   #pragma pop_macro ( "DECLARE_LESS" )
-   #pragma pop_macro ( "DECLARE_EQUAL" )
+   //#pragma pop_macro ( "DECLARE_FLOATING" )
+   //#pragma pop_macro ( "DECLARE_INTEGER" )
+   //#pragma pop_macro ( "DECLARE_INTEGRAL" )
+   //#pragma pop_macro ( "DECLARE_LESS" )
+   //#pragma pop_macro ( "DECLARE_EQUAL" )
 }
 
