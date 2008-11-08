@@ -735,9 +735,9 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 3 > & point_t< Scalar, 3 > :: operator %= ( Scalar alpha )
    {
-      this->x = cg::mod(x,alpha);
-      this->y = cg::mod(y,alpha);
-      this->z = cg::mod(z,alpha);
+      this->x = cg::mod(this->x,alpha);
+      this->y = cg::mod(this->y,alpha);
+      this->z = cg::mod(this->z,alpha);
 
       return *this;
    }
@@ -755,9 +755,9 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 3 > & point_t< Scalar, 3 > :: operator /= ( point_t< Scalar, 3 > const & point )
    {
-      x /= point.x;
-      y /= point.y;
-      z /= point.z;
+      this->x /= point.x;
+      this->y /= point.y;
+      this->z /= point.z;
 
       return *this;
    }
@@ -765,9 +765,9 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 3 > & point_t< Scalar, 3 > :: operator %= ( point_t< Scalar, 3 > const & point )
    {
-      x = cg::mod(x, point.x);
-      y = cg::mod(y, point.y);
-      z = cg::mod(z, point.z);
+      this->x = cg::mod(this->x, point.x);
+      this->y = cg::mod(this->y, point.y);
+      this->z = cg::mod(this->z, point.z);
 
       return *this;
    }
@@ -777,10 +777,10 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 4 > & point_t< Scalar, 4 > :: operator += ( point_t< Scalar, 4 > const & point )
    {
-      x += point.x;
-      y += point.y;
-      z += point.z;
-      w += point.w;
+      this->x += point.x;
+      this->y += point.y;
+      this->z += point.z;
+      this->w += point.w;
 
       return *this;
    }
@@ -788,10 +788,10 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 4 > & point_t< Scalar, 4 > :: operator -= ( point_t< Scalar, 4 > const & point )
    {
-      x -= point.x;
-      y -= point.y;
-      z -= point.z;
-      w -= point.w;
+      this->x -= point.x;
+      this->y -= point.y;
+      this->z -= point.z;
+      this->w -= point.w;
 
       return *this;
    }
@@ -799,10 +799,10 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 4 > & point_t< Scalar, 4 > :: operator *= ( Scalar alpha )
    {
-      x *= alpha;
-      y *= alpha;
-      z *= alpha;
-      w *= alpha;
+      this->x *= alpha;
+      this->y *= alpha;
+      this->z *= alpha;
+      this->w *= alpha;
 
       return *this;
    }
@@ -810,10 +810,10 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 4 > & point_t< Scalar, 4 > :: operator /= ( Scalar alpha )
    {
-      x /= alpha;
-      y /= alpha;
-      z /= alpha;
-      w /= alpha;
+      this->x /= alpha;
+      this->y /= alpha;
+      this->z /= alpha;
+      this->w /= alpha;
 
       return *this;
    }
@@ -821,10 +821,10 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 4 > & point_t< Scalar, 4 > :: operator %= ( Scalar alpha )
    {
-      x = cg::mod(x,alpha);
-      y = cg::mod(y,alpha);
-      z = cg::mod(z,alpha);
-      w = cg::mod(w,alpha);
+      this->x = cg::mod(this->x,alpha);
+      this->y = cg::mod(this->y,alpha);
+      this->z = cg::mod(this->z,alpha);
+      this->w = cg::mod(this->w,alpha);
 
       return *this;
    }
@@ -832,10 +832,10 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 4 > & point_t< Scalar, 4 > :: operator &= ( point_t< Scalar, 4 > const & point )
    {
-      x *= point.x;
-      y *= point.y;
-      z *= point.z;
-      w *= point.w;
+      this->x *= point.x;
+      this->y *= point.y;
+      this->z *= point.z;
+      this->w *= point.w;
 
       return *this;
    }
@@ -843,10 +843,10 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 4 > & point_t< Scalar, 4 > :: operator /= ( point_t< Scalar, 4 > const & point )
    {
-      x /= point.x;
-      y /= point.y;
-      z /= point.z;
-      w /= point.w;
+      this->x /= point.x;
+      this->y /= point.y;
+      this->z /= point.z;
+      this->w /= point.w;
 
       return *this;
    }
@@ -854,10 +854,10 @@ namespace cg
    template < class Scalar > 
       point_t< Scalar, 4 > & point_t< Scalar, 4 > :: operator %= ( point_t< Scalar, 4 > const & point )
    {
-      x = cg::mod(x, point.x);
-      y = cg::mod(y, point.y);
-      z = cg::mod(z, point.z);
-      w = cg::mod(w, point.w);
+      this->x = cg::mod(this->x, point.x);
+      this->y = cg::mod(this->y, point.y);
+      this->z = cg::mod(this->z, point.z);
+      this->w = cg::mod(this->w, point.w);
 
       return *this;
    }
