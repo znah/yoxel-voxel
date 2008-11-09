@@ -328,9 +328,6 @@ inline int argmax(const point_3f & p)
     return (p.x > p.z) ? 0 : 2;
 }
 
-template<class T>
-inline void swap(T & a, T & b) { T c = a; a = b; b = c; }
-
 VoxNodeId DynamicSVO::RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, float & t) const
 {
   if (IsNull(nodeId))

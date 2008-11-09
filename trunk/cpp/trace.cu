@@ -1,8 +1,9 @@
 #include "stdafx.h"
 
 #include "trace_cu.h"
+#include "trace_utils.h"
 
-//#define USE_TEXLOOKUP
+#define USE_TEXLOOKUP
 
 #define INIT_THREAD \
   int xi = blockIdx.x * blockDim.x + threadIdx.x; \
@@ -33,79 +34,6 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
 
 __device__ VoxData GetVoxData  (VoxNodeId id) { return tree.nodes[id].data; }
 
-
-struct point_3f : public float3
-{
-  __host__ __device__ float & operator[](int i) {return *(&x+i); }
-  __host__ __device__ point_3f(const float3 & p) { x = p.x; y = p.y; z = p.z; }
-  __host__ __device__ point_3f() { x = 0; y = 0; z = 0; }
-
-}; 
-
-__host__ __device__ float max(const float3 & p) { return fmaxf(p.x, fmaxf(p.y, p.z)); }
-__host__ __device__ float min(const float3 & p) { return fminf(p.x, fminf(p.y, p.z)); }
-
-__host__ __device__ int argmin(const float3 & p) 
-{
-  if (p.x > p.y)
-    return (p.y < p.z) ? 1 : 2;
-  else
-    return (p.x < p.z) ? 0 : 2;
-}
-
-__host__ __device__ int argmax(const float3 & p) 
-{
-  if (p.x < p.y)
-    return (p.y > p.z) ? 1 : 2;
-  else
-    return (p.x > p.z) ? 0 : 2;
-}
-
-
-template<class T>
-__host__ __device__ void swap(T & a, T & b) { T c = a; a = b; b = c; }
-
-__device__ uint FindFrstChild(point_3f & t1, point_3f & t2)
-{
-  uint childId = 0;
-  point_3f tm = 0.5f * (t1 + t2);
-  float tEnter = max(t1);
-  for (int i = 0; i < 3; ++i)
-  {
-    if (tm[i] > tEnter)
-      t2[i] = tm[i];
-    else
-    {
-      t1[i] = tm[i];
-      childId |= 1<<i;
-    }
-  }
-  return childId;
-}
-
-template<int ExitPlane>
-__device__ bool GoNextTempl(int & childId, point_3f & t1, point_3f & t2)
-{
-  int mask = 1<<ExitPlane;
-  if ((childId & mask) != 0)
-    return false;
-
-  childId ^= mask;
-
-  float dt = t2[ExitPlane] - t1[ExitPlane];
-  t1[ExitPlane] = t2[ExitPlane];
-  t2[ExitPlane] += dt;
-  return true;
-}
-
-__device__ bool GoNext(int & childId, point_3f & t1, point_3f & t2)
-{
-  // argmin
-  if (t2.x > t2.y)
-    return (t2.y < t2.z) ? GoNextTempl<1>(childId, t1, t2) : GoNextTempl<2>(childId, t1, t2);
-  else
-    return (t2.x < t2.z) ? GoNextTempl<0>(childId, t1, t2) : GoNextTempl<2>(childId, t1, t2);
-}
 
 extern "C" {
 
