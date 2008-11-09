@@ -59,7 +59,7 @@ PROGRAM_ppu	:= 	trace
 
 CPPFLAGS        = -I../cpp -DTARGET_PPU
 
-IMPORTS         = spu/lib_trace_spu.a -lspe2 -lpthread -lmisc
+IMPORTS         = spu/lib_trace_spu.a -lspe2 -lpthread -lmisc -lMagick++
 
 INSTALL_DIR	= ./out
 INSTALL_FILES	= $(PROGRAM_ppu)
