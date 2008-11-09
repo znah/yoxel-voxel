@@ -4,13 +4,11 @@
 #define TARGET_CUDA
 #endif
 
-#if !defined(TARGET_CUDA)
+#if !defined(TARGET_CUDA)// && !defined(TARGET_PPU) && !defined(TARGET_SPU)
+#define USE_CG
 #define USE_STL
 #endif
 
-#if !defined(TARGET_CUDA)// && !defined(TARGET_PPU) && !defined(TARGET_SPU)
-#define USE_CG
-#endif
 
 #ifdef USE_STL
   #include <stdexcept>
@@ -22,24 +20,13 @@
   #include <cmath>
   #include <cassert>
 
-  #include <tr1/memory>
-  using std::tr1::shared_ptr;
-
-#endif
-
-#ifdef _MSC_VER
-  typedef __int64 int64;
-  typedef unsigned __int64 uint64;
-#else
-  typedef long long int64;
-  typedef unsigned long long uint64;
-#endif
+  #if __GNUC__ >= 4	
+    #include <tr1/memory>
+  #else
+    #include <boost/shared_ptr.hpp>
+  #endif
 
 
-#ifdef USE_CG
-  #include "points.h"
-  #include "range.h"
-  #include "rotation.h"
 #endif
 
 
@@ -50,6 +37,40 @@
   #include "cutil_math.h"
 
   #define GLOBAL_FUNC __device__ __host__
+#endif
+
+
+#ifdef _MSC_VER
+  typedef __int64 int64;
+  typedef unsigned __int64 uint64;
+#else
+  typedef long long int64;
+  typedef unsigned long long uint64;
+#endif
+
+#ifdef USE_CG
+  #include "points.h"
+  #include "range.h"
+  #include "rotation.h"
+#endif
+
+
+#ifdef USE_STL
+  #if __GNUC__ >= 4
+    using std::tr1::shared_ptr;
+  #else
+    using boost::shared_ptr;
+  #endif
+#endif
+
+#ifdef USE_STL
+  using std::swap;
+#else
+  template <class T> GLOBAL_FUNC swap(T & a, T & b) { T c = a; a = b; b = c; }
+#endif
+
+#ifdef TARGET_CUDA
+  #include "points_cu.h"
 #endif
 
 
