@@ -6,9 +6,11 @@
 
 inline void reverseBytes(uint & v)
 {
+#ifdef TARGET_PPU
   char * p = (char*)&v;
   std::swap(p[0], p[3]);
   std::swap(p[1], p[2]);
+#endif
 }
 
 

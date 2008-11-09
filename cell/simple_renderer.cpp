@@ -40,16 +40,19 @@ shared_ptr<ISVORenderer> CreateSimpleRenderer()
 }
 
 
-
-
 const Color32 * SimpleRenderer::RenderFrame()
 {
   if (m_svo == NULL)
     return NULL;
 
-  
-
-  
-
-
+  for (int y = 0; y < m_viewRes.y; ++y)
+  {
+    for (int x = 0; x < m_viewRes.x; ++x)
+    {
+      uchar r = x*256/m_viewRes.x;
+      uchar g = y*256/m_viewRes.y;
+      m_colorBuf[y*m_viewRes.x + x] = Color32(r, g, 0, 0);
+    }
+  }
+  return &m_colorBuf[0];
 }

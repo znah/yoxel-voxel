@@ -1,7 +1,6 @@
 #pragma once
 
 #include "svodata.h"
-#include <tr1/memory>
 
 class ISVORenderer
 {
