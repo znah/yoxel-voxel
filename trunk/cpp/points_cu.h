@@ -11,9 +11,6 @@ struct point_3f : public float3
 
 }; 
 
-inline GLOBAL_FUNC float max(const float3 & p) { return fmaxf(p.x, fmaxf(p.y, p.z)); }
-inline GLOBAL_FUNC float min(const float3 & p) { return fminf(p.x, fminf(p.y, p.z)); }
-
 inline GLOBAL_FUNC int argmin(const float3 & p) 
 {
   if (p.x > p.y)

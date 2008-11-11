@@ -19,9 +19,7 @@ class CudaRenderer:
         mod = cuda.SourceModule(file("cpp/trace.cu").read(), keep=True, options=['-I../cpp'], no_extern_c=True)
         self.InitEyeRays = mod.get_function("InitEyeRays")
         self.InitFishEyeRays = mod.get_function("InitFishEyeRays")
-        #self.InitShadowRays = mod.get_function("InitShadowRays")
         self.Trace = mod.get_function("Trace")
-        #self.ShadeShadow = mod.get_function("ShadeShadow")
         self.ShadeSimple = mod.get_function("ShadeSimple")
         self.mod = mod
 
@@ -69,70 +67,49 @@ class CudaRenderer:
     def getViewSize(self):
         return (self.resx, self.resy)
 
-    def buildTraceParams(self, eyePos, detail):
-        '''
-        struct TraceParams
-        {
-          float3 start;
-          
-          float detailCoef;
-          VoxNodeId startNode;
-          float3 startNodePos;
-          float  startNodeSize;
-          int startNodeLevel;
-        };
-        '''
-
-        args = []
-        (node, pos, size, level) = (self.sceneRoot, (0, 0, 0), 1, 0)
-        args.extend(eyePos)
-        args.append(2*3.1415/360.0 / detail)
-        args.append(node)
-        args.extend(pos)
-        args.append(size)
-        args.append(level)
-        return struct.pack("3f f i 3f f i", *args)
-   
-
     def render(self, eyePos, viewDir, first=False):
         vdir = array(viewDir, float32)
         vdir = normalize(vdir)
         vright = normalize( cross(vdir, (0, 0, 1)) )
         vup = normalize( cross(vright, vdir) )
 
+        '''
+        struct RenderParams
+        {
+          float detailCoef;
+
+          float3 eye;
+          float3 dir;
+          float3 right;
+          float3 up;
+
+          float3 lightPos;
+        };
+        '''
+
         args = []
+        args.append(2*3.1415/360.0 / self.detailCoef)
         args.extend(eyePos)
         args.extend(vdir)
         args.extend(vright)
         args.extend(vup)
         args.extend(self.lightPos)
-        render_params = struct.pack("3f 3f 3f 3f 3f", *args)
-
-        trace_params = self.buildTraceParams(eyePos, self.detailCoef)
-        shadowTrace_params = self.buildTraceParams(self.lightPos, self.detailCoef)
+        render_params = struct.pack("f 3f 3f 3f 3f 3f", *args)
 
         t = clock()
         self.InitEyeRays(render_params, self.d_rays, block=self.smallblock, grid=self.smallgrid, time_kernel=True, texrefs=self.texrefs)
         
         trace1Begin = clock()
-        self.Trace(trace_params, self.d_rays, block=self.block, grid=self.grid, time_kernel=True, texrefs=self.texrefs)
+        self.Trace(render_params, self.d_rays, block=self.block, grid=self.grid, time_kernel=True, texrefs=self.texrefs)
         trace1End = clock()
 
-        #self.InitShadowRays(render_params, self.d_rays, self.d_shadowRays, trace_params, block=self.smallblock, grid=self.smallgrid, time_kernel=True, texrefs=self.texrefs)
-
-        trace2Begin = clock()
-        #self.Trace(shadowTrace_params, self.d_shadowRays, block=self.block, grid=self.grid, time_kernel=True, texrefs=self.texrefs)
-        trace2End = clock()
-        
         self.ShadeSimple(render_params, self.d_rays, self.d_shadowRays, self.d_img, block=self.smallblock, grid=self.smallgrid, time_kernel=True, texrefs=self.texrefs)
         gpuTime = clock()-t
 
         trace1Time = trace1End - trace1Begin
-        trace2Time = trace2End - trace2Begin
 
         stat = "gpu time: %.2f ms\n" % (gpuTime*1000)
         stat += "eye trace time: %.2f ms\n" % (trace1Time*1000)
-        #stat += "shadow trace time: %.2f ms\n" % (trace2Time*1000)
         stat += "detailCoef: %f\n" % (self.detailCoef)
 
         return stat
@@ -147,6 +124,3 @@ if __name__ == '__main__':
     ctx = dev.make_context()
 
     renderer = CudaRenderer(loadScene("data/hmap.vox"))
-
-    #from render import renderTurn
-    #renderTurn(renderer)
