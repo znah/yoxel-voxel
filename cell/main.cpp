@@ -17,8 +17,10 @@ int main()
 
   shared_ptr<ISVORenderer> renderer = CreateSimpleRenderer();
   renderer->SetScene(&scene);
+  
+  renderer->SetResolution(1024, 768);
 
-  renderer->SetViewPos(point_3f(0.5, 0.5, 0.3));
+  renderer->SetViewPos(point_3f(0.5f, 0.5f, 0.3f));
   renderer->SetViewDir(point_3f(-1, -1, -1.5));
 
   const Color32 * frameBuf = renderer->RenderFrame();

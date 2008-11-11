@@ -5,7 +5,7 @@
 struct TraceResult
 {
   VoxNodeId node;
-  uint child;
+  int child;
   float t;
 };
 
@@ -114,7 +114,7 @@ bool SimpleRenderer::RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const 
     return false;
 
   float tEnter = maxCoord(t1);
-  uint ch = FindFirstChild(t1, t2);
+  int ch = FindFirstChild(t1, t2);
 
   const VoxNode & node = (*m_svo)[nodeId];
   while (true)

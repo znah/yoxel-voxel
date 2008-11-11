@@ -89,11 +89,8 @@ __global__ void Trace(TraceParams tp, RayData * rays)
   if (IsNull(rays[tid].endNode))
     return;
 
-  const float eps = 1e-8f;
   point_3f dir = rays[tid].dir;
-  for (int i = 0; i < 3; ++i)
-    if (abs(dir[i]) < eps)
-      dir[i] = (dir[i] < 0) ? -eps : eps;
+  AdjustDir(dir);
 
   float3 p = tp.start;
   point_3f t1 = (tp.startNodePos - p) / dir;
@@ -128,7 +125,7 @@ __global__ void Trace(TraceParams tp, RayData * rays)
         childId = -1;
         if (max(t1) * tp.detailCoef > nodeSize/2)  { state = GetEmptyFlag(GetNodeInfo(node)) ? ST_GOUP : ST_SAVE; break; }
         
-        childId = FindFrstChild(t1, t2);
+        childId = FindFirstChild(t1, t2);
         state = ST_GODOWN;
         break;
       }
@@ -217,7 +214,7 @@ __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, const RayD
   UnpackVoxData(vd, c16, n16);
   uchar4 col;
   float3 norm;
-  col = UnpackColor(c16);
+  col = UnpackColorCU(c16);
   UnpackNormal(n16, norm.x, norm.y, norm.z);
 
   float3 pt = p + dir*t;

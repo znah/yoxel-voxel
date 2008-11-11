@@ -20,7 +20,7 @@
   #include <cmath>
   #include <cassert>
 
-  #if __GNUC__ >= 4	
+  #if __GNUC__ >= 4 
     #include <tr1/memory>
   #else
     #include <boost/shared_ptr.hpp>
@@ -74,7 +74,7 @@
 #ifdef USE_STL
   using std::swap;
 #else
-  template <class T> GLOBAL_FUNC swap(T & a, T & b) { T c = a; a = b; b = c; }
+  template <class T> inline GLOBAL_FUNC void swap(T & a, T & b) { T c = a; a = b; b = c; }
 #endif
 
 #ifdef TARGET_CUDA
