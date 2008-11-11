@@ -82,7 +82,7 @@ __global__ void InitFishEyeRays(RenderParams rp, RayData * rays)
   rays[tid].endNodeChild = EmptyNode;
 }
 
-__global__ void Trace(TraceParams tp, RayData * rays)
+__global__ void Trace(RenderParams rp, RayData * rays)
 {
   INIT_THREAD
 
@@ -92,26 +92,14 @@ __global__ void Trace(TraceParams tp, RayData * rays)
   point_3f dir = rays[tid].dir;
   AdjustDir(dir);
 
-  float3 p = tp.start;
-  point_3f t1 = (tp.startNodePos - p) / dir;
-  point_3f t2 = (tp.startNodePos + make_float3(tp.startNodeSize) - p) / dir;
+  point_3f t1, t2;
   uint dirFlags = 0;
-  for (int i = 0; i < 3; ++i)
-    if (dir[i] < 0)
-    {
-      dirFlags |= 1<<i;
-      swap(t1[i], t2[i]);
-    }
-
-  if (max(t1) >= min(t2))
-  {
-    rays[tid].endNode = EmptyNode;
+  if (!SetupTrace(rp.eye, dir, t1, t2, dirFlags))
     return;
-  }
 
-  VoxNodeId node = tp.startNode;
+  VoxNodeId node = tree.root;
   int childId = 0;
-  int level = tp.startNodeLevel;
+  int level = 0;
   float nodeSize = pow(0.5f, level);
 
   enum States { ST_EXIT, ST_ANALYSE, ST_SAVE, ST_GOUP, ST_GODOWN, ST_GONEXT };
@@ -123,7 +111,7 @@ __global__ void Trace(TraceParams tp, RayData * rays)
       case ST_ANALYSE:
       {
         childId = -1;
-        if (max(t1) * tp.detailCoef > nodeSize/2)  { state = GetEmptyFlag(GetNodeInfo(node)) ? ST_GOUP : ST_SAVE; break; }
+        if (maxCoord(t1) * rp.detailCoef > nodeSize/2)  { state = GetEmptyFlag(GetNodeInfo(node)) ? ST_GOUP : ST_SAVE; break; }
         
         childId = FindFirstChild(t1, t2);
         state = ST_GODOWN;
@@ -132,7 +120,7 @@ __global__ void Trace(TraceParams tp, RayData * rays)
       
       case ST_GODOWN:
       {
-        if (min(t2) < 0) { state = ST_GONEXT; break; }
+        if (minCoord(t2) < 0) { state = ST_GONEXT; break; }
 
         if (GetLeafFlag(GetNodeInfo(node), childId^dirFlags)) { state = ST_SAVE; break; }
         
@@ -178,7 +166,7 @@ __global__ void Trace(TraceParams tp, RayData * rays)
       {
         rays[tid].endNode = node;
         rays[tid].endNodeChild = childId^dirFlags;
-        rays[tid].t = max(t1);
+        rays[tid].t = maxCoord(t1);
         rays[tid].endNodeSize = nodeSize;
         state = ST_EXIT;
         break;

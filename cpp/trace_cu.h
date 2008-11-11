@@ -10,6 +10,8 @@ struct VoxStructTree
 
 struct RenderParams
 {
+  float detailCoef;
+
   float3 eye;
   float3 dir;
   float3 right;
@@ -26,16 +28,3 @@ struct RayData
   int endNodeChild;
   float endNodeSize;
 };
-
-struct TraceParams
-{
-  float3 start;
-  
-  float detailCoef;
-  VoxNodeId startNode;
-  float3 startNodePos;
-  float  startNodeSize;
-  int startNodeLevel;
-};
-
-
