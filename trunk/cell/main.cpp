@@ -18,16 +18,14 @@ int main()
   shared_ptr<ISVORenderer> renderer = CreateSimpleRenderer();
   renderer->SetScene(&scene);
 
-  renderer->SetViewPos(point_3f(0.5, 0.5, 0.5));
-  renderer->SetViewDir(cprf(-135, -45, 0));
+  renderer->SetViewPos(point_3f(0.5, 0.5, 0.3));
+  renderer->SetViewDir(point_3f(-1, -1, -1.5));
 
   const Color32 * frameBuf = renderer->RenderFrame();
   point_2i size = renderer->GetResolution();
 
   Image img(size.x, size.y, "RGBA", CharPixel, frameBuf);
   img.write("test.jpg");
-
-
 
   return 0;
 }

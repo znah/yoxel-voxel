@@ -2,7 +2,7 @@
 
 struct point_3f : public float3
 {
-  GLOBAL_FUNC float & operator[](int i) {return *(&x+i); }
+  GLOBAL_FUNC float & operator[](int i) {return *(&x+i); }  // works well on CUDA only if 'i' is knows at compile time
   GLOBAL_FUNC point_3f(const float3 & p) { x = p.x; y = p.y; z = p.z; }
   GLOBAL_FUNC point_3f() { x = 0; y = 0; z = 0; }
 
