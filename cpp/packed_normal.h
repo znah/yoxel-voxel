@@ -42,3 +42,22 @@ inline GLOBAL_FUNC void UnpackNormal(Normal16 packed, float & x, float & y, floa
   if (octant & 2) y = -y;
   if (octant & 4) z = -z;
 }
+
+inline GLOBAL_FUNC point_3f UnpackNormal(Normal16 packed)
+{
+  int octant = packed & 7;
+  int qx = (packed >> 3) & 127;
+  int qy = (packed >> (3+7)) & 63;
+  
+  point_3f n;
+  n.x = qx / 127.0f;
+  n.y = qy / 63.0f;
+  n.z = 1.0f - n.x - n.y;
+  normalize(n);
+
+  if (octant & 1) n.x = -n.x;
+  if (octant & 2) n.y = -n.y;
+  if (octant & 4) n.z = -n.z;
+
+  return n;
+}

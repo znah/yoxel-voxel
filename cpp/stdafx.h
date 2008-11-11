@@ -54,6 +54,14 @@
   #include "rotation.h"
 #endif
 
+#ifdef USE_CG
+  using cg::min;
+  using cg::max;
+#elif defined(USE_STL)
+  using std::min;
+  using std::max;
+#endif
+
 
 #ifdef USE_STL
   #if __GNUC__ >= 4

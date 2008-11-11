@@ -83,6 +83,7 @@
 				AdditionalDependencies="CORE_RL_Magick++_.lib"
 				OutputFile="$(OutDir)/cell.exe"
 				LinkIncremental="1"
+				AdditionalLibraryDirectories="&quot;C:\dev\sdk\ImageMagick-6.4.5-Q16\lib&quot;"
 				GenerateDebugInformation="TRUE"
 				SubSystem="1"
 				OptimizeReferences="2"
