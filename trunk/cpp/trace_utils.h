@@ -15,8 +15,8 @@ inline GLOBAL_FUNC void AdjustDir(point_3f & dir)
 
 inline GLOBAL_FUNC bool SetupTrace(const point_3f & p, const point_3f & dir, point_3f & t1, point_3f & t2, uint & dirFlags)
 {
-  t1 = (point_3f(0, 0, 0) - p) / dir;
-  t2 = (point_3f(1, 1, 1) - p) / dir;
+  t1 = (point_3f(0.0f, 0.0f, 0.0f) - p) / dir;
+  t2 = (point_3f(1.0f, 1.0f, 1.0f) - p) / dir;
   dirFlags = 0;
   for (int i = 0; i < 3; ++i)
     if (dir[i] < 0)
@@ -32,9 +32,9 @@ inline GLOBAL_FUNC bool SetupTrace(const point_3f & p, const point_3f & dir, poi
 
 
 
-inline GLOBAL_FUNC uint FindFirstChild(point_3f & t1, point_3f & t2)
+inline GLOBAL_FUNC int FindFirstChild(point_3f & t1, point_3f & t2)
 {
-  uint childId = 0;
+  int childId = 0;
   point_3f tm = 0.5f * (t1 + t2);
   float tEnter = maxCoord(t1);
   for (int i = 0; i < 3; ++i)
@@ -51,7 +51,7 @@ inline GLOBAL_FUNC uint FindFirstChild(point_3f & t1, point_3f & t2)
 }
 
 template<int ExitPlane>
-inline GLOBAL_FUNC bool GoNextTempl(uint & childId, point_3f & t1, point_3f & t2)
+inline GLOBAL_FUNC bool GoNextTempl(int & childId, point_3f & t1, point_3f & t2)
 {
   int mask = 1<<ExitPlane;
   if ((childId & mask) != 0)
@@ -65,7 +65,7 @@ inline GLOBAL_FUNC bool GoNextTempl(uint & childId, point_3f & t1, point_3f & t2
   return true;
 }
 
-inline GLOBAL_FUNC  bool GoNext(uint & childId, point_3f & t1, point_3f & t2)
+inline GLOBAL_FUNC  bool GoNext(int & childId, point_3f & t1, point_3f & t2)
 {
   // argmin
   if (t2.x > t2.y)

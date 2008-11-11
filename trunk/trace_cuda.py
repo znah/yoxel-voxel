@@ -16,9 +16,7 @@ def normalize(v):
 
 class CudaRenderer:
     def __init__(self, res=(640, 480)):
-        opts = ['-DUSE_TEXLOOKUP']
-
-        mod = cuda.SourceModule(file("cpp/trace.cu").read(), keep=True, options=['-I../cpp'] + opts, no_extern_c=True)
+        mod = cuda.SourceModule(file("cpp/trace.cu").read(), keep=True, options=['-I../cpp'], no_extern_c=True)
         self.InitEyeRays = mod.get_function("InitEyeRays")
         self.InitFishEyeRays = mod.get_function("InitFishEyeRays")
         #self.InitShadowRays = mod.get_function("InitShadowRays")

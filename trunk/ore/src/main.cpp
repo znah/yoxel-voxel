@@ -11,7 +11,7 @@
 namespace py = boost::python;
 
 
-/*py::tuple CudaSVO_GetData(CudaSVO * svo)
+py::tuple CudaSVO_GetData(CudaSVO * svo)
 {
   VoxNodeId root = svo->GetRoot();
 
@@ -23,7 +23,7 @@ namespace py = boost::python;
 
   py::tuple res = py::make_tuple(root, nodes);
   return res;
-}*/
+}
 
 inline Color32 extractColor32(py::object obj)
 {
@@ -102,7 +102,7 @@ BOOST_PYTHON_MODULE(_ore)
     def("MakeRawSource", MakeRawSource, py::return_value_policy<py::manage_new_object>());
 
     class_<SphereSource, bases<VoxelSource> >("SphereSource", no_init);
-    def("MakeRawSource", MakeSphereSource, py::return_value_policy<py::manage_new_object>());
+    def("MakeSphereSource", MakeSphereSource, py::return_value_policy<py::manage_new_object>());
 
     class_<IsoSource, bases<VoxelSource> >("IsoSource", no_init)
       .def("SetIsoLevel", &IsoSource::SetIsoLevel)
@@ -119,8 +119,8 @@ BOOST_PYTHON_MODULE(_ore)
       .def("CountChangedPages", &DynamicSVO::CountChangedPages)
       .def("CountTransfrerSize", &DynamicSVO::CountTransfrerSize);
 
-//    class_<CudaSVO, boost::noncopyable>("CudaSVO")
-//      .def("SetSVO", &CudaSVO::SetSVO)
-//      .def("Update", &CudaSVO::Update)
-//      .def("GetData", &CudaSVO_GetData);
+    class_<CudaSVO, boost::noncopyable>("CudaSVO")
+      .def("SetSVO", &CudaSVO::SetSVO)
+      .def("Update", &CudaSVO::Update)
+      .def("GetData", &CudaSVO_GetData);
 }
