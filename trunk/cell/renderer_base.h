@@ -79,7 +79,7 @@ protected:
     if (IsNull(nodeId) || minCoord(t2) <= 0)
       return false;
 
-    const VoxNode & node = (*m_svo)[nodeId];
+    const VoxNode node = (*m_svo)[nodeId];
     int ch = FindFirstChild(t1, t2);
     while (true)
     {
