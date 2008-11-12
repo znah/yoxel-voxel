@@ -108,15 +108,11 @@ const Color32 * SimpleRenderer::RenderFrame()
 
 bool SimpleRenderer::RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, TraceResult & res)
 {
-  if (IsNull(nodeId))
+  if (IsNull(nodeId) || minCoord(t2) <= 0)
     return false;
-  if (minCoord(t2) <= 0)
-    return false;
-
-  float tEnter = maxCoord(t1);
-  int ch = FindFirstChild(t1, t2);
 
   const VoxNode & node = (*m_svo)[nodeId];
+  int ch = FindFirstChild(t1, t2);
   while (true)
   {
     if (GetLeafFlag(node.flags, ch^dirFlags))
