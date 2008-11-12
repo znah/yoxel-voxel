@@ -19,6 +19,7 @@
   #include <numeric>
   #include <cmath>
   #include <cassert>
+  #include <ctime>
 
   #if __GNUC__ >= 4 
     #include <tr1/memory>
