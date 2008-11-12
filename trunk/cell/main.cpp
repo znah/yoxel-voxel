@@ -14,7 +14,7 @@ inline float mytime()
   timeval tv;
   timezone tz;
   gettimeofday(&tv,&tz);
-  return (float)tv.tv_sec + (float)tv1.tv_usec/1000000f.0; 
+  return (float)tv.tv_sec + (float)tv.tv_usec/1000000.0f; 
 #endif
 }
 
