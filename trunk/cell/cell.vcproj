@@ -125,6 +125,9 @@
 				RelativePath=".\main.cpp">
 			</File>
 			<File
+				RelativePath=".\renderer_base.h">
+			</File>
+			<File
 				RelativePath=".\shader.h">
 			</File>
 			<File
@@ -135,6 +138,9 @@
 			</File>
 			<File
 				RelativePath=".\svorenderer.h">
+			</File>
+			<File
+				RelativePath=".\threaded_renderer.cpp">
 			</File>
 		</Filter>
 		<Filter
