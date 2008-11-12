@@ -26,8 +26,10 @@
   #else
     #include <boost/shared_ptr.hpp>
   #endif
+#endif
 
-
+#ifdef __GNUC__
+  #include <sys/time.h>
 #endif
 
 
