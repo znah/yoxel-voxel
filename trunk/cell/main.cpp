@@ -13,7 +13,7 @@ int main()
   SVOData scene;
   scene.Load("../data/scene.vox");
 
-  shared_ptr<ISVORenderer> renderer = CreateRecRenderer();
+  shared_ptr<ISVORenderer> renderer = CreateThreadedRenderer();
   renderer->SetScene(&scene);
   
   renderer->SetResolution(1024, 768);
