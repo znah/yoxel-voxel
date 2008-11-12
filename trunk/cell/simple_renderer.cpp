@@ -7,7 +7,7 @@ public:
   virtual const Color32 * RenderFrame();
 };
 
-shared_ptr<ISVORenderer> CreateRecRenderer()
+shared_ptr<ISVORenderer> CreateSimpleRenderer()
 {
   return shared_ptr<ISVORenderer>(new RecRenderer);
 }
@@ -19,11 +19,11 @@ const Color32 * RecRenderer::RenderFrame()
 
   RayDirData rdd;
   InitRayDir(rdd);
-  for (int y = 0; y < m_viewRes.y; ++y)
+  for (int y = 0; y < m_viewSize.y; ++y)
   {
-    for (int x = 0; x < m_viewRes.x; ++x)
+    for (int x = 0; x < m_viewSize.x; ++x)
     {
-      int offs = y*m_viewRes.x + x;
+      int offs = y*m_viewSize.x + x;
       m_colorBuf[offs] = Color32(0, 0, 0, 0);
 
       point_3f dir = normalized(rdd.dir0 + rdd.du*x + rdd.dv*y);

@@ -22,7 +22,7 @@ class RendererBase : public ISVORenderer
 protected:
   // TODO: getters and setters
   SVOData * m_svo;
-  point_2i m_viewRes;
+  point_2i m_viewSize;
 
   point_3f m_pos;
   point_3f m_dir;
@@ -52,11 +52,11 @@ public:
   
   virtual void SetResolution(int width, int height) 
   { 
-    m_viewRes = point_2i(width, height);
+    m_viewSize = point_2i(width, height);
     m_colorBuf.resize(width*height);
   }
 
-  virtual point_2i GetResolution() const { return m_viewRes; }
+  virtual point_2i GetResolution() const { return m_viewSize; }
 
   virtual void SetFOV(float fov) { m_fov = fov; }
 
@@ -67,14 +67,14 @@ protected:
     point_3f vright = cg::normalized(vfwd ^ m_up);
     point_3f vup = vright ^ vfwd;
 
-    float da = tan(cg::grad2rad(m_fov / 2)) / m_viewRes.x;
+    float da = tan(cg::grad2rad(m_fov / 2)) / m_viewSize.x;
 
     res.du = 2 * vright *da;
     res.dv = -2 * vup * da;
-    res.dir0 = vfwd - res.du*m_viewRes.x/2 - res.dv*m_viewRes.y/2;
+    res.dir0 = vfwd - res.du*m_viewSize.x/2 - res.dv*m_viewSize.y/2;
   }
 
-  bool RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, TraceResult & res)
+  bool RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, TraceResult & res) const
   {
     if (IsNull(nodeId) || minCoord(t2) <= 0)
       return false;
