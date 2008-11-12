@@ -56,7 +56,6 @@ struct TreadedRenderer::RenderThreadData
   void operator()()
   {
     renderer->RenderRect(rdd, start, size);
-    //printf("thread %d finished\n", start.y);
   }
 };
 
