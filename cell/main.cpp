@@ -23,11 +23,11 @@ int main()
   renderer->SetViewPos(point_3f(0.5f, 0.5f, 0.3f));
   renderer->SetViewDir(point_3f(-1, -1, -1.5));
 
-  const Color32 * frameBuf = renderer->RenderFrame();
+  //const Color32 * frameBuf = renderer->RenderFrame();
   point_2i size = renderer->GetResolution();
 
-  Image img(size.x, size.y, "RGBA", CharPixel, frameBuf);
-  img.write("test.jpg");
+  //Image img(size.x, size.y, "RGBA", CharPixel, frameBuf);
+  //img.write("test.jpg");
 
   return 0;
 }
