@@ -9,7 +9,7 @@ inline GLOBAL_FUNC void AdjustDir(point_3f & dir)
 {
   const float eps = 1e-8f;
   for (int i = 0; i < 3; ++i)
-    if (abs(dir[i]) < eps)
+    if (fabs(dir[i]) < eps)
       dir[i] = (dir[i] < 0) ? -eps : eps;
 }
 

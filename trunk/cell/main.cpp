@@ -10,8 +10,6 @@ using namespace Magick;
 
 int main()
 {
-  std::cout << "test" << std::endl;
-
   SVOData scene;
   scene.Load("../data/scene.vox");
 
@@ -26,8 +24,8 @@ int main()
   const Color32 * frameBuf = renderer->RenderFrame();
   point_2i size = renderer->GetResolution();
 
-  //Image img(size.x, size.y, "RGBA", CharPixel, frameBuf);
-  //img.write("test.jpg");
+  Image img(size.x, size.y, "RGBA", CharPixel, frameBuf);
+  img.write("test.jpg");
 
   return 0;
 }
