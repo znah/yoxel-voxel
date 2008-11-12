@@ -30,7 +30,7 @@ int main()
   point_2i size = renderer->GetResolution();
 
   Image img(size.x, size.y, "RGBA", CharPixel, frameBuf);
-  img.quality(50);
+  img.quality(75);
   img.write("test.jpg");
 
   return 0;
