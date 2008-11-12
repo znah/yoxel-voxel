@@ -24,3 +24,5 @@ public:
 };
 
 shared_ptr<ISVORenderer> CreateRecRenderer();
+shared_ptr<ISVORenderer> CreateThreadedRenderer();
+
