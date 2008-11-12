@@ -1,1 +1,0 @@
-cl /EHcs *.cpp CORE_RL_Magick++_.lib -I../cpp -Ic:/dev/sdk/boost_1_35_0 -Ic:/dev/sdk/ImageMagick-6.4.5-Q16/include -link /LIBPATH:c:/dev/sdk/ImageMagick-6.4.5-Q16/lib
