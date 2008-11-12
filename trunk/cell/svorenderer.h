@@ -23,4 +23,4 @@ public:
   virtual const Color32 * RenderFrame() = 0;
 };
 
-shared_ptr<ISVORenderer> CreateSimpleRenderer();
+shared_ptr<ISVORenderer> CreateRecRenderer();
