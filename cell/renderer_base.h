@@ -73,29 +73,4 @@ protected:
     res.dv = -2 * vup * da;
     res.dir0 = vfwd - res.du*m_viewSize.x/2 - res.dv*m_viewSize.y/2;
   }
-
-  bool RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, TraceResult & res) const
-  {
-    if (IsNull(nodeId) || minCoord(t2) <= 0)
-      return false;
-
-    const VoxNode node = (*m_svo)[nodeId];
-    int ch = FindFirstChild(t1, t2);
-    while (true)
-    {
-      if (GetLeafFlag(node.flags, ch^dirFlags))
-      {
-        res.node = nodeId;
-        res.child = ch^dirFlags;
-        res.t = maxCoord(t1);
-        return true;
-      }
-
-      if (RecTrace(node.child[ch^dirFlags], t1, t2, dirFlags, res))
-        return true;
-
-      if (!GoNext(ch, t1, t2))
-        return false;
-    }
-  }
 };
