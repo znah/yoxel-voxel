@@ -88,9 +88,6 @@ const Color32 * SimpleRenderer::RenderFrame()
       if (!SetupTrace(m_pos, dir, t1, t2, dirFlags))
         continue;
 
-      //if (x != 512 || y != 400)
-      //  continue;
-
       TraceResult res;
       if (!RecTrace(m_svo->GetRoot(), t1, t2, dirFlags, res))
         continue;
@@ -109,20 +106,10 @@ const Color32 * SimpleRenderer::RenderFrame()
   return &m_colorBuf[0];
 }
 
-
-inline void printpt(const point_3f & p)
-{
-  printf("(%f, %f, %f)\n", p.x, p.y, p.z);
-}
-
 bool SimpleRenderer::RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, TraceResult & res)
 {
   if (IsNull(nodeId) || minCoord(t2) <= 0)
     return false;
-
-  //printf("nodeId: %d\n", nodeId);
-  //printpt(t1);
-  //printpt(t2);
 
   const VoxNode & node = (*m_svo)[nodeId];
   int ch = FindFirstChild(t1, t2);
@@ -133,7 +120,6 @@ bool SimpleRenderer::RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const 
       res.node = nodeId;
       res.child = ch^dirFlags;
       res.t = maxCoord(t1);
-      //printf("found - leaf: %d, t: %f\n", res.child, res.t);
       return true;
     }
 
