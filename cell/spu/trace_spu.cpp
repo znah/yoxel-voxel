@@ -9,7 +9,7 @@ volatile trace_spu_params params __attribute__ ((aligned (16)));
 
 int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long parm)
 {
-  printf("spu - %u %d\n", (uint)parm % 16, sizeof(params));
+  //printf("spu - %u %d\n", (uint)parm % 16, sizeof(params));
 
   tag_id = mfc_tag_reserve();
   spu_writech(MFC_WrTagMask, -1);
