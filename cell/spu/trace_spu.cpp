@@ -17,7 +17,7 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
   spu_mfcdma32((void *)(&params), (unsigned int)parm, sizeof(trace_spu_params), tag_id, MFC_GET_CMD);
   (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
 
-  printf("y start: %d\n", params.start.y);
+  //printf("y start: %d\n", params.start.y);
 
 /*   int i = 0;
    int j = 0;
