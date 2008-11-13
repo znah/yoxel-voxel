@@ -12,6 +12,13 @@
 #define USE_STL
 #endif
 
+#ifder TARGET_SPU
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <spu_intrinsics.h>
+  #include <spu_mfcio.h>
+#endif
+
 
 #ifdef USE_STL
   #include <stdexcept>

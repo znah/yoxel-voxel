@@ -4,6 +4,13 @@
 
 #include <boost/thread/thread.hpp>
 
+struct TraceResult
+{
+  VoxNodeId node;
+  int child;
+  float t;
+};
+
 
 class PPURendererBase : public RendererBase
 {
