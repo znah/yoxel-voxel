@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "renderer_base.h"
+#include "trace_utils.h"
 
 #include <boost/thread/thread.hpp>
 

@@ -26,3 +26,6 @@ public:
 shared_ptr<ISVORenderer> CreateSimpleRenderer();
 shared_ptr<ISVORenderer> CreateThreadedRenderer();
 
+#ifdef TARGET_PPU
+shared_ptr<ISVORenderer> CreateSPURenderer();
+#endif
