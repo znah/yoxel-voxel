@@ -12,7 +12,7 @@
 #define USE_STL
 #endif
 
-#ifder TARGET_SPU
+#ifdef TARGET_SPU
   #include <stdio.h>
   #include <stdlib.h>
   #include <spu_intrinsics.h>
