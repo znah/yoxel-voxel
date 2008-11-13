@@ -16,7 +16,10 @@
   #include <stdio.h>
   #include <stdlib.h>
   #include <spu_intrinsics.h>
+  
+  extern "C" {
   #include <spu_mfcio.h>
+  }
 #endif
 
 
