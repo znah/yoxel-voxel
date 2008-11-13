@@ -44,8 +44,8 @@ int main()
   SVOData scene;
   scene.Load("../data/scene.vox");
 
-  shared_ptr<ISVORenderer> renderer = CreateThreadedRenderer();
-  testRenderer(renderer, scene, "test_ppu.jpg");
+  //shared_ptr<ISVORenderer> renderer = CreateThreadedRenderer();
+  //testRenderer(renderer, scene, "test_ppu.jpg");
   
 #ifdef TARGET_PPU
   shared_ptr<ISVORenderer> spu_renderer = CreateSPURenderer();

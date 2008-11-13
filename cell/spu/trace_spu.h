@@ -9,4 +9,4 @@ struct trace_spu_params
 
   VoxNodeId root;
   const VoxNode * nodes;
-};
+} __attribute__ ((aligned (16)));
