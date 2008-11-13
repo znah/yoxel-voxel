@@ -2,7 +2,9 @@
 
 #include "trace_spu.h"
 
+int tag_id;
 volatile trace_spu_params params __attribute__ ((aligned (16)));
+
 
 
 int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long parm)
