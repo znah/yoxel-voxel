@@ -2,8 +2,6 @@
 
 #include "svorenderer.h"
 #include "shader.h"
-#include "trace_utils.h"
-
 
 struct TraceResult
 {
@@ -32,8 +30,7 @@ protected:
 
   SimpleShader m_shader;
 
-  std::vector<Color32> m_colorBuf;
-  
+  AlignedArray<Color32, 4> m_colorBuf;
 
 public:
   RendererBase() : m_svo(NULL), m_up(0, 0, 1), m_fov(70.0) { SetResolution(640, 480); }

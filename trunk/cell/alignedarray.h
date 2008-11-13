@@ -34,9 +34,9 @@ public:
     if (size > 0)
     {
       #ifdef TARGET_PPU
-        m_ptr = (VoxNode*)malloc_align(sizeof(T)*size, Log2Align);
+        m_ptr = (T*)malloc_align(sizeof(T)*size, Log2Align);
       #else
-        m_ptr = (VoxNode*)malloc(sizeof(T)*size);
+        m_ptr = (T*)malloc(sizeof(T)*size);
       #endif
       m_size = size;
     }

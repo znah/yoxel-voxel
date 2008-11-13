@@ -134,16 +134,19 @@
 				RelativePath=".\shader.h">
 			</File>
 			<File
-				RelativePath=".\simple_renderer.cpp">
+				RelativePath=".\spu_renderer.cpp">
+				<FileConfiguration
+					Name="Release|Win32"
+					ExcludedFromBuild="TRUE">
+					<Tool
+						Name="VCCLCompilerTool"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\svodata.h">
 			</File>
 			<File
 				RelativePath=".\svorenderer.h">
-			</File>
-			<File
-				RelativePath=".\threaded_renderer.cpp">
 			</File>
 		</Filter>
 		<Filter
