@@ -1,4 +1,5 @@
 #include "vox_node.h"
+#include "rdd.h"
 
 struct trace_spu_params
 {
@@ -9,5 +10,3 @@ struct trace_spu_params
   VoxNodeId root;
   const VoxNode * nodes;
 };
-
-extern spe_program_handle_t trace_spu;

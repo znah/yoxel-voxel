@@ -6,6 +6,9 @@
 
 #include "spu/trace_spu.h"
 
+extern spe_program_handle_t trace_spu;
+
+
 class SPURenderer : public RendererBase
 {
 public:

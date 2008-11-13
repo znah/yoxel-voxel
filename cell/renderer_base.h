@@ -2,18 +2,7 @@
 
 #include "svorenderer.h"
 #include "shader.h"
-
-struct TraceResult
-{
-  VoxNodeId node;
-  int child;
-  float t;
-};
-
-struct RayDirData
-{
-  point_3f dir0, du, dv;
-};
+#include "rdd.h"
 
 class RendererBase : public ISVORenderer
 {

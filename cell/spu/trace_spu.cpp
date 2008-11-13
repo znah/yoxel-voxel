@@ -1,6 +1,4 @@
 #include "stdafx.h"
-#include <spu_intrinsics.h>
-#include <spu_mfcio.h>
 
 #include "trace_spu.h"
 
