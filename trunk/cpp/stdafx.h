@@ -6,6 +6,9 @@
 
 #if !defined(TARGET_CUDA)// && !defined(TARGET_PPU) && !defined(TARGET_SPU)
 #define USE_CG
+#endif
+
+#if !defined(TARGET_CUDA) && !defined(TARGET_SPU)
 #define USE_STL
 #endif
 
