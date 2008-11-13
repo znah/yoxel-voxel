@@ -75,7 +75,7 @@ const Color32 * SPURenderer::RenderFrame()
   boost::thread_group threads;
   for (int i = 0; i < threadNum; ++i)
   {
-    RenderThreadData td;
+    RenderThread td;
     td.renderer = this;
     td.rdd = rdd;
     td.start = point_2i(0, ystep*i);
@@ -83,4 +83,6 @@ const Color32 * SPURenderer::RenderFrame()
     threads.create_thread(td);
   }
   threads.join_all();
+
+  return &m_colorBuf[0];
 }

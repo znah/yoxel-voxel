@@ -9,14 +9,11 @@ volatile trace_spu_params params __attribute__ ((aligned (16)));
 
 int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long parm)
 {
+  printf("spu - %u %d\n", (uint)parm % 16, sizeof(params));
+
   tag_id = mfc_tag_reserve();
   spu_writech(MFC_WrTagMask, -1);
   
-  //printf("Data size: %d\n",  (int)sizeof(Node));
-
-  // Input parameter parm is a pointer to the particle parameter context.
-  // Fetch the context, waiting for it to complete.
-	  
   spu_mfcdma32((void *)(&params), (unsigned int)parm, sizeof(trace_spu_params), tag_id, MFC_GET_CMD);
   (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
 
