@@ -318,12 +318,12 @@ namespace cg
     else           { out1 = in2; out2 = in1; }
   }
 
-  template <class T>
+  /*template <class T>
       void sort2(T & v1, T & v2)
   {
       if (v1 > v2)
           std::swap(v1, v2);
-  }
+  }*/
   
   /*template <class T, class D = T>
     struct Clamp
