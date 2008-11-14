@@ -112,12 +112,15 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
   {
     int bx = block % gridSize.x;
     int by = block / gridSize.x;
-    point_2i blockBase = point_2i(bx, by) * BlockSize;
-    RenderBlock(blockBase);
+    point_2i base = point_2i(bx, by) * BlockSize;
+    RenderBlock(base);
     for (int row = 0; row < BlockSize; ++row)
     {
-      spu_mfcdma32((void *)result + BlockSize*row, 
-        (unsigned int)(params.colorBuf + (by+row) * params.viewSize.x + bx), 
+      //printf("%u \n", result + BlockSize*row);
+      //printf("%u \n", result + BlockSize*row);
+
+      spu_mfcdma32((void *)(result + BlockSize*row), 
+        (unsigned int)(params.colorBuf + (base.y+row) * params.viewSize.x + base.x), 
         sizeof(Color32) * BlockSize, tag_id, MFC_PUT_CMD);
       (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
     }

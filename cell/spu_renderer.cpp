@@ -46,7 +46,7 @@ struct SPURenderer::RenderThread
     params.pos = renderer->m_pos;
     params.rdd = rdd;
     params.blockStart = blockStart;
-    params.blostStride = blostStride;
+    params.blockStride = blockStride;
     params.viewSize = renderer->m_viewSize;
     params.colorBuf = &renderer->m_colorBuf[0];
     params.root = renderer->m_svo->GetRoot();
@@ -81,8 +81,7 @@ const Color32 * SPURenderer::RenderFrame()
     td.renderer = this;
     td.rdd = rdd;
     td.blockStride = threadNum;
-    td.blockStart = i
-    td.end = point_2i(m_viewSize.x, ystep*(i+1));
+    td.blockStart = i;
     threads.create_thread(td);
   }
   threads.join_all();
