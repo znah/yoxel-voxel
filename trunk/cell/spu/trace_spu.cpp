@@ -17,7 +17,7 @@ VoxNode cacheNodes[CacheSize] __attribute__ ((aligned (16)));
 int missCount = 0;
 int fetchCount = 0;
 
-const VoxNode & FetchNode(VoxNodeId nodeId)
+const VoxNode FetchNode(VoxNodeId nodeId)
 {
   int ofs = nodeId % CacheSize;
   if (cacheIds[ofs] != nodeId)
@@ -45,7 +45,7 @@ bool RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, T
   if (IsNull(nodeId) || minCoord(t2) <= 0)
     return false;
 
-  const VoxNode & node = FetchNode(nodeId);
+  const VoxNode node = FetchNode(nodeId);
   int ch = FindFirstChild(t1, t2);
   while (true)
   {
