@@ -3,6 +3,8 @@
 #include "trace_spu.h"
 #include "trace_utils.h"
 
+using namespace cg;
+
 int tag_id;
 volatile trace_spu_params params __attribute__ ((aligned (16)));
 
@@ -66,7 +68,7 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
       AdjustDir(dir);
       point_3f t1, t2;
       uint dirFlags;
-      if (!SetupTrace(m_pos, dir, t1, t2, dirFlags))
+      if (!SetupTrace(params.pos, dir, t1, t2, dirFlags))
         continue;
 
       TraceResult res;
