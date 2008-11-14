@@ -10,6 +10,23 @@ trace_spu_params params __attribute__ ((aligned (16)));
 
 Color32 result[MaxRowSize] __attribute__ ((aligned (16)));
 
+const int CacheSize = 128;
+VoxNodeIf cacheIds[CacheSize];
+VoxNode cacheNodes[CacheSize] __attribute__ ((aligned (16)));
+
+const VoxNode & FetchNode(VoxNodeId nodeId)
+{
+  int ofs = nodeId % CacheSize;
+  if (cacheIds[ofs] != nodeId)
+  {
+    const VoxNode * node_ptr = params.nodes + nodeId;
+    spu_mfcdma32((void *)(cacheNodes + ofs), (unsigned int)node_ptr, sizeof(node), tag_id, MFC_GET_CMD);
+    (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
+  }
+  return cacheNodes[ofs];
+}
+
+
 struct TraceResult
 {
   VoxNode node;
@@ -22,12 +39,7 @@ bool RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, T
   if (IsNull(nodeId) || minCoord(t2) <= 0)
     return false;
 
-  //const VoxNode & node = (*m_svo)[nodeId];
-  VoxNode node __attribute__ ((aligned (16)));
-  const VoxNode * node_ptr = params.nodes + nodeId;
-  spu_mfcdma32((void *)(&node), (unsigned int)node_ptr, sizeof(node), tag_id, MFC_GET_CMD);
-  (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
-
+  const VoxNode & node = FetchNode(nodeId);
   int ch = FindFirstChild(t1, t2);
   while (true)
   {
@@ -61,6 +73,9 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
   SimpleShader shader;
   shader.viewerPos = params.pos;
   shader.lightPos = params.pos;
+
+  for (int i = 0; i < CacheSize)
+    cacheIds[i] = EmptyNode;
 
   for (int y = params.start.y; y < params.end.y; ++y)
   {
