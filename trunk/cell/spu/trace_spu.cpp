@@ -58,6 +58,10 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
   spu_mfcdma32((void *)(&params), (unsigned int)parm, sizeof(trace_spu_params), tag_id, MFC_GET_CMD);
   (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
 
+  SimpleShader shader;
+  shader.viewerPos = params.pos;
+  sader.lightPos = params.pos;
+
   for (int y = params.start.y; y < params.end.y; ++y)
   {
     for (int x = params.start.x; x < params.end.x; ++x)
@@ -75,7 +79,7 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
       if (!RecTrace(params.root, t1, t2, dirFlags, res))
         continue;
       
-      result[x] = params.shader.Shade(res.node.child[res.child], dir, res.t);
+      result[x] = shader.Shade(res.node.child[res.child], dir, res.t);
     }
    spu_mfcdma32((void *)result, (unsigned int)(params.colorBuf + y * params.viewSize.x), sizeof(Color32) * params.viewSize.x, tag_id, MFC_PUT_CMD);
 	 (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);

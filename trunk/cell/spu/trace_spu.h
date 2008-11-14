@@ -8,7 +8,6 @@ struct trace_spu_params
 {
   point_3f pos;
   RayDirData rdd;
-  SimpleShader shader;
   point_2i start, end, viewSize;
   Color32 * colorBuf;
 
