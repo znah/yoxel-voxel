@@ -1,5 +1,6 @@
 #include "vox_node.h"
 #include "rdd.h"
+#include "shader.h"
 
 const int MaxRowSize = 1024;
 
