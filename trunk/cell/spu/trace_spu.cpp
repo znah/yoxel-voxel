@@ -8,7 +8,7 @@
 int tag_id;
 trace_spu_params params __attribute__ ((aligned (16)));
 
-Color32 result[MaxRowSize] __attribute__ ((aligned (16)));
+Color32 result[BlockSize*BlockSize] __attribute__ ((aligned (16)));
 
 const int CacheSize = 512;
 VoxNodeId cacheIds[CacheSize];
@@ -66,30 +66,17 @@ bool RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, T
 }
 
 
+SimpleShader shader;
 
-
-int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long parm)
+void RenderBlock(const point_2i & base)
 {
-  tag_id = mfc_tag_reserve();
-  spu_writech(MFC_WrTagMask, -1);
-  
-  spu_mfcdma32((void *)(&params), (unsigned int)parm, sizeof(trace_spu_params), tag_id, MFC_GET_CMD);
-  (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
-
-  SimpleShader shader;
-  shader.viewerPos = params.pos;
-  shader.lightPos = params.pos;
-
-  for (int i = 0; i < CacheSize; ++i)
-    cacheIds[i] = EmptyNode;
-
-  for (int y = params.start.y; y < params.end.y; ++y)
-  {
-    for (int x = params.start.x; x < params.end.x; ++x)
+  for (int y = 0; y < BlockSize; ++y)
+    for (int x = 0; x < BlockSize; ++x)
     {
-      result[x] = Color32(y*256/768, 0, 0, 255);
+      int ofs = y*BlockSize + x;
+      result[ofs] = Color32(x*16, y*16, 0, 255);
 
-      point_3f dir = cg::normalized(params.rdd.dir0 + params.rdd.du*x + params.rdd.dv*y);
+      point_3f dir = cg::normalized(params.rdd.dir0 + params.rdd.du*(base.x + x) + params.rdd.dv*(base.y + y));
       AdjustDir(dir);
       point_3f t1, t2;
       uint dirFlags;
@@ -100,11 +87,40 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
       if (!RecTrace(params.root, t1, t2, dirFlags, res))
         continue;
       
-      result[x] = shader.Shade(res.node.child[res.child], dir, res.t);
+      result[ofs] = shader.Shade(res.node.child[res.child], dir, res.t);
     }
-   spu_mfcdma32((void *)result, (unsigned int)(params.colorBuf + y * params.viewSize.x), sizeof(Color32) * params.viewSize.x, tag_id, MFC_PUT_CMD);
-	 (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
+}
 
+
+int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long parm)
+{
+  tag_id = mfc_tag_reserve();
+  spu_writech(MFC_WrTagMask, -1);
+  
+  spu_mfcdma32((void *)(&params), (unsigned int)parm, sizeof(trace_spu_params), tag_id, MFC_GET_CMD);
+  (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
+
+  for (int i = 0; i < CacheSize; ++i)
+    cacheIds[i] = EmptyNode;
+
+  shader.viewerPos = params.pos;
+  shader.lightPos = params.pos;
+
+  point_2i gridSize = params.viewSize / BlockSize;
+  int blockNum = gridSize.x * gridSize.y;
+  for (int block = params.blockStart; block < blockNum; block += params.blockStride)
+  {
+    int bx = block % gridSize.x;
+    int by = block / gridSize.x;
+    point_2i blockBase = point_2i(bx, by) * BlockSize;
+    RenderBlock(blockBase);
+    for (int row = 0; row < BlockSize; ++row)
+    {
+      spu_mfcdma32((void *)result + BlockSize*row, 
+        (unsigned int)(params.colorBuf + (by+row) * params.viewSize.x + bx), 
+        sizeof(Color32) * BlockSize, tag_id, MFC_PUT_CMD);
+      (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
+    }
   }
 
   printf("fetch: %d miss: %d\n", fetchCount, missCount);

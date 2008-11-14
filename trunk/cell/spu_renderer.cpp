@@ -31,7 +31,8 @@ struct SPURenderer::RenderThread
 {
   SPURenderer * renderer;
   RayDirData rdd;
-  point_2i start, end;
+  int blockStart;
+  int blockStride;
 
   void operator()()
   {
@@ -44,8 +45,8 @@ struct SPURenderer::RenderThread
     trace_spu_params params __attribute__ ((aligned (16)));
     params.pos = renderer->m_pos;
     params.rdd = rdd;
-    params.start = start;
-    params.end = end;
+    params.blockStart = blockStart;
+    params.blostStride = blostStride;
     params.viewSize = renderer->m_viewSize;
     params.colorBuf = &renderer->m_colorBuf[0];
     params.root = renderer->m_svo->GetRoot();
@@ -79,7 +80,8 @@ const Color32 * SPURenderer::RenderFrame()
     RenderThread td;
     td.renderer = this;
     td.rdd = rdd;
-    td.start = point_2i(0, ystep*i);
+    td.blockStride = threadNum;
+    td.blockStart = i
     td.end = point_2i(m_viewSize.x, ystep*(i+1));
     threads.create_thread(td);
   }

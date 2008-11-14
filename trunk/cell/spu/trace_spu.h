@@ -2,13 +2,14 @@
 #include "rdd.h"
 #include "shader.h"
 
-const int MaxRowSize = 1024;
+const int BlockSize = 16;
 
 struct trace_spu_params
 {
   point_3f pos;
   RayDirData rdd;
-  point_2i start, end, viewSize;
+  point_2i viewSize;
+  int blockStart, blockStride;
   Color32 * colorBuf;
 
   VoxNodeId root;
