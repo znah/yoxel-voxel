@@ -68,18 +68,14 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
       AdjustDir(dir);
       point_3f t1, t2;
       uint dirFlags;
-      point_3f pos = params.pos;
-      if (!SetupTrace(pos, dir, t1, t2, dirFlags))
+      if (!SetupTrace(params.pos, dir, t1, t2, dirFlags))
         continue;
 
       TraceResult res;
       if (!RecTrace(params.root, t1, t2, dirFlags, res))
         continue;
       
-      Color16 c16;
-      Normal16 n16;
-      UnpackVoxData(res.node.child[res.child], c16, n16);
-      result[x] = UnpackColor(c16);
+      result[x] = params.shader.Shade(node.child[res.child], dir, res.t);
     }
    spu_mfcdma32((void *)result, (unsigned int)(params.colorBuf + y * params.viewSize.x), sizeof(Color32) * params.viewSize.x, tag_id, MFC_PUT_CMD);
 	 (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
