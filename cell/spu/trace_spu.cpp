@@ -10,9 +10,12 @@ trace_spu_params params __attribute__ ((aligned (16)));
 
 Color32 result[MaxRowSize] __attribute__ ((aligned (16)));
 
-const int CacheSize = 128;
-VoxNodeIf cacheIds[CacheSize];
+const int CacheSize = 256;
+VoxNodeId cacheIds[CacheSize];
 VoxNode cacheNodes[CacheSize] __attribute__ ((aligned (16)));
+
+int missCount = 0;
+int fetchCount = 0;
 
 const VoxNode & FetchNode(VoxNodeId nodeId)
 {
@@ -20,9 +23,12 @@ const VoxNode & FetchNode(VoxNodeId nodeId)
   if (cacheIds[ofs] != nodeId)
   {
     const VoxNode * node_ptr = params.nodes + nodeId;
-    spu_mfcdma32((void *)(cacheNodes + ofs), (unsigned int)node_ptr, sizeof(node), tag_id, MFC_GET_CMD);
+    spu_mfcdma32((void *)(cacheNodes + ofs), (unsigned int)node_ptr, sizeof(VoxNode), tag_id, MFC_GET_CMD);
     (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
+    cacheIds[ofs] = nodeId;
+    ++missCount;
   }
+  ++fetchCount;
   return cacheNodes[ofs];
 }
 
@@ -74,7 +80,7 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
   shader.viewerPos = params.pos;
   shader.lightPos = params.pos;
 
-  for (int i = 0; i < CacheSize)
+  for (int i = 0; i < CacheSize; ++i)
     cacheIds[i] = EmptyNode;
 
   for (int y = params.start.y; y < params.end.y; ++y)
@@ -101,5 +107,6 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
 
   }
 
+  printf("fetch: %d miss: %d\n", fetchCount, missCount);
   return 0;
 }
