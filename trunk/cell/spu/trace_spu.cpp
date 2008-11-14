@@ -10,7 +10,7 @@ trace_spu_params params __attribute__ ((aligned (16)));
 
 Color32 result[MaxRowSize] __attribute__ ((aligned (16)));
 
-const int CacheSize = 256;
+const int CacheSize = 128;
 VoxNodeId cacheIds[CacheSize];
 VoxNode cacheNodes[CacheSize] __attribute__ ((aligned (16)));
 
