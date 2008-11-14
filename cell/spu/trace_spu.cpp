@@ -60,7 +60,7 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
 
   SimpleShader shader;
   shader.viewerPos = params.pos;
-  sader.lightPos = params.pos;
+  shader.lightPos = params.pos;
 
   for (int y = params.start.y; y < params.end.y; ++y)
   {
