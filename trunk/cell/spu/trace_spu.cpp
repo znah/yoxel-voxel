@@ -74,7 +74,7 @@ void RenderBlock(const point_2i & base)
     for (int x = 0; x < BlockSize; ++x)
     {
       int ofs = y*BlockSize + x;
-      result[ofs] = Color32(x*16, y*16, 0, 255);
+      result[ofs] = Color32(x*256/BlockSize, y*256/BlockSize, 0, 255);
 
       point_3f dir = cg::normalized(params.rdd.dir0 + params.rdd.du*(base.x + x) + params.rdd.dv*(base.y + y));
       AdjustDir(dir);
@@ -116,9 +116,6 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
     RenderBlock(base);
     for (int row = 0; row < BlockSize; ++row)
     {
-      //printf("%u \n", result + BlockSize*row);
-      //printf("%u \n", result + BlockSize*row);
-
       spu_mfcdma32((void *)(result + BlockSize*row), 
         (unsigned int)(params.colorBuf + (base.y+row) * params.viewSize.x + base.x), 
         sizeof(Color32) * BlockSize, tag_id, MFC_PUT_CMD);
