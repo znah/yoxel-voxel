@@ -15,7 +15,7 @@ struct TraceResult
   float t;
 };
 
-bool RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, TraceResult & res) const
+bool RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, TraceResult & res)
 {
   if (IsNull(nodeId) || minCoord(t2) <= 0)
     return false;
