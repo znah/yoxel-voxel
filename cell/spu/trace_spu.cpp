@@ -35,8 +35,7 @@ const VoxNode FetchNode(VoxNodeId nodeId)
 
 struct TraceResult
 {
-  VoxNode node;
-  int child;
+  VoxData data;
   float t;
 };
 
@@ -51,8 +50,7 @@ bool RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, T
   {
     if (GetLeafFlag(node.flags, ch^dirFlags))
     {
-      res.node = node;
-      res.child = ch^dirFlags;
+      res.data = node.child[ch^dirFlags];
       res.t = maxCoord(t1);
       return true;
     }
@@ -63,6 +61,86 @@ bool RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, T
     if (!GoNext(ch, t1, t2))
       return false;
   }
+}
+
+bool StacklessTrace(point_3f t1, point_3f t2, const uint dirFlags, TraceResult & res)
+{
+  VoxNode node = FetchNode(params.root);
+  int childId = 0;
+  //int level = 0;
+  //float nodeSize = 1.0f; //pow(0.5f, level);
+
+  enum States { ST_EXIT, ST_ANALYSE, ST_SAVE, ST_GOUP, ST_GODOWN, ST_GONEXT };
+  int state = ST_ANALYSE;
+  while (state != ST_EXIT)
+  {
+    switch (state)
+    {
+      case ST_ANALYSE:
+      {
+        //childId = -1;
+        //if (maxCoord(t1) * rp.detailCoef > nodeSize/2)  { state = GetEmptyFlag(GetNodeInfo(node)) ? ST_GOUP : ST_SAVE; break; }
+        
+        childId = FindFirstChild(t1, t2);
+        state = ST_GODOWN;
+        break;
+      }
+      
+      case ST_GODOWN:
+      {
+        if (minCoord(t2) < 0) { state = ST_GONEXT; break; }
+
+        if (GetLeafFlag(GetNodeInfo(node), childId^dirFlags)) { state = ST_SAVE; break; }
+        
+        VoxNodeId ch = GetChild(node, childId^dirFlags);
+        if (IsNull(ch)) {state = ST_GONEXT; break; }
+        node = FetchNode(ch); //node = ch;
+        //++level;
+        //nodeSize /= 2;
+        state = ST_ANALYSE;
+        break;
+      }
+      
+      case ST_GONEXT:
+      {
+        state = GoNext(childId, t1, t2) ? ST_GODOWN : ST_GOUP;
+        break;
+      }
+
+      case ST_GOUP:
+      {
+        VoxNodeId p = node.parent;
+        if (IsNull(p)) { 
+          return false;
+          //rays[tid].endNode = EmptyNode;
+          //state = ST_EXIT; 
+          //break; 
+        }
+
+        for (int i = 0; i < 3; ++i)
+        {
+          int mask = 1<<i;
+          float dt = t2[i] - t1[i];
+          ((childId & mask) == 0) ? t2[i] += dt : t1[i] -= dt;
+        }
+        childId = GetSelfChildId(node.flags)^dirFlags;
+        node = FetchNode(p);
+        --level;
+        nodeSize *= 2;
+        state = ST_GONEXT;
+        break;
+      }
+
+      case ST_SAVE:
+      {
+        res.data = node.child[childId^dirFlags];
+        res.t = maxCoord(t1);
+        state = ST_EXIT;
+        break;
+      }
+    }
+  }
+  return true;
 }
 
 
@@ -87,7 +165,7 @@ void RenderBlock(const point_2i & base)
       if (!RecTrace(params.root, t1, t2, dirFlags, res))
         continue;
       
-      result[ofs] = shader.Shade(res.node.child[res.child], dir, res.t);
+      result[ofs] = shader.Shade(res.data, dir, res.t);
     }
 }
 
