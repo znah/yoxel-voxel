@@ -42,6 +42,7 @@ struct SPURenderer::RenderThread
     CHECK(res == 0);
 
     trace_spu_params params __attribute__ ((aligned (16)));
+    params.pos = renderer->m_pos;
     params.rdd = rdd;
     params.start = start;
     params.end = end;
