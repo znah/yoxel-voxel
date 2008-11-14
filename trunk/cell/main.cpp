@@ -34,7 +34,7 @@ void testRenderer(shared_ptr<ISVORenderer> renderer, SVOData & scene, const char
   {
     point_2i size = renderer->GetResolution();
     Image img(size.x, size.y, "RGBA", CharPixel, frameBuf);
-    img.quality(75);
+    img.quality(50);
     img.write(outfn);
   }
 }

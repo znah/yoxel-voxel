@@ -3,14 +3,16 @@
 #include "trace_spu.h"
 #include "trace_utils.h"
 
-//using namespace cg;
+#include <libmisc.h>
+
+
 
 int tag_id;
 trace_spu_params params __attribute__ ((aligned (16)));
 
 Color32 result[BlockSize*BlockSize] __attribute__ ((aligned (16)));
 
-const int CacheSize = 512;
+const int CacheSize = 2048;
 VoxNodeId cacheIds[CacheSize];
 VoxNode cacheNodes[CacheSize] __attribute__ ((aligned (16)));
 
@@ -20,7 +22,7 @@ int fetchCount = 0;
 const VoxNode FetchNode(VoxNodeId nodeId)
 {
   int ofs = nodeId % CacheSize;
-  if (cacheIds[ofs] != nodeId)
+  if (__builtin_expect((cacheIds[ofs] != nodeId), 0))
   {
     const VoxNode * node_ptr = params.nodes + nodeId;
     spu_mfcdma32((void *)(cacheNodes + ofs), (unsigned int)node_ptr, sizeof(VoxNode), tag_id, MFC_GET_CMD);
@@ -39,107 +41,77 @@ struct TraceResult
   float t;
 };
 
-bool RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const uint dirFlags, TraceResult & res)
+
+typedef vector float float4;
+
+
+inline GLOBAL_FUNC int FindFirstChildSPU(float4 & t1, float4 & t2)
 {
-  if (IsNull(nodeId) || minCoord(t2) <= 0)
+  float4 tm = spu_splats(0.5f) * (t1 + t2);
+  float tEnter = max_vec_float3(t1);
+  
+  vector unsigned int cmp = spu_cmpgt(spu_splats(tEnter), tm);
+  t2 = spu_sel(tm, t2, cmp);
+  t1 = spu_sel(t1, tm, cmp);
+
+  
+  //int childId = spu_gather(cmp)[0] >> 1;
+  //static const int lookup[8] = {0, 4, 2, 6, 1, 5, 3, 7};
+  //childId = lookup[childId];
+  int childId = 0;
+  if (cmp[0]) childId |= 1<<0;
+  if (cmp[1]) childId |= 1<<1;
+  if (cmp[2]) childId |= 1<<2;
+
+  //printf("%d %d\n", childId, spu_gather(cmp)[0]);
+  return childId;
+}
+
+inline GLOBAL_FUNC  bool GoNextSPU(int & childId, float4 & t1, float4 & t2)
+{
+  int exitPlane;
+  
+  // argmin
+  if (t2[0] > t2[1])
+    exitPlane = (t2[1] < t2[2]) ? 1 : 2;
+  else
+    exitPlane = (t2[0] < t2[2]) ? 0 : 2;
+
+  int mask = 1<<exitPlane;
+  if ((childId & mask) != 0)
+    return false;
+
+  childId ^= mask;
+
+  float dt = t2[exitPlane]-t1[exitPlane];
+//  t1[exitPlane] = t2[exitPlane];
+  
+  t1[exitPlane] = t2[exitPlane];
+  t2[exitPlane] += dt;
+  return true;
+
+}
+
+
+
+bool RecTrace(VoxNodeId nodeId, float4 t1, float4 t2, const uint dirFlags, TraceResult & res)
+{
+  if (IsNull(nodeId) || min_vec_float3(t2) <= 0)
     return false;
 
   const VoxNode node = FetchNode(nodeId);
-  int ch = FindFirstChild(t1, t2);
-  while (true)
+  int ch = FindFirstChildSPU(t1, t2);
+  while (!GetLeafFlag(node.flags, ch^dirFlags))
   {
-    if (GetLeafFlag(node.flags, ch^dirFlags))
-    {
-      res.data = node.child[ch^dirFlags];
-      res.t = maxCoord(t1);
-      return true;
-    }
-
     if (RecTrace(node.child[ch^dirFlags], t1, t2, dirFlags, res))
       return true;
 
-    if (!GoNext(ch, t1, t2))
+    if (!GoNextSPU(ch, t1, t2))
       return false;
-  }
-}
+  } 
 
-bool StacklessTrace(point_3f t1, point_3f t2, const uint dirFlags, TraceResult & res)
-{
-  VoxNode node = FetchNode(params.root);
-  int childId = 0;
-  //int level = 0;
-  //float nodeSize = 1.0f; //pow(0.5f, level);
-
-  enum States { ST_EXIT, ST_ANALYSE, ST_SAVE, ST_GOUP, ST_GODOWN, ST_GONEXT };
-  int state = ST_ANALYSE;
-  while (state != ST_EXIT)
-  {
-    switch (state)
-    {
-      case ST_ANALYSE:
-      {
-        //childId = -1;
-        //if (maxCoord(t1) * rp.detailCoef > nodeSize/2)  { state = GetEmptyFlag(GetNodeInfo(node)) ? ST_GOUP : ST_SAVE; break; }
-        
-        childId = FindFirstChild(t1, t2);
-        state = ST_GODOWN;
-        break;
-      }
-      
-      case ST_GODOWN:
-      {
-        if (minCoord(t2) < 0) { state = ST_GONEXT; break; }
-
-        if (GetLeafFlag(GetNodeInfo(node), childId^dirFlags)) { state = ST_SAVE; break; }
-        
-        VoxNodeId ch = GetChild(node, childId^dirFlags);
-        if (IsNull(ch)) {state = ST_GONEXT; break; }
-        node = FetchNode(ch); //node = ch;
-        //++level;
-        //nodeSize /= 2;
-        state = ST_ANALYSE;
-        break;
-      }
-      
-      case ST_GONEXT:
-      {
-        state = GoNext(childId, t1, t2) ? ST_GODOWN : ST_GOUP;
-        break;
-      }
-
-      case ST_GOUP:
-      {
-        VoxNodeId p = node.parent;
-        if (IsNull(p)) { 
-          return false;
-          //rays[tid].endNode = EmptyNode;
-          //state = ST_EXIT; 
-          //break; 
-        }
-
-        for (int i = 0; i < 3; ++i)
-        {
-          int mask = 1<<i;
-          float dt = t2[i] - t1[i];
-          ((childId & mask) == 0) ? t2[i] += dt : t1[i] -= dt;
-        }
-        childId = GetSelfChildId(node.flags)^dirFlags;
-        node = FetchNode(p);
-        --level;
-        nodeSize *= 2;
-        state = ST_GONEXT;
-        break;
-      }
-
-      case ST_SAVE:
-      {
-        res.data = node.child[childId^dirFlags];
-        res.t = maxCoord(t1);
-        state = ST_EXIT;
-        break;
-      }
-    }
-  }
+  res.data = node.child[ch^dirFlags];
+  res.t = max_vec_float3(t1);
   return true;
 }
 
@@ -152,7 +124,7 @@ void RenderBlock(const point_2i & base)
     for (int x = 0; x < BlockSize; ++x)
     {
       int ofs = y*BlockSize + x;
-      result[ofs] = Color32(x*256/BlockSize, y*256/BlockSize, 0, 255);
+      result[ofs] = Color32(0, 0, 0, 255);
 
       point_3f dir = cg::normalized(params.rdd.dir0 + params.rdd.du*(base.x + x) + params.rdd.dv*(base.y + y));
       AdjustDir(dir);
@@ -161,8 +133,11 @@ void RenderBlock(const point_2i & base)
       if (!SetupTrace(params.pos, dir, t1, t2, dirFlags))
         continue;
 
+      
+      float4 vt1 = {t1.x, t1.y, t1.z, 0};
+      float4 vt2 = {t2.x, t2.y, t2.z, 0};
       TraceResult res;
-      if (!RecTrace(params.root, t1, t2, dirFlags, res))
+      if (!RecTrace(params.root, vt1, vt2, dirFlags, res))
         continue;
       
       result[ofs] = shader.Shade(res.data, dir, res.t);
@@ -197,8 +172,8 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
       spu_mfcdma32((void *)(result + BlockSize*row), 
         (unsigned int)(params.colorBuf + (base.y+row) * params.viewSize.x + base.x), 
         sizeof(Color32) * BlockSize, tag_id, MFC_PUT_CMD);
-      (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
     }
+    (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
   }
 
   printf("fetch: %d miss: %d\n", fetchCount, missCount);

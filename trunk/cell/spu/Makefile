@@ -52,7 +52,10 @@ LIBRARY_embed	:= lib_trace_spu.a
 #			Local Defines
 ########################################################################
 
-CPPFLAGS        = -I../../cpp -DTARGET_SPU
+CPPFLAGS        = -I../../cpp -DTARGET_SPU 
+
+IMPORTS         = -lmisc
+
 
 ########################################################################
 #			buildutils/make.footer
