@@ -6,7 +6,7 @@
 //using namespace cg;
 
 int tag_id;
-volatile trace_spu_params params __attribute__ ((aligned (16)));
+trace_spu_params params __attribute__ ((aligned (16)));
 
 Color32 result[MaxRowSize] __attribute__ ((aligned (16)));
 
@@ -64,7 +64,7 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
     {
       result[x] = Color32(y*256/768, 0, 0, 255);
 
-      point_3f dir = cg::normalized(params.rdd.dir0 + params.rdd.du*(float)x + params.rdd.dv*(float)y);
+      point_3f dir = cg::normalized(params.rdd.dir0 + params.rdd.du*x + params.rdd.dv*y);
       AdjustDir(dir);
       point_3f t1, t2;
       uint dirFlags;
