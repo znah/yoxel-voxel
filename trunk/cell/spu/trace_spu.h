@@ -1,6 +1,8 @@
 #include "vox_node.h"
 #include "rdd.h"
 
+const int MaxRowSize = 1024;
+
 struct trace_spu_params
 {
   RayDirData rdd;
