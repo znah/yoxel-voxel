@@ -61,8 +61,8 @@ CPPFLAGS        = -I../cpp -DTARGET_PPU
 
 IMPORTS         = spu/lib_trace_spu.a -lspe2 -lpthread -lmisc -lMagick++ -lboost_thread-gcc41-mt
 
-INSTALL_DIR	= ./out
-INSTALL_FILES	= $(PROGRAM_ppu)
+#INSTALL_DIR	= ./out
+#INSTALL_FILES	= $(PROGRAM_ppu)
 
 ########################################################################
 #			buildutils/make.footer
