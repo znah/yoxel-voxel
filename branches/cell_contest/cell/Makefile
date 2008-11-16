@@ -50,7 +50,7 @@ DIRS		:= 	spu
 #                       Target
 ########################################################################
 
-PROGRAM_ppu	:= 	trace
+PROGRAM_ppu	:= 	trace_spu
 
 
 ########################################################################
@@ -61,8 +61,8 @@ CPPFLAGS        = -I../cpp -DTARGET_PPU
 
 IMPORTS         = spu/lib_trace_spu.a -lspe2 -lpthread -lmisc -lMagick++ -lboost_thread-gcc41-mt
 
-#INSTALL_DIR	= ./out
-#INSTALL_FILES	= $(PROGRAM_ppu)
+INSTALL_DIR	= ./..
+INSTALL_FILES	= $(PROGRAM_ppu)
 
 ########################################################################
 #			buildutils/make.footer
