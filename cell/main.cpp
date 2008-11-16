@@ -42,7 +42,7 @@ void testRenderer(shared_ptr<ISVORenderer> renderer, SVOData & scene, const char
 int main()
 {
   SVOData scene;
-  scene.Load("../data/scene.vox");
+  scene.Load("data/scene.vox");
 
   //shared_ptr<ISVORenderer> renderer = CreateThreadedRenderer();
   //testRenderer(renderer, scene, "test_ppu.jpg");
