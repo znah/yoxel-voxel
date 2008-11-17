@@ -28,9 +28,9 @@ const VoxNode FetchNode(VoxNodeId nodeId)
     spu_mfcdma32((void *)(cacheNodes + ofs), (unsigned int)node_ptr, sizeof(VoxNode), tag_id, MFC_GET_CMD);
     (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
     cacheIds[ofs] = nodeId;
-    ++missCount;
+    //++missCount;
   }
-  ++fetchCount;
+  //++fetchCount;
   return cacheNodes[ofs];
 }
 
@@ -84,8 +84,6 @@ inline GLOBAL_FUNC  bool GoNextSPU(int & childId, float4 & t1, float4 & t2)
   childId ^= mask;
 
   float dt = t2[exitPlane]-t1[exitPlane];
-//  t1[exitPlane] = t2[exitPlane];
-  
   t1[exitPlane] = t2[exitPlane];
   t2[exitPlane] += dt;
   return true;
@@ -176,6 +174,6 @@ int main(unsigned long long spu_id __attribute__ ((unused)), unsigned long long 
     (void)spu_mfcstat(MFC_TAG_UPDATE_ALL);
   }
 
-  printf("fetch: %d miss: %d\n", fetchCount, missCount);
+  //printf("fetch: %d miss: %d\n", fetchCount, missCount);
   return 0;
 }
