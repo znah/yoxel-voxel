@@ -5,6 +5,8 @@
 #include <Magick++.h>
 
 using namespace Magick;
+using std::cout;
+using std::endl;
 
 inline double mytime()
 {
@@ -41,13 +43,16 @@ void testRenderer(shared_ptr<ISVORenderer> renderer, SVOData & scene, const char
 
 int main()
 {
+  cout << "loading scene..." << endl;
   SVOData scene;
   scene.Load("data/scene.vox");
 
-  //shared_ptr<ISVORenderer> renderer = CreateThreadedRenderer();
-  //testRenderer(renderer, scene, "test_ppu.jpg");
+  cout << "\ntesting PPU renderer..." << endl;
+  shared_ptr<ISVORenderer> renderer = CreateThreadedRenderer();
+  testRenderer(renderer, scene, "test_ppu.jpg");
   
 #ifdef TARGET_PPU
+  cout << "\ntesting SPU renderer..." << endl;
   shared_ptr<ISVORenderer> spu_renderer = CreateSPURenderer();
   testRenderer(spu_renderer, scene, "test_spu.jpg");
 #endif
