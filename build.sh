@@ -7,4 +7,4 @@ echo "  * ImageMagick + Magick++ (http://www.imagemagick.org/)"
 echo 
 
 cd cell
-make && echo "\nStart ./trace_spu to execute rendering performance test"
+make && echo "Start ./trace_spu to execute rendering performance test"
