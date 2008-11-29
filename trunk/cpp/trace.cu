@@ -21,15 +21,23 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
 
 #ifdef USE_TEXLOOKUP
   #define NODE_SZ (sizeof(VoxNode)/4)
-  #define GET_TEXNODE_FIELD( id, fld ) ( tex1Dfetch(nodes_tex, id*NODE_SZ+(fld)) )
+  #define GET_TEXNODE_FIELD( p, fld ) ( tex1Dfetch(nodes_tex, (p)+(fld)) )
 
-  __device__ VoxNodeInfo GetNodeInfo(VoxNodeId id) { return GET_TEXNODE_FIELD(id, 0); }
-  __device__ VoxNodeId   GetParent  (VoxNodeId id) { return GET_TEXNODE_FIELD(id, 1); }
-  __device__ VoxChild    GetChild   (VoxNodeId id, int chId) { return GET_TEXNODE_FIELD(id, 3 + chId); }
+  typedef uint NodePtr;
+  __device__ NodePtr GetNodePtr(VoxNodeId id) { return id*NODE_SZ;  }
+  __device__ VoxNodeId Ptr2Id(NodePtr p) { return p/NODE_SZ; }
+
+  __device__ VoxNodeInfo GetNodeInfo(NodePtr p) { return GET_TEXNODE_FIELD(p, 0); }
+  __device__ VoxNodeId   GetParent  (NodePtr p) { return GET_TEXNODE_FIELD(p, 1); }
+  __device__ VoxChild    GetChild   (NodePtr p, int chId) { return GET_TEXNODE_FIELD(p, 3 + chId); }
 #else
-  __device__ VoxNodeInfo & GetNodeInfo(VoxNodeId id) { return tree.nodes[id].flags; }
-  __device__ VoxNodeId   & GetParent  (VoxNodeId id) { return tree.nodes[id].parent; }
-  __device__ VoxChild    & GetChild   (VoxNodeId id, int chId) { return tree.nodes[id].child[chId]; }
+  typedef const VoxNode * NodePtr;
+  __device__ NodePtr GetNodePtr(VoxNodeId id) { return tree.nodes + id;  }
+  __device__ VoxNodeId Ptr2Id(NodePtr p) { return p - tree.nodes; }
+
+  __device__ const VoxNodeInfo & GetNodeInfo(NodePtr p) { return p->flags; }
+  __device__ const VoxNodeId   & GetParent  (NodePtr p) { return p->parent; }
+  __device__ const VoxChild    & GetChild   (NodePtr p, int chId) { return p->child[chId]; }
 #endif
 
 __device__ VoxData GetVoxData  (VoxNodeId id) { return tree.nodes[id].data; }
@@ -97,7 +105,7 @@ __global__ void Trace(RenderParams rp, RayData * rays)
   if (!SetupTrace(rp.eye, dir, t1, t2, dirFlags))
     return;
 
-  VoxNodeId node = tree.root;
+  NodePtr nodePtr = GetNodePtr(tree.root);
   int childId = 0;
   int level = 0;
   float nodeSize = pow(0.5f, level);
@@ -111,7 +119,7 @@ __global__ void Trace(RenderParams rp, RayData * rays)
       case ST_ANALYSE:
       {
         childId = -1;
-        if (maxCoord(t1) * rp.detailCoef > nodeSize/2)  { state = GetEmptyFlag(GetNodeInfo(node)) ? ST_GOUP : ST_SAVE; break; }
+        if (maxCoord(t1) * rp.detailCoef > nodeSize/2)  { state = GetEmptyFlag(GetNodeInfo(nodePtr)) ? ST_GOUP : ST_SAVE; break; }
         
         childId = FindFirstChild(t1, t2);
         state = ST_GODOWN;
@@ -122,11 +130,11 @@ __global__ void Trace(RenderParams rp, RayData * rays)
       {
         if (minCoord(t2) < 0) { state = ST_GONEXT; break; }
 
-        if (GetLeafFlag(GetNodeInfo(node), childId^dirFlags)) { state = ST_SAVE; break; }
+        if (GetLeafFlag(GetNodeInfo(nodePtr), childId^dirFlags)) { state = ST_SAVE; break; }
         
-        VoxNodeId ch = GetChild(node, childId^dirFlags);
+        VoxNodeId ch = GetChild(nodePtr, childId^dirFlags);
         if (IsNull(ch)) {state = ST_GONEXT; break; }
-        node = ch;
+        nodePtr = GetNodePtr(ch);
         ++level;
         nodeSize /= 2;
         state = ST_ANALYSE;
@@ -141,8 +149,9 @@ __global__ void Trace(RenderParams rp, RayData * rays)
 
       case ST_GOUP:
       {
-        VoxNodeId p = GetParent(node);
-        if (IsNull(p)) { 
+        VoxNodeId p = GetParent(nodePtr);
+        if (IsNull(p)) 
+        { 
           rays[tid].endNode = EmptyNode;
           state = ST_EXIT; 
           break; 
@@ -154,8 +163,8 @@ __global__ void Trace(RenderParams rp, RayData * rays)
           float dt = t2[i] - t1[i];
           ((childId & mask) == 0) ? t2[i] += dt : t1[i] -= dt;
         }
-        childId = GetSelfChildId(GetNodeInfo(node))^dirFlags;
-        node = p;
+        childId = GetSelfChildId(GetNodeInfo(nodePtr))^dirFlags;
+        nodePtr = GetNodePtr(p);
         --level;
         nodeSize *= 2;
         state = ST_GONEXT;
@@ -164,7 +173,7 @@ __global__ void Trace(RenderParams rp, RayData * rays)
 
       case ST_SAVE:
       {
-        rays[tid].endNode = node;
+        rays[tid].endNode = Ptr2Id(nodePtr);
         rays[tid].endNodeChild = childId^dirFlags;
         rays[tid].t = maxCoord(t1);
         rays[tid].endNodeSize = nodeSize;
@@ -195,7 +204,7 @@ __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, const RayD
   if (childId < 0)
     vd = GetVoxData(node);
   else
-    vd = GetChild(node, childId);
+    vd = GetChild(GetNodePtr(node), childId);
 
   Color16  c16;
   Normal16 n16;
