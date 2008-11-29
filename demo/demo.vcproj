@@ -19,7 +19,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="../cpp;"
+				AdditionalIncludeDirectories="../cpp;../freeglut/include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
@@ -34,6 +34,7 @@
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)/demo.exe"
 				LinkIncremental="2"
+				AdditionalLibraryDirectories="../freeglut/lib"
 				GenerateDebugInformation="TRUE"
 				ProgramDatabaseFile="$(OutDir)/demo.pdb"
 				SubSystem="1"
@@ -67,7 +68,7 @@
 			CharacterSet="2">
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="../cpp;"
+				AdditionalIncludeDirectories="../cpp;../freeglut/include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="4"
 				UsePrecompiledHeader="0"
@@ -80,6 +81,7 @@
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)/demo.exe"
 				LinkIncremental="1"
+				AdditionalLibraryDirectories="../freeglut/lib"
 				GenerateDebugInformation="TRUE"
 				SubSystem="1"
 				OptimizeReferences="2"
