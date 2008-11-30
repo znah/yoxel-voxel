@@ -4,6 +4,12 @@
 #define TARGET_CUDA
 #endif
 
+#if defined(TARGET_PPU) || defined(TARGET_SPU)
+  #define TARGET_CELL
+#else
+  #define TARGET_GPU
+#endif
+
 #if !defined(TARGET_CUDA)// && !defined(TARGET_PPU) && !defined(TARGET_SPU)
 #define USE_CG
 #endif
@@ -45,6 +51,9 @@
   #include <sys/time.h>
 #endif
 
+#ifdef TARGET_GPU
+  #include <cuda_runtime.h>
+#endif
 
 #if !defined(TARGET_CUDA)
   #define GLOBAL_FUNC

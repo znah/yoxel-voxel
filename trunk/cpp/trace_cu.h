@@ -12,19 +12,32 @@ struct RenderParams
 {
   float detailCoef;
 
-  float3 eye;
-  float3 dir;
-  float3 right;
-  float3 up;
+  point_3f eye;
+  point_3f dir;
+  point_3f right;
+  point_3f up;
 
-  float3 lightPos;
+  point_3f lightPos;
 };
 
 struct RayData
 {
-  float3 dir;
+  point_3f dir;
   float t;
   VoxNodeId endNode;
   int endNodeChild;
   float endNodeSize;
 };
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void Run_InitEyeRays(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays);
+void Run_Trace(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays);
+void Run_ShadeSimple(dim3 gridSize, dim3 blockSize, RenderParams rp, const RayData * eyeRays, const RayData * shadowRays, uchar4 * img);
+
+#ifdef __cplusplus
+}
+#endif

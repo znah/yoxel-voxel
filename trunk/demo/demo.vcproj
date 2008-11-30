@@ -4,6 +4,7 @@
 	Version="7.10"
 	Name="demo"
 	ProjectGUID="{19FE1D2C-7154-4DEE-B662-6910BF3A181C}"
+	RootNamespace="demo"
 	Keyword="Win32Proj">
 	<Platforms>
 		<Platform
@@ -32,6 +33,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="glew32.lib cuda.lib cudart.lib"
 				OutputFile="$(OutDir)/demo.exe"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="../freeglut/lib"
@@ -79,6 +81,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="glew32.lib cuda.lib cudart.lib"
 				OutputFile="$(OutDir)/demo.exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="../freeglut/lib"
@@ -118,6 +121,48 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
 				RelativePath=".\main.cpp">
+			</File>
+			<File
+				RelativePath=".\SVORenderer.cpp">
+			</File>
+			<File
+				RelativePath=".\SVORenderer.h">
+			</File>
+		</Filter>
+		<Filter
+			Name="svo"
+			Filter="">
+			<File
+				RelativePath="..\cpp\CudaSVO.cpp">
+			</File>
+			<File
+				RelativePath="..\cpp\CudaSVO.h">
+			</File>
+			<File
+				RelativePath="..\cpp\DynamicSVO.cpp">
+			</File>
+			<File
+				RelativePath="..\cpp\DynamicSVO.h">
+			</File>
+		</Filter>
+		<Filter
+			Name="cuda"
+			Filter="">
+			<File
+				RelativePath=".\cu_cpp.h">
+			</File>
+			<File
+				RelativePath="..\cpp\trace.cu">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="&quot;%CUDA_BIN_PATH%\nvcc&quot; -c -o &quot;$(TargetDir)\$(InputName).obj&quot; &quot;$(InputPath)&quot;"
+						Outputs="$(TargetDir)\$(InputName).obj"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\cpp\trace_cu.h">
 			</File>
 		</Filter>
 	</Files>
