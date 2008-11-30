@@ -236,5 +236,19 @@ __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, const RayD
   img[tid] = make_uchar4(res.x, res.y, res.z, 255);
 }
 
+}
 
+void Run_InitEyeRays(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays)
+{
+  InitEyeRays<<<gridSize, blockSize>>>(rp, rays);
+}
+
+void Run_Trace(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays)
+{
+  Trace<<<gridSize, blockSize>>>(rp, rays);
+}
+
+void Run_ShadeSimple(dim3 gridSize, dim3 blockSize, RenderParams rp, const RayData * eyeRays, const RayData * shadowRays, uchar4 * img)
+{
+  ShadeSimple<<<gridSize, blockSize>>>(rp, eyeRays, shadowRays, img);
 }

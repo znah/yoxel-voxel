@@ -29,7 +29,7 @@ public:
 
   int getPageSize() const { return m_pageCapacity * sizeof(T); }
   int getPageCapacity() const { return m_pageCapacity; }
-  int getPageNum() const { return m_pages.size(); }
+  int getPageNum() const { return (int)m_pages.size(); }
   int getPageVer(int page) const { return m_pages[page]; }
   void setItemVer(int ptr, int ver)
   {
@@ -38,12 +38,12 @@ public:
     Assert(m_mark[ptr] == 1);
 #endif
 
-    int pagesNeeded = iDivUp(m_data.size(), m_pageCapacity);
+    int pagesNeeded = iDivUp((int)m_data.size(), m_pageCapacity);
     m_pages.resize(pagesNeeded, 0);
     m_pages[ptr / m_pageCapacity] = ver;
   }
 
-  int countPages(int ver) const { return std::count(m_pages.begin(), m_pages.end(), ver); }
+  int countPages(int ver) const { return (int)std::count(m_pages.begin(), m_pages.end(), ver); }
 
   int insert()
   {
@@ -55,8 +55,8 @@ public:
 #ifdef STORAGE_VALID_CHECK
       m_mark.push_back(1);
 #endif
-      setItemVer(m_data.size()-1, 0);
-      return m_data.size()-1;
+      setItemVer((int)m_data.size()-1, 0);
+      return (int)m_data.size()-1;
     }
     int ptr = m_head;
     m_head = *reinterpret_cast<int*>(&(m_data[m_head]));
@@ -81,7 +81,7 @@ public:
 #endif
   }
 
-  int size() const {return m_data.size(); }
+  int size() const {return (int)m_data.size(); }
   int count() const { return m_count; }
 
   T & operator[](int i) 
@@ -109,8 +109,8 @@ public:
   {
     write(s, m_head);
     write(s, m_count);
-    write(s, m_data.size());
-    s.write(reinterpret_cast<char *>(&m_data[0]), sizeof(T)*m_data.size());
+    write(s, (int)m_data.size());
+    s.write(reinterpret_cast<char *>(&m_data[0]), (int)(sizeof(T)*m_data.size()));
   }
 
   template <class Stream>
@@ -121,7 +121,7 @@ public:
     size_t sz(0);
     read(s, sz);
     m_data.resize(sz);
-    s.read(reinterpret_cast<char *>(&m_data[0]), sizeof(T)*m_data.size());
+    s.read(reinterpret_cast<char *>(&m_data[0]), (int)(sizeof(T)*m_data.size()));
 
     m_pages.clear();
     if (m_data.size() > 0)

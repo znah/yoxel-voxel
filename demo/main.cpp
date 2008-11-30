@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include <GL/glew.h>
 #include <GL/freeglut.h>
 
 
@@ -32,8 +33,8 @@ int main(int argc, char *argv[])
   glutInitWindowSize(640,480);
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
-
   glutCreateWindow("yoxel-voxel");
+  glewInit();
 
   //glutReshapeFunc(resize);
   glutDisplayFunc(display);
