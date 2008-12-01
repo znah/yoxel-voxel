@@ -2,31 +2,15 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 
+#include "Demo.h"
 
-void idle()
-{
-  glutPostRedisplay();
-}
+Demo * demo = NULL;
 
-void key(unsigned char key, int x, int y)
-{
-  if (key == 27)
-    glutLeaveMainLoop();
-  else
-    return;
-
-  glutPostRedisplay();
-}
-
-void display(void)
-{
-  //const double t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
-
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  glutSwapBuffers();
-}
-
+void idle() { demo->Idle(); }
+void key(unsigned char key, int x, int y) { demo->Key(key, x, y); }
+void display() { demo->Display(); }
+void resize(int width, int height) { demo->Resize(width, height); }
+void close() { delete demo; demo = 0; }
 
 int main(int argc, char *argv[])
 {
@@ -36,14 +20,18 @@ int main(int argc, char *argv[])
   glutCreateWindow("yoxel-voxel");
   glewInit();
 
-  //glutReshapeFunc(resize);
-  glutDisplayFunc(display);
-  glutKeyboardFunc(key);
   //glutSpecialFunc(special);
   glutIdleFunc(idle);
+  glutKeyboardFunc(key);
+  glutDisplayFunc(display);
+  glutReshapeFunc(resize);
+  glutCloseFunc(close);  
 
+  demo = new Demo();
   glutSetOption ( GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION ) ;
   glutMainLoop();
+  
+  assert(demo == NULL);
 
   return 0;
 }

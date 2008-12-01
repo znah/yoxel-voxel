@@ -120,6 +120,12 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
+				RelativePath=".\Demo.cpp">
+			</File>
+			<File
+				RelativePath=".\Demo.h">
+			</File>
+			<File
 				RelativePath=".\main.cpp">
 			</File>
 			<File
@@ -157,7 +163,8 @@
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="&quot;%CUDA_BIN_PATH%\nvcc&quot; -c -o &quot;$(TargetDir)\$(InputName).obj&quot; &quot;$(InputPath)&quot;"
+						CommandLine="&quot;%CUDA_BIN_PATH%\nvcc&quot; -c -o &quot;$(TargetDir)\$(InputName).obj&quot; &quot;$(InputPath)&quot;
+"
 						Outputs="$(TargetDir)\$(InputName).obj"/>
 				</FileConfiguration>
 			</File>
