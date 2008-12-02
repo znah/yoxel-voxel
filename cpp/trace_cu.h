@@ -10,6 +10,9 @@ struct VoxStructTree
 
 struct RenderParams
 {
+  int viewWidth;
+  int viewHeight;
+
   float detailCoef;
 
   point_3f eye;

@@ -8,8 +8,9 @@
 #define INIT_THREAD \
   int xi = blockIdx.x * blockDim.x + threadIdx.x; \
   int yi = blockIdx.y * blockDim.y + threadIdx.y; \
-  int sx = blockDim.x * gridDim.x;                \
-  int sy = blockDim.y * gridDim.y;                \
+  int sx = rp.viewWidth/*blockDim.x * gridDim.x*/;                \
+  int sy = rp.viewHeight/*blockDim.y * gridDim.y*/;                \
+  if (xi >= sx || yi >= sy ) return; \
   int tid = yi*sx + xi;        \
 
 __constant__ VoxStructTree tree;
