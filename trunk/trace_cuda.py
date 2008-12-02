@@ -76,6 +76,9 @@ class CudaRenderer:
         '''
         struct RenderParams
         {
+          int viewWidth;
+          int viewHeight;
+
           float detailCoef;
 
           float3 eye;
@@ -87,14 +90,14 @@ class CudaRenderer:
         };
         '''
 
-        args = []
+        args = [self.resx, self.resy]
         args.append(2*3.1415/360.0 / self.detailCoef)
         args.extend(eyePos)
         args.extend(vdir)
         args.extend(vright)
         args.extend(vup)
         args.extend(self.lightPos)
-        render_params = struct.pack("f 3f 3f 3f 3f 3f", *args)
+        render_params = struct.pack("2i f 3f 3f 3f 3f 3f", *args)
 
         t = clock()
         self.InitEyeRays(render_params, self.d_rays, block=self.smallblock, grid=self.smallgrid, time_kernel=True, texrefs=self.texrefs)

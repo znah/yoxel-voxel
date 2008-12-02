@@ -34,12 +34,22 @@ void Demo::Resize(int width, int height)
   
   if (m_pboNeedUnreg)
     cudaGLUnregisterBufferObject(m_pboId);
+  
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pboId);
   glBufferData(GL_PIXEL_UNPACK_BUFFER, sizeof(Color32)*width*height, NULL, GL_STREAM_DRAW);
+  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
   cudaGLRegisterBufferObject(m_pboId);
   m_pboNeedUnreg = true;
 
   m_viewSize = point_2i(width, height);
+
+  glViewport(0, 0, width, height);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  gluOrtho2D(0, 1, 0, 1);
 
   cout << "resized " << width << "x" << height << endl;
 }
@@ -55,6 +65,7 @@ void Demo::Idle()
   glBindTexture(GL_TEXTURE_2D, m_texId);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pboId);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_viewSize.x, m_viewSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
   glutPostRedisplay();
 }
@@ -74,6 +85,27 @@ void Demo::Display()
   //const double t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  glColor3f(1, 0.5, 1);
+  glBindTexture(GL_TEXTURE_2D, m_texId);
+  glEnable(GL_TEXTURE_2D);
+  
+  glBegin(GL_QUADS);
+
+  glTexCoord2f(0, 0);
+  glVertex2f(0, 0);
+
+  glTexCoord2f(1, 0);
+  glVertex2f(1, 0);
+
+  glTexCoord2f(1, 1);
+  glVertex2f(1, 1);
+
+  glTexCoord2f(0, 1);
+  glVertex2f(0, 1);
+
+  glEnd();
+
 
   glutSwapBuffers();
 }
