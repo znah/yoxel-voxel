@@ -11,7 +11,7 @@ public:
   SVORenderer();
   ~SVORenderer();
 
-  void SetScene(DynamicSVO * svo) { m_svo.SetSVO(svo); }
+  void SetScene(DynamicSVO * svo);
 
   void SetViewPos(const point_3f & pos) { m_pos = pos; }
   void SetViewDir(const point_3f & dir) { m_dir = dir; }
@@ -33,4 +33,6 @@ private:
   float m_fov;
 
   CuVector<RayData> m_rayDataBuf;
+
+  const textureReference * m_dataTexRef;
 };
