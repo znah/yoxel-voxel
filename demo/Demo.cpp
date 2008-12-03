@@ -42,6 +42,9 @@ void Demo::Resize(int width, int height)
   cudaGLRegisterBufferObject(m_pboId);
   m_pboNeedUnreg = true;
 
+  CUT_CHECK_ERROR("ttt");
+
+
   m_viewSize = point_2i(width, height);
 
   glViewport(0, 0, width, height);
@@ -65,6 +68,12 @@ void Demo::Idle()
   glBindTexture(GL_TEXTURE_2D, m_texId);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pboId);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_viewSize.x, m_viewSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP );
+  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP );
+
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
   glutPostRedisplay();
@@ -84,11 +93,16 @@ void Demo::Display()
 {
   //const double t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
 
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT);
 
   glColor3f(1, 0.5, 1);
-  glBindTexture(GL_TEXTURE_2D, m_texId);
+
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_LIGHTING);
   glEnable(GL_TEXTURE_2D);
+  glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+  
+  glBindTexture(GL_TEXTURE_2D, m_texId);
   
   glBegin(GL_QUADS);
 

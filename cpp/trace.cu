@@ -185,7 +185,7 @@ __global__ void Trace(RenderParams rp, RayData * rays)
   }
 }
 
-__global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, const RayData * shadowRays, uchar4 * img)
+__global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, uchar4 * img)
 {
   INIT_THREAD
 
@@ -249,7 +249,7 @@ void Run_Trace(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays)
   Trace<<<gridSize, blockSize>>>(rp, rays);
 }
 
-void Run_ShadeSimple(dim3 gridSize, dim3 blockSize, RenderParams rp, const RayData * eyeRays, const RayData * shadowRays, uchar4 * img)
+void Run_ShadeSimple(dim3 gridSize, dim3 blockSize, RenderParams rp, const RayData * eyeRays, uchar4 * img)
 {
-  ShadeSimple<<<gridSize, blockSize>>>(rp, eyeRays, shadowRays, img);
+  ShadeSimple<<<gridSize, blockSize>>>(rp, eyeRays, img);
 }

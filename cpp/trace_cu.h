@@ -39,7 +39,7 @@ extern "C" {
 
 void Run_InitEyeRays(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays);
 void Run_Trace(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays);
-void Run_ShadeSimple(dim3 gridSize, dim3 blockSize, RenderParams rp, const RayData * eyeRays, const RayData * shadowRays, uchar4 * img);
+void Run_ShadeSimple(dim3 gridSize, dim3 blockSize, RenderParams rp, const RayData * eyeRays, uchar4 * img);
 
 #ifdef __cplusplus
 }

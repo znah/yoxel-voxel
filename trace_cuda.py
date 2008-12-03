@@ -44,7 +44,6 @@ class CudaRenderer:
         '''
         raySize = struct.calcsize("3f f i i f")
         self.d_rays = ga.empty( (self.resy, self.resx, raySize), uint8 )
-        self.d_shadowRays = ga.empty( (self.resy, self.resx, raySize), uint8 )
 
         self.setLightPos((0.5, 0.5, 1))
         self.detailCoef = 10.0
@@ -106,7 +105,7 @@ class CudaRenderer:
         self.Trace(render_params, self.d_rays, block=self.block, grid=self.grid, time_kernel=True, texrefs=self.texrefs)
         trace1End = clock()
 
-        self.ShadeSimple(render_params, self.d_rays, self.d_shadowRays, self.d_img, block=self.smallblock, grid=self.smallgrid, time_kernel=True, texrefs=self.texrefs)
+        self.ShadeSimple(render_params, self.d_rays, self.d_img, block=self.smallblock, grid=self.smallgrid, time_kernel=True, texrefs=self.texrefs)
         gpuTime = clock()-t
 
         trace1Time = trace1End - trace1Begin
