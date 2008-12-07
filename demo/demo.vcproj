@@ -24,7 +24,7 @@
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="5"
+				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="TRUE"
@@ -139,10 +139,10 @@
 			Name="svo"
 			Filter="">
 			<File
-				RelativePath="..\cpp\CudaSVO.cpp">
+				RelativePath="..\cpp\CudaSVO_rt.cpp">
 			</File>
 			<File
-				RelativePath="..\cpp\CudaSVO.h">
+				RelativePath="..\cpp\CudaSVO_rt.h">
 			</File>
 			<File
 				RelativePath="..\cpp\DynamicSVO.cpp">
@@ -155,7 +155,7 @@
 			Name="cuda"
 			Filter="">
 			<File
-				RelativePath=".\cu_cpp.h">
+				RelativePath="..\cpp\cu_cpp.h">
 			</File>
 			<File
 				RelativePath="..\cpp\trace.cu">
@@ -163,7 +163,7 @@
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="&quot;%CUDA_BIN_PATH%\nvcc&quot; -c -o &quot;$(TargetDir)\$(InputName).obj&quot; &quot;$(InputPath)&quot;
+						CommandLine="../utils/nvcc_debug.cmd $(InputPath)
 "
 						Outputs="$(TargetDir)\$(InputName).obj"/>
 				</FileConfiguration>

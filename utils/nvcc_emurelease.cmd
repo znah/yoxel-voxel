@@ -1,1 +1,1 @@
-"%CUDA_BIN_PATH%\nvcc.exe" -ccbin "%VCInstallDir%bin" -deviceemu -c -DWIN32 -D_CONSOLE -D_MBCS -Xcompiler /EHsc,/W3,/nologo,/Wp64,/O2,/Zi,/MT -I"%CUDA_INC_PATH%" -I./ -I"%WORKSPACE_ROOT%\common\inc" -I"%CUDA_SDK_ROOT%/common/inc" -o EmuRelease\%~n1.obj %1
+"%CUDA_BIN_PATH%\nvcc.exe" -deviceemu -c -DWIN32 -D_CONSOLE -D_MBCS -Xcompiler /EHsc,/W3,/nologo,/Wp64,/O2,/Zi,/MT -I"%CUDA_INC_PATH%" -I"../cpp" -o EmuRelease\%~n1.obj %1

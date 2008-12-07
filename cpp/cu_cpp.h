@@ -19,7 +19,7 @@
 
 
 template <class T>
-class CuVector : public boost::noncopyable
+class CuVector : public noncopyable
 {
 private:
   T * d_data;
@@ -40,15 +40,15 @@ private:
   }
 
 public:
-  CuVector() {}
+  CuVector() : d_data(0), m_size(0) {}
   CuVector(size_t size) : d_data(0), m_size(0) { _alloc(size); }
-  CuVector(size_t size, const T * data)
+  CuVector(size_t size, const T * data) : d_data(0), m_size(0)
   {
     _alloc(size);
     write(0, m_size, data);
   }
 
-  CuVector(const std::vector<T> & vec)
+  CuVector(const std::vector<T> & vec) : d_data(0), m_size(0)
   {
     _alloc(vec.size());
     write(0, m_size, &vec[0]);
@@ -68,13 +68,13 @@ public:
   void write(size_t start, size_t n, const T * src) 
   {
     assert(start + n <= m_size);
-    CUDA_SAFE_CALL( cudaMemcpy(d_data + start, src, n*sizeof(T), cudaMemcpyHostToDevice); );
+    CUDA_SAFE_CALL( cudaMemcpy(d_data + start, src, n*sizeof(T), cudaMemcpyHostToDevice) );
   }
 
   void read(size_t start, size_t n, T * dst)
   {
     assert(start + n <= m_size);
-    CUDA_SAFE_CALL( cudaMemcpy(dst, d_data + start, n*sizeof(T), cudaMemcpyDeviceToHost); );
+    CUDA_SAFE_CALL( cudaMemcpy(dst, d_data + start, n*sizeof(T), cudaMemcpyDeviceToHost) );
   }
 
   void read(std::vector<T> & dst)
@@ -83,7 +83,7 @@ public:
     read(0, m_size, &dst[0]);
   }
 
-  operator T* () { return d_data; }
+//  operator T* () { return d_data; }
   T* d_ptr() { return d_data; }
 };
 

@@ -50,7 +50,7 @@ __global__ void InitEyeRays(RenderParams rp, RayData * rays)
 {
   INIT_THREAD
 
-  float3 dir = rp.dir + 2*(xi-sx/2)*rp.right/sx + 2*(yi-sy/2)*rp.up/sx;
+  float3 dir = rp.dir + 2*(xi-sx/2)*rp.right/sx + 2*(yi-sy/2)*rp.up/sy;
   dir = normalize(dir);
 
   rays[tid].dir.x = dir.x;
@@ -104,7 +104,10 @@ __global__ void Trace(RenderParams rp, RayData * rays)
   point_3f t1, t2;
   uint dirFlags = 0;
   if (!SetupTrace(rp.eye, dir, t1, t2, dirFlags))
+  {
+    rays[tid].endNode = EmptyNode;
     return;
+  }
 
   NodePtr nodePtr = GetNodePtr(tree.root);
   int childId = 0;

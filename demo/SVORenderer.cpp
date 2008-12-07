@@ -19,10 +19,10 @@ void SVORenderer::SetScene(DynamicSVO * svo)
   m_svo.SetSVO(svo);
   
   int size(0);
-  CUdeviceptr d_ptr(0);
-  m_svo.GetNodes(d_ptr, size);
+  VoxNode * d_ptr = m_svo.GetNodes(size);
   cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<uint>();
   cudaBindTexture(0, m_dataTexRef, (const void *)d_ptr, &channelDesc, size);
+  CUT_CHECK_ERROR("ttt");
 
   VoxStructTree tree;
   tree.root = m_svo.GetRoot();
@@ -46,22 +46,28 @@ void SVORenderer::Render(void * d_dstBuf)
   dim3 block(16, 16, 1);
   dim3 grid = MakeGrid(m_viewSize, block);
 
+
   RenderParams rp;
   rp.viewWidth = m_viewSize.x;
-  rp.viewHeight = m_viewSize.x;
-  rp.detailCoef;
+  rp.viewHeight = m_viewSize.y;
+  rp.detailCoef = 0;
 
   rp.eye = m_pos;
-  rp.dir = cg::normalized(m_dir);
-  rp.up = cg::normalized(m_up);
-  rp.right = cg::normalized(rp.dir ^ rp.up);
+
+  point_3f vfwd = cg::normalized(m_dir);
+  point_3f vright = cg::normalized(vfwd ^ m_up);
+  point_3f vup = vright ^ vfwd;
+  
+  float du = tan(cg::grad2rad(m_fov / 2));
+  float dv = du * m_viewSize.y / max(m_viewSize.x, 1);
+
+  rp.dir = vfwd;
+  rp.right = vright * du;
+  rp.up = vup * dv;
+  
   rp.lightPos = m_pos;
 
-  CUT_CHECK_ERROR("ttt");
-
-  Run_InitEyeRays(block, grid, rp, m_rayDataBuf.d_ptr());
-  Run_Trace(block, grid, rp, m_rayDataBuf.d_ptr());
-  Run_ShadeSimple(block, grid, rp, m_rayDataBuf.d_ptr(), (uchar4*)d_dstBuf);
-
-  CUT_CHECK_ERROR("ttt");
+  Run_InitEyeRays(grid, block, rp, m_rayDataBuf.d_ptr());
+  Run_Trace(grid, block, rp, m_rayDataBuf.d_ptr());
+  Run_ShadeSimple(grid, block, rp, m_rayDataBuf.d_ptr(), (uchar4*)d_dstBuf);
 }

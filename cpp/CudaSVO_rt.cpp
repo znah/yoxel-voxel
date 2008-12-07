@@ -1,6 +1,5 @@
 #include "stdafx.h"
-
-#include "CudaSVO.h"
+#include "CudaSVO_rt.h"
 
 CudaSVO::CudaSVO() : m_svo(NULL), m_curVersion(0)
 {
@@ -14,16 +13,17 @@ void CudaSVO::SetSVO(DynamicSVO * svo)
 }
 
 template <class T>
-void CudaSVO::UpdatePages(DeviceBuf & buf, const HomoStorage<T> & storage)
+void CudaSVO::UpdatePages(CuVector<T> & buf, const HomoStorage<T> & storage)
 {
   int pageNum = storage.getPageNum();
-  int neededBufSize = pageNum * storage.getPageSize();
-  int srcSize = storage.size() * sizeof(T);
-  const char * srcPtr = (const char *)&storage[0];
+  size_t neededBufSize = pageNum * storage.getPageCapacity();
+  int srcSize = storage.size();
+  const T * srcPtr = &storage[0];
   if (buf.size() < neededBufSize)
   {
     buf.resize(neededBufSize * 3 / 2);
-    cuMemcpyHtoD(buf.ptr(), srcPtr, srcSize);
+    //cuMemcpyHtoD(buf.ptr(), srcPtr, srcSize);
+    buf.write(0, srcSize, srcPtr);
   }
   else
   {
@@ -32,9 +32,10 @@ void CudaSVO::UpdatePages(DeviceBuf & buf, const HomoStorage<T> & storage)
       if (storage.getPageVer(page) <= m_curVersion)
         continue;
 
-      int start = page * storage.getPageSize();
-      int stop = std::min(start + storage.getPageSize(), srcSize);
-      cuMemcpyHtoD(buf.ptr() + start, srcPtr + start, stop - start);
+      int start = page * storage.getPageCapacity();
+      int stop = std::min(start + storage.getPageCapacity(), srcSize);
+      buf.write(start, stop-start, srcPtr + start);
+      //cuMemcpyHtoD(buf.ptr() + start, srcPtr + start, stop - start);
     }
   }
 }
@@ -51,8 +52,8 @@ VoxNodeId CudaSVO::GetRoot()
   return m_svo->GetRoot();
 }
 
-void CudaSVO::GetNodes(CUdeviceptr & ptr, int & size)
+VoxNode * CudaSVO::GetNodes(int & size)
 {
-  ptr = m_nodes.ptr();
-  size = m_nodes.size();
+  size = (int)m_nodes.size()*sizeof(VoxNode);
+  return m_nodes.d_ptr();
 }
