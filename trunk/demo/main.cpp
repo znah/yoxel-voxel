@@ -17,7 +17,7 @@ void close() { delete demo; demo = 0; }
 
 int main(int argc, char *argv[])
 {
-  glutInitWindowSize(1024, 768);
+  glutInitWindowSize(800, 600);
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
   glutCreateWindow("yoxel-voxel");
