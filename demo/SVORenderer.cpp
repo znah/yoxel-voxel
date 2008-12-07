@@ -8,6 +8,7 @@ SVORenderer::SVORenderer()
 , m_up(0, 0, 1)
 , m_viewSize(640, 480)
 , m_fov(70.0f)
+, m_detailCoef(1.0)
 {
   cudaGetTextureReference(&m_dataTexRef, "nodes_tex");
 }
@@ -43,14 +44,14 @@ inline dim3 MakeGrid(const point_2i & size, const dim3 & block)
 
 void SVORenderer::Render(void * d_dstBuf)
 {
-  dim3 block(16, 16, 1);
+  dim3 block(16, 28, 1);
   dim3 grid = MakeGrid(m_viewSize, block);
 
 
   RenderParams rp;
   rp.viewWidth = m_viewSize.x;
   rp.viewHeight = m_viewSize.y;
-  rp.detailCoef = 0;
+  rp.detailCoef = m_detailCoef * cg::grad2rad(m_fov / 2) / m_viewSize.x;
 
   rp.eye = m_pos;
 

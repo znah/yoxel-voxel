@@ -20,6 +20,10 @@ public:
   void SetViewSize(int width, int height);
 
   void SetFOV(float fov) { m_fov = fov; }
+  float GetFOV() const { return m_fov; }
+
+  void SetDetailCoef(float coef) { m_detailCoef = coef; }
+  float GetDetailCoef() const { return m_detailCoef; }
 
   void Render(void * d_dstBuf);
 
@@ -31,6 +35,8 @@ private:
   point_3f m_up;
   point_2i m_viewSize;
   float m_fov;
+
+  float m_detailCoef;
 
   CuVector<RayData> m_rayDataBuf;
 

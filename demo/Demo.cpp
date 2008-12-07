@@ -56,8 +56,15 @@ void Demo::Resize(int width, int height)
 
   CUT_CHECK_ERROR("ttt");
 
-
   m_viewSize = point_2i(width, height);
+
+  glBindTexture(GL_TEXTURE_2D, m_texId);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_viewSize.x, m_viewSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP );
+  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP );
+
 
   glViewport(0, 0, width, height);
   glMatrixMode(GL_MODELVIEW);
@@ -102,12 +109,9 @@ void Demo::Idle()
 
   glBindTexture(GL_TEXTURE_2D, m_texId);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_pboId);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_viewSize.x, m_viewSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP );
-  glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP );
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_viewSize.x, m_viewSize.y, GL_RGBA, GL_UNSIGNED_BYTE, 0);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+  glBindTexture(GL_TEXTURE_2D, 0);
 
   glutPostRedisplay();
 }
@@ -118,12 +122,15 @@ void Demo::KeyDown(unsigned char key, int x, int y)
     glutLeaveMainLoop();
   
   if (key == 'a') m_motionVel.x = -1;
-  
   if (key == 'd') m_motionVel.x = 1;
-  
   if (key == 'w') m_motionVel.y = 1;
-  
   if (key == 's') m_motionVel.y = -1;
+
+  if (key == '9') m_renderer.SetDetailCoef( m_renderer.GetDetailCoef() - 0.1f );
+  if (key == '0') m_renderer.SetDetailCoef( m_renderer.GetDetailCoef() + 0.1f );
+
+  if (key == '-') m_renderer.SetFOV( m_renderer.GetFOV()*1.1f );
+  if (key == '=') m_renderer.SetFOV( m_renderer.GetFOV()*0.9f );
 }
 
 void Demo::KeyUp(unsigned char key, int x, int y)
@@ -180,21 +187,11 @@ void Demo::Display()
   glBindTexture(GL_TEXTURE_2D, m_texId);
   
   glBegin(GL_QUADS);
-
-  glTexCoord2f(0, 0);
-  glVertex2f(0, 0);
-
-  glTexCoord2f(1, 0);
-  glVertex2f(1, 0);
-
-  glTexCoord2f(1, 1);
-  glVertex2f(1, 1);
-
-  glTexCoord2f(0, 1);
-  glVertex2f(0, 1);
-
+  glTexCoord2f(0, 0); glVertex2f(0, 0);
+  glTexCoord2f(1, 0); glVertex2f(1, 0);
+  glTexCoord2f(1, 1); glVertex2f(1, 1);
+  glTexCoord2f(0, 1); glVertex2f(0, 1);
   glEnd();
-
 
   glutSwapBuffers();
 }
