@@ -33,6 +33,7 @@
   #include <stdexcept>
   #include <iostream>
   #include <fstream>
+  #include <sstream>
   #include <vector>
   #include <algorithm>
   #include <numeric>
@@ -53,6 +54,10 @@
 
 #ifdef TARGET_GPU
   #include <cuda_runtime.h>
+#endif
+
+#ifndef TARGET_CUDA
+  #include <boost/noncopyable.hpp>
 #endif
 
 #if !defined(TARGET_CUDA)
@@ -106,6 +111,9 @@
   #include "points_cu.h"
 #endif
 
+#ifndef TARGET_CUDA
+  using boost::noncopyable;
+#endif
 
 typedef unsigned int uint;
 typedef unsigned char uchar;
@@ -115,3 +123,4 @@ typedef unsigned short ushort;
 typedef cg::point_4b Color32;
 typedef cg::point_4sb Normal32;
 #endif
+

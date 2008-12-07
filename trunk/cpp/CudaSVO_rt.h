@@ -1,18 +1,18 @@
 #pragma once
 
-#include "DeviceBuf.h"
 #include "DynamicSVO.h"
+#include "cu_cpp.h"
 
-class CudaSVO : public boost::noncopyable
+class CudaSVO : public noncopyable
 {
 private:
   DynamicSVO * m_svo;
   int m_curVersion;
 
-  DeviceBuf m_nodes;
+  CuVector<VoxNode> m_nodes;
 
   template <class T>
-  void UpdatePages(DeviceBuf & buf, const HomoStorage<T> & storage);
+  void UpdatePages(CuVector<T> & buf, const HomoStorage<T> & storage);
 
 public:
   CudaSVO();
@@ -21,5 +21,5 @@ public:
   void Update();
 
   VoxNodeId GetRoot();
-  void GetNodes(CUdeviceptr & ptr, int & size);
+  VoxNode * GetNodes(int & size);
 };

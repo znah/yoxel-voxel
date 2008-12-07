@@ -13,9 +13,12 @@ public:
   ~Demo();
 
   void Idle();
-  void Key(unsigned char key, int x, int y);
+  void KeyUp(unsigned char key, int x, int y);
+  void KeyDown(unsigned char key, int x, int y);
   void Display();
   void Resize(int width, int height);
+  void MouseButton(int button, int state, int x, int y);
+  void MouseMotion(int x, int y);
 
 private:
   DynamicSVO m_svo;
@@ -26,4 +29,18 @@ private:
   bool m_pboNeedUnreg;
 
   point_2i m_viewSize;
+  
+  point_3f m_pos;
+  float m_crs, m_pitch;
+  bool m_mouseMoving;
+  point_2i m_prevMousePos;
+
+  point_3f CalcViewDir();
+  point_3f m_motionVel;
+
+  double GetTime();
+
+  double m_lastTime;
+  double m_lastFPSTime;
+  int m_frameCount;
 };

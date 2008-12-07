@@ -1,7 +1,7 @@
 #pragma once
 
 #include "DynamicSVO.h"
-#include "CudaSVO.h"
+#include "CudaSVO_rt.h"
 #include "cu_cpp.h"
 #include "trace_cu.h"
 
