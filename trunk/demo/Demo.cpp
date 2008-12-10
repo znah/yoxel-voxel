@@ -8,9 +8,9 @@ using std::endl;
 
 Demo::Demo() 
 : m_pboNeedUnreg(false)
-, m_pos(0.5, 0.5, 0.5)
-, m_crs(-45.0)
-, m_pitch(-45.0f)
+, m_pos(0.15224274f, 0.50049937f, 0.12925711f)
+, m_crs(300.0f)
+, m_pitch(-17.0f)
 , m_mouseMoving(false)
 , m_frameCount(0)
 {
@@ -131,6 +131,9 @@ void Demo::KeyDown(unsigned char key, int x, int y)
 
   if (key == '-') m_renderer.SetFOV( m_renderer.GetFOV()*1.1f );
   if (key == '=') m_renderer.SetFOV( m_renderer.GetFOV()*0.9f );
+
+  if (key == '[') m_renderer.SetDither( m_renderer.GetDither()*1.1f );
+  if (key == ']') m_renderer.SetDither( m_renderer.GetDither()*0.9f );
 }
 
 void Demo::KeyUp(unsigned char key, int x, int y)

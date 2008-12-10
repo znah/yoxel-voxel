@@ -167,6 +167,13 @@
 "
 						Outputs="$(TargetDir)\$(InputName).obj"/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="../utils/nvcc_release.cmd $(InputPath)"
+						Outputs="$(TargetDir)\$(InputName).obj"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\cpp\trace_cu.h">
