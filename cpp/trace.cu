@@ -25,6 +25,8 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
   #define GET_TEXNODE_FIELD( p, fld ) ( tex1Dfetch(nodes_tex, (p)+(fld)) )
 
   typedef uint NodePtr;
+  __constant__ NodePtr InvalidPtr = 0xffffffff;
+
   __device__ NodePtr GetNodePtr(VoxNodeId id) { return id*NODE_SZ;  }
   __device__ VoxNodeId Ptr2Id(NodePtr p) { return p/NODE_SZ; }
 
@@ -33,6 +35,8 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
   __device__ VoxChild    GetChild   (NodePtr p, int chId) { return GET_TEXNODE_FIELD(p, 3 + chId); }
 #else
   typedef const VoxNode * NodePtr;
+  __constant__ NodePtr InvalidPtr = NULL;
+
   __device__ NodePtr GetNodePtr(VoxNodeId id) { return tree.nodes + id;  }
   __device__ VoxNodeId Ptr2Id(NodePtr p) { return p - tree.nodes; }
 
@@ -44,18 +48,49 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
 __device__ VoxData GetVoxData  (VoxNodeId id) { return tree.nodes[id].data; }
 
 
+
+/*template<int Level>
+__device__ bool RecTrace(VoxNodeId nodeId, point_3f &t1, point_3f &t2, const uint & dirFlags, float & t)
+{
+  if (IsNull(nodeId) || minCoord(t2) <= 0)
+    return false;
+
+  int ch = FindFirstChild(t1, t2);
+  while (true)
+  {
+    if (GetLeafFlag(GetNodeInfo(GetNodePtr(nodeId)), ch^dirFlags))
+    {
+      t = maxCoord(t1);
+      return true;
+    }
+
+    if (RecTrace<Level+1>(GetChild(GetNodePtr(nodeId), ch^dirFlags), t1, t2, dirFlags, t))
+      return true;
+
+    if (!GoNext(ch, t1, t2))
+      return false;
+  }
+}
+
+template<> 
+__device__ bool RecTrace<5>(VoxNodeId nodeId, point_3f &t1, point_3f &t2, const uint & dirFlags, float & t)
+{
+  return false;
+}*/
+
 extern "C" {
 
-__global__ void InitEyeRays(RenderParams rp, RayData * rays)
+__global__ void InitEyeRays(RenderParams rp, RayData * rays, float * noiseBuf)
 {
   INIT_THREAD
 
   float3 dir = rp.dir + 2*(xi-sx/2)*rp.right/sx + 2*(yi-sy/2)*rp.up/sy;
   dir = normalize(dir);
 
-  rays[tid].dir.x = dir.x;
-  rays[tid].dir.y = dir.y;
-  rays[tid].dir.z = dir.z;
+  int noiseBase = (tid*3 + rp.rndSeed) % (3*sx*sy-3);
+  point_3f noiseShift = point_3f(noiseBuf[noiseBase], noiseBuf[noiseBase+1], noiseBuf[noiseBase+2]) * rp.ditherCoef;
+  rays[tid].pos = rp.eye + noiseShift;
+  rays[tid].dir = dir;
 
   rays[tid].endNode = 0;
   rays[tid].endNodeChild = EmptyNode;
@@ -103,12 +138,13 @@ __global__ void Trace(RenderParams rp, RayData * rays)
 
   point_3f t1, t2;
   uint dirFlags = 0;
-  if (!SetupTrace(rp.eye, dir, t1, t2, dirFlags))
+  if (!SetupTrace(rays[tid].pos, dir, t1, t2, dirFlags)) //rp.eye
   {
     rays[tid].endNode = EmptyNode;
     return;
   }
 
+  NodePtr prevNode = InvalidPtr;
   NodePtr nodePtr = GetNodePtr(tree.root);
   int childId = 0;
   int level = 0;
@@ -188,6 +224,32 @@ __global__ void Trace(RenderParams rp, RayData * rays)
   }
 }
 
+
+/*__global__ void RecTraceTest(RenderParams rp, RayData * rays)
+{
+  INIT_THREAD
+
+  if (IsNull(rays[tid].endNode))
+    return;
+
+  point_3f dir = rays[tid].dir;
+  AdjustDir(dir);
+
+  point_3f t1, t2;
+  uint dirFlags = 0;
+  if (!SetupTrace(rp.eye, dir, t1, t2, dirFlags))
+  {
+    rays[tid].endNode = EmptyNode;
+    return;
+  }
+
+  float t;
+  RecTrace<0>(tree.root, t1, t2, dirFlags, t);
+  rays[tid].t = t;
+}*/
+
+
+
 __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, uchar4 * img)
 {
   INIT_THREAD
@@ -242,9 +304,9 @@ __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, uchar4 * i
 
 }
 
-void Run_InitEyeRays(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays)
+void Run_InitEyeRays(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays, float * noiseBuf)
 {
-  InitEyeRays<<<gridSize, blockSize>>>(rp, rays);
+  InitEyeRays<<<gridSize, blockSize>>>(rp, rays, noiseBuf);
 }
 
 void Run_Trace(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays)
