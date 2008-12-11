@@ -79,7 +79,7 @@ void SVORenderer::Render(void * d_dstBuf)
   rp.lightPos = m_pos;
   
   rp.ditherCoef = m_ditherCoef;
-  rp.rndSeed = cg::rand((int)m_noiseBuf.size());
+  rp.rndSeed = 0;//cg::rand((int)m_noiseBuf.size());
 
   Run_InitEyeRays(grid, block, rp, m_rayDataBuf.d_ptr(), m_noiseBuf.d_ptr());
   Run_Trace(grid, block, rp, m_rayDataBuf.d_ptr());
