@@ -13,6 +13,8 @@ Demo::Demo()
 , m_pitch(-17.0f)
 , m_mouseMoving(false)
 , m_frameCount(0)
+, m_shpereSrc(32, Color32(128, 128, 192, 255), false)
+, m_invShpereSrc(32, Color32(192, 128, 128, 255), true)
 {
   cout << "loading scene ...";
   if (!m_svo.Load("../data/scene.vox"))
@@ -23,7 +25,7 @@ Demo::Demo()
 
   m_renderer.SetViewPos(m_pos);
   m_renderer.SetViewDir(CalcViewDir());
-
+  
   glGenTextures(1, &m_texId);
   glGenBuffers(1, &m_pboId);
 
@@ -134,6 +136,24 @@ void Demo::KeyDown(unsigned char key, int x, int y)
 
   if (key == '[') m_renderer.SetDither( m_renderer.GetDither()*1.1f );
   if (key == ']') m_renderer.SetDither( m_renderer.GetDither()*0.9f );
+
+  if (key == '1') 
+  {
+    point_3f dir = CalcViewDir();
+    float t = m_svo.TraceRay(m_pos, dir);
+    point_3f pt = m_pos + dir*t;
+    m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_GROW, &m_shpereSrc);
+    m_renderer.UpdateSVO();
+  }
+
+  if (key == '2') 
+  {
+    point_3f dir = CalcViewDir();
+    float t = m_svo.TraceRay(m_pos, dir);
+    point_3f pt = m_pos + dir*t;
+    m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_CLEAR, &m_invShpereSrc);
+    m_renderer.UpdateSVO();
+  }
 }
 
 void Demo::KeyUp(unsigned char key, int x, int y)

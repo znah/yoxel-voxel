@@ -5,6 +5,7 @@
 
 #include "DynamicSVO.h"
 #include "SVORenderer.h"
+#include "builders.h"
 
 class Demo
 {
@@ -43,4 +44,7 @@ private:
   double m_lastTime;
   double m_lastFPSTime;
   int m_frameCount;
+
+  SphereSource m_shpereSrc;
+  SphereSource m_invShpereSrc;
 };

@@ -29,6 +29,7 @@ public:
   float GetDither() const { return m_ditherCoef; }
 
   void Render(void * d_dstBuf);
+  void UpdateSVO() { m_svo.Update(); }
 
 private:
   CudaSVO m_svo;
