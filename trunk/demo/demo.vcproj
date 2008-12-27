@@ -139,6 +139,9 @@
 			Name="svo"
 			Filter="">
 			<File
+				RelativePath="..\cpp\builders.h">
+			</File>
+			<File
 				RelativePath="..\cpp\CudaSVO_rt.cpp">
 			</File>
 			<File
@@ -149,6 +152,9 @@
 			</File>
 			<File
 				RelativePath="..\cpp\DynamicSVO.h">
+			</File>
+			<File
+				RelativePath="..\cpp\vox_node.h">
 			</File>
 		</Filter>
 		<Filter
@@ -171,7 +177,8 @@
 					Name="Release|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="../utils/nvcc_release.cmd $(InputPath)"
+						CommandLine="../utils/nvcc_release.cmd $(InputPath)
+"
 						Outputs="$(TargetDir)\$(InputName).obj"/>
 				</FileConfiguration>
 			</File>

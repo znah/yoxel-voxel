@@ -19,7 +19,13 @@ SVORenderer::~SVORenderer() {}
 void SVORenderer::SetScene(DynamicSVO * svo) 
 { 
   m_svo.SetSVO(svo);
-  
+  UpdateSVO();
+}
+
+void SVORenderer::UpdateSVO()
+{ 
+  m_svo.Update(); 
+
   int size(0);
   VoxNode * d_ptr = m_svo.GetNodes(size);
   cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<uint>();
@@ -31,6 +37,7 @@ void SVORenderer::SetScene(DynamicSVO * svo)
   tree.nodes = (VoxNode*)d_ptr;
   CuSetSymbol(tree, "tree");
 }
+
 
 void SVORenderer::SetViewSize(int width, int height)
 {

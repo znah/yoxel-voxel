@@ -13,8 +13,8 @@ Demo::Demo()
 , m_pitch(-17.0f)
 , m_mouseMoving(false)
 , m_frameCount(0)
-, m_shpereSrc(32, Color32(128, 128, 192, 255), false)
-, m_invShpereSrc(32, Color32(192, 128, 128, 255), true)
+, m_editAction(EditNone)
+, m_lastEditTime(0)
 {
   cout << "loading scene ...";
   if (!m_svo.Load("../data/scene.vox"))
@@ -78,6 +78,33 @@ void Demo::Resize(int width, int height)
   cout << "resized " << width << "x" << height << endl;
 }
 
+void Demo::DoEdit(const point_3f & fwdDir)
+{
+  point_3f spread;
+  for (int i = 0; i < 3; ++i)
+    spread[i] = cg::symmetric_rand(1.0f);
+  point_3f shotDir = cg::normalized(fwdDir + spread * 0.1f);
+  TraceResult res;
+  if (!m_svo.TraceRay(m_pos, shotDir, res))
+    return;
+  if (res.t > 0.0)
+  {
+    point_3f pt = m_pos + shotDir*res.t;
+    if (m_editAction == EditGrow)
+    {
+      Color16 c;
+      Normal16 n;
+      UnpackVoxData(res.node.data, c, n);
+      SphereSource src(4, UnpackColor(c), false);
+      m_svo.BuildRange(11, pt*(1<<11)+shotDir*4, BUILD_MODE_GROW, &src);
+    }
+    else
+    {
+      SphereSource src(16, Color32(192, 182, 128, 255), true);
+      m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_CLEAR, &src);
+    }
+  }
+}
 
 void Demo::Idle()
 {
@@ -102,6 +129,15 @@ void Demo::Idle()
 
   m_renderer.SetViewDir(fwdDir);
   m_renderer.SetViewPos(m_pos);
+
+  if (m_editAction != EditNone && curTime - m_lastEditTime > 0.02)
+  {
+    for (int i = 0; i < 100; ++i)
+      DoEdit(fwdDir);
+    cout << m_svo.GetNodes().getPageNum() << endl;
+    m_renderer.UpdateSVO();
+    m_lastEditTime = curTime;
+  }
 
 
   void * d_pboPtr = 0;
@@ -137,23 +173,8 @@ void Demo::KeyDown(unsigned char key, int x, int y)
   if (key == '[') m_renderer.SetDither( m_renderer.GetDither()*1.1f );
   if (key == ']') m_renderer.SetDither( m_renderer.GetDither()*0.9f );
 
-  if (key == '1') 
-  {
-    point_3f dir = CalcViewDir();
-    float t = m_svo.TraceRay(m_pos, dir);
-    point_3f pt = m_pos + dir*t;
-    m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_GROW, &m_shpereSrc);
-    m_renderer.UpdateSVO();
-  }
-
-  if (key == '2') 
-  {
-    point_3f dir = CalcViewDir();
-    float t = m_svo.TraceRay(m_pos, dir);
-    point_3f pt = m_pos + dir*t;
-    m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_CLEAR, &m_invShpereSrc);
-    m_renderer.UpdateSVO();
-  }
+  if (key == '1') m_editAction = EditGrow;
+  if (key == '2') m_editAction = EditClear;
 }
 
 void Demo::KeyUp(unsigned char key, int x, int y)
@@ -162,12 +183,14 @@ void Demo::KeyUp(unsigned char key, int x, int y)
     m_motionVel.x = 0;
   if (key == 'w' || key == 's') 
     m_motionVel.y = 0;
+  if (key == '1' || key == '2') 
+    m_editAction = EditNone;
 }
 
 
 void Demo::MouseButton(int button, int state, int x, int y)
 {
-  if (button == GLUT_LEFT_BUTTON || state == GLUT_DOWN)
+  if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
   {
     m_mouseMoving = true;
     m_prevMousePos = point_2i(x, y);

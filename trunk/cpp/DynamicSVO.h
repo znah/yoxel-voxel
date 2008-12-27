@@ -6,6 +6,12 @@
 
 enum BuildMode { BUILD_MODE_GROW, BUILD_MODE_CLEAR };
 
+struct TraceResult
+{
+  float t;
+  VoxNode node;
+};
+
 class DynamicSVO
 {
 private:
@@ -40,5 +46,5 @@ public:
   void Save(std::string filename);
   bool Load(std::string filename);
 
-  float TraceRay(const cg::point_3f & p, cg::point_3f dir) const;
+  bool TraceRay(const cg::point_3f & p, cg::point_3f dir, TraceResult & res ) const;
 };

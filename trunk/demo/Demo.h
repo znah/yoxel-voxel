@@ -45,6 +45,8 @@ private:
   double m_lastFPSTime;
   int m_frameCount;
 
-  SphereSource m_shpereSrc;
-  SphereSource m_invShpereSrc;
+  enum EditAction { EditNone, EditGrow, EditClear };
+  EditAction m_editAction;
+  double m_lastEditTime;
+  void DoEdit(const point_3f & fwdDir);
 };
