@@ -283,7 +283,7 @@ __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, uchar4 * i
   float3 lightDir = rp.lightPos - pt;
   float lightDist = length(lightDir);
   lightDir /= lightDist;
-  float fade = 1.0;//0.3 / (lightDist*lightDist);
+  float fade = 1.0; //0.1 / (lightDist);
 
   float diff = 0.7 * max(dot(lightDir, norm), 0.0f);
   float amb = 0.3;

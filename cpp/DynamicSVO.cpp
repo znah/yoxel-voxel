@@ -371,7 +371,7 @@ VoxNodeId DynamicSVO::RecTrace(VoxNodeId nodeId, point_3f t1, point_3f t2, const
   }
 }
 
-float DynamicSVO::TraceRay(const point_3f & p, point_3f dir) const
+bool DynamicSVO::TraceRay(const cg::point_3f & p, cg::point_3f dir, TraceResult & res ) const
 {
   const float eps = 1e-8f;
   for (int i = 0; i < 3; ++i)
@@ -390,10 +390,14 @@ float DynamicSVO::TraceRay(const point_3f & p, point_3f dir) const
 
   float t = 0;
   if (max(t1) >= min(t2))
-    return t;
-  RecTrace(m_root, t1, t2, dirFlags, t);
-  
-  return t;
+    return false;
+  VoxNodeId nodeId = RecTrace(m_root, t1, t2, dirFlags, t);
+
+  res.t = t;
+  if (IsNull(nodeId))
+    return false;
+  res.node = m_nodes[nodeId];
+  return true;
 }
 
 int DynamicSVO::CountChangedPages() const
