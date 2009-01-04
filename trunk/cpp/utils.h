@@ -11,9 +11,3 @@ inline void read(Stream & s, T & data)
 {
   s.read( reinterpret_cast<char *>(&data), sizeof(data) );
 }
-
-inline int iDivUp(int a, int b)
-{
-  int r = a / b;
-  return (r*b < a) ? r+1 : r;
-}

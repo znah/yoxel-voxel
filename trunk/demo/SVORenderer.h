@@ -28,6 +28,8 @@ public:
   void SetDither(float coef) { m_ditherCoef = coef; }
   float GetDither() const { return m_ditherCoef; }
 
+  void SetLigth(int i, const LightParams & lp) { m_lights[i] = lp; }
+
   void Render(void * d_dstBuf);
   void UpdateSVO();
 
@@ -40,6 +42,8 @@ private:
   point_2i m_viewSize;
   float m_fov;
   float m_ditherCoef;
+
+  LightParams m_lights[MaxLightsNum];
 
   float m_detailCoef;
 

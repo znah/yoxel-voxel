@@ -8,6 +8,17 @@ struct VoxStructTree
   VoxNode     * nodes;
 };
 
+struct LightParams
+{
+  bool   enabled;
+  float3 pos;
+  float3 diffuse;
+  float3 specular;
+  float3 attenuationCoefs;
+};
+
+const int MaxLightsNum = 3;
+
 struct RenderParams
 {
   int viewWidth;
@@ -15,17 +26,20 @@ struct RenderParams
 
   float detailCoef;
 
-  point_3f eye;
-  point_3f dir;
-  point_3f right;
-  point_3f up;
+  float3 eyePos;
+  float3 dir;
+  float3 right;
+  float3 up;
 
-  point_3f lightPos;
+  LightParams lights[MaxLightsNum];
+  float specularExp;
+  float3 ambient;
 
   float ditherCoef;
 
   int rndSeed;
 };
+
 
 struct RayData
 {
@@ -42,9 +56,9 @@ struct RayData
 extern "C" {
 #endif
 
-void Run_InitEyeRays(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays, float * noiseBuf);
-void Run_Trace(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays);
-void Run_ShadeSimple(dim3 gridSize, dim3 blockSize, RenderParams rp, const RayData * eyeRays, uchar4 * img);
+void Run_InitEyeRays(GridShape grid, RayData * rays, float * noiseBuf);
+void Run_Trace(GridShape grid, RayData * rays);
+void Run_ShadeSimple(GridShape grid, const RayData * eyeRays, uchar4 * img);
 
 #ifdef __cplusplus
 }
