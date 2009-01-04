@@ -1,5 +1,7 @@
 #pragma once
 
+#include "cu_cu.h"
+
 // TODO
 #define CUDA_SAFE_CALL 
 
@@ -98,4 +100,20 @@ template<class T>
 void CuGetSymbol(const char * src, T & dest)
 {
   CUDA_SAFE_CALL( cudaMemcpyFromSymbol((void *)dest, src, sizeof(T)) );
+}
+
+inline float3 make_float3(const point_3f & p) { return make_float3(p.x, p.y, p.z); }
+
+inline int iDivUp(int a, int b)
+{
+  int r = a / b;
+  return (r*b < a) ? r+1 : r;
+}
+
+inline GridShape make_grid2d(const point_2i & size, const point_2i & block)
+{
+  GridShape shape;
+  shape.block = dim3(block.x, block.y, 1);
+  shape.grid = dim3(iDivUp(size.x, block.x), iDivUp(size.y, block.y), 1);
+  return shape;
 }

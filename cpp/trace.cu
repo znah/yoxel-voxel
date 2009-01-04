@@ -14,6 +14,7 @@
   int tid = yi*sx + xi;        \
 
 __constant__ VoxStructTree tree;
+__constant__ RenderParams rp;
 
 texture<uint, 1, cudaReadModeElementType> nodes_tex;
 
@@ -48,39 +49,10 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
 __device__ VoxData GetVoxData  (VoxNodeId id) { return tree.nodes[id].data; }
 
 
-
-/*template<int Level>
-__device__ bool RecTrace(VoxNodeId nodeId, point_3f &t1, point_3f &t2, const uint & dirFlags, float & t)
-{
-  if (IsNull(nodeId) || minCoord(t2) <= 0)
-    return false;
-
-  int ch = FindFirstChild(t1, t2);
-  while (true)
-  {
-    if (GetLeafFlag(GetNodeInfo(GetNodePtr(nodeId)), ch^dirFlags))
-    {
-      t = maxCoord(t1);
-      return true;
-    }
-
-    if (RecTrace<Level+1>(GetChild(GetNodePtr(nodeId), ch^dirFlags), t1, t2, dirFlags, t))
-      return true;
-
-    if (!GoNext(ch, t1, t2))
-      return false;
-  }
-}
-
-template<> 
-__device__ bool RecTrace<5>(VoxNodeId nodeId, point_3f &t1, point_3f &t2, const uint & dirFlags, float & t)
-{
-  return false;
-}*/
-
 extern "C" {
 
-__global__ void InitEyeRays(RenderParams rp, RayData * rays, float * noiseBuf)
+
+__global__ void InitEyeRays(RayData * rays, float * noiseBuf)
 {
   INIT_THREAD
 
@@ -89,7 +61,7 @@ __global__ void InitEyeRays(RenderParams rp, RayData * rays, float * noiseBuf)
 
   int noiseBase = (tid*3 + rp.rndSeed) % (3*sx*sy-3);
   point_3f noiseShift = point_3f(noiseBuf[noiseBase], noiseBuf[noiseBase+1], noiseBuf[noiseBase+2]) * rp.ditherCoef;
-  rays[tid].pos = rp.eye + noiseShift;
+  rays[tid].pos = rp.eyePos + noiseShift;
   rays[tid].dir = dir;
 
   rays[tid].endNode = 0;
@@ -97,7 +69,7 @@ __global__ void InitEyeRays(RenderParams rp, RayData * rays, float * noiseBuf)
 }
 
 
-__global__ void InitFishEyeRays(RenderParams rp, RayData * rays)
+__global__ void InitFishEyeRays(RayData * rays)
 {
   INIT_THREAD
 
@@ -126,7 +98,7 @@ __global__ void InitFishEyeRays(RenderParams rp, RayData * rays)
   rays[tid].endNodeChild = EmptyNode;
 }
 
-__global__ void Trace(RenderParams rp, RayData * rays)
+__global__ void Trace(RayData * rays)
 {
   INIT_THREAD
 
@@ -138,7 +110,7 @@ __global__ void Trace(RenderParams rp, RayData * rays)
 
   point_3f t1, t2;
   uint dirFlags = 0;
-  if (!SetupTrace(rays[tid].pos, dir, t1, t2, dirFlags)) //rp.eye
+  if (!SetupTrace(rays[tid].pos, dir, t1, t2, dirFlags)) //rp.eyePos
   {
     rays[tid].endNode = EmptyNode;
     return;
@@ -223,33 +195,32 @@ __global__ void Trace(RenderParams rp, RayData * rays)
   }
 }
 
-
-/*__global__ void RecTraceTest(RenderParams rp, RayData * rays)
+__device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
 {
-  INIT_THREAD
-
-  if (IsNull(rays[tid].endNode))
-    return;
-
-  point_3f dir = rays[tid].dir;
-  AdjustDir(dir);
-
-  point_3f t1, t2;
-  uint dirFlags = 0;
-  if (!SetupTrace(rp.eye, dir, t1, t2, dirFlags))
+  point_3f accum = rp.ambient * color;
+  for (int i = 0; i < MaxLightsNum; ++i)
   {
-    rays[tid].endNode = EmptyNode;
-    return;
+    if (!rp.lights[i].enabled)
+      continue;
+
+    point_3f lightDir = rp.lights[i].pos - pos;
+    float lightDist2 = dot(lightDir, lightDir);
+    float lightDist = sqrtf(lightDist2);
+    float attenuation = 1.0f / dot(point_3f(1.0f, lightDist, lightDist2), rp.lights[i].attenuationCoefs);
+    lightDir /= lightDist;
+
+    point_3f diffuse = rp.lights[i].diffuse * color * max(dot(lightDir, normal), 0.0f);
+    
+    point_3f viewerDir = normalize(rp.eyePos - pos);
+    point_3f hv = normalize(viewerDir + lightDir);
+    point_3f specular = rp.lights[i].specular * pow(max(0.0f, dot(hv, normal)), rp.specularExp);
+
+    accum += (diffuse + specular) * attenuation;
   }
+  return accum;
+}
 
-  float t;
-  RecTrace<0>(tree.root, t1, t2, dirFlags, t);
-  rays[tid].t = t;
-}*/
-
-
-
-__global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, uchar4 * img)
+__global__ void ShadeSimple(const RayData * eyeRays, uchar4 * img)
 {
   INIT_THREAD
 
@@ -260,7 +231,7 @@ __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, uchar4 * i
     return;
   }
 
-  float3 p = rp.eye;                          
+  float3 p = rp.eyePos;                          
   float3 dir = eyeRays[tid].dir;
   float t = eyeRays[tid].t;
 
@@ -280,7 +251,7 @@ __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, uchar4 * i
   UnpackNormal(n16, norm.x, norm.y, norm.z);
 
   float3 pt = p + dir*t;
-  float3 lightDir = rp.lightPos - pt;
+  /*float3 lightDir = rp.lightPos - pt;
   float lightDist = length(lightDir);
   lightDir /= lightDist;
   float fade = 1.0; //0.1 / (lightDist);
@@ -296,24 +267,27 @@ __global__ void ShadeSimple(RenderParams rp, const RayData * eyeRays, uchar4 * i
 
 
   float3 res = make_float3(col.x*l + spec, col.y*l + spec, col.z*l + spec);
-  res = fminf(res, make_float3(255));
+  res = fminf(res, make_float3(255));*/
+
+  point_3f materialColor = point_3f(col.x, col.y, col.z) / 256.0f;
+  point_3f res = fminf(CalcLighting(pt, norm, materialColor) * 256.0f, point_3f(255, 255, 255));
 
   img[tid] = make_uchar4(res.x, res.y, res.z, 255);
 }
 
+void Run_InitEyeRays(GridShape grid, RayData * rays, float * noiseBuf)
+{
+  InitEyeRays<<<grid.grid, grid.block>>>(rays, noiseBuf);
 }
 
-void Run_InitEyeRays(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays, float * noiseBuf)
+void Run_Trace(GridShape grid, RayData * rays)
 {
-  InitEyeRays<<<gridSize, blockSize>>>(rp, rays, noiseBuf);
+  Trace<<<grid.grid, grid.block>>>(rays);
 }
 
-void Run_Trace(dim3 gridSize, dim3 blockSize, RenderParams rp, RayData * rays)
+void Run_ShadeSimple(GridShape grid, const RayData * eyeRays, uchar4 * img)
 {
-  Trace<<<gridSize, blockSize>>>(rp, rays);
+  ShadeSimple<<<grid.grid, grid.block>>>(eyeRays, img);
 }
 
-void Run_ShadeSimple(dim3 gridSize, dim3 blockSize, RenderParams rp, const RayData * eyeRays, uchar4 * img)
-{
-  ShadeSimple<<<gridSize, blockSize>>>(rp, eyeRays, img);
 }

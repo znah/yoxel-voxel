@@ -12,6 +12,9 @@ SVORenderer::SVORenderer()
 , m_ditherCoef(1.0f/2048.0f)
 {
   cudaGetTextureReference(&m_dataTexRef, "nodes_tex");
+
+  for (int i = 0; i < MaxLightsNum; ++i)
+    m_lights[i].enabled = false;
 }
 
 SVORenderer::~SVORenderer() {}
@@ -64,13 +67,12 @@ void SVORenderer::Render(void * d_dstBuf)
   dim3 block(16, 28, 1);
   dim3 grid = MakeGrid(m_viewSize, block);
 
-
   RenderParams rp;
   rp.viewWidth = m_viewSize.x;
   rp.viewHeight = m_viewSize.y;
   rp.detailCoef = m_detailCoef * cg::grad2rad(m_fov / 2) / m_viewSize.x;
 
-  rp.eye = m_pos;
+  rp.eyePos = make_float3(m_pos);
 
   point_3f vfwd = cg::normalized(m_dir);
   point_3f vright = cg::normalized(vfwd ^ m_up);
@@ -79,16 +81,25 @@ void SVORenderer::Render(void * d_dstBuf)
   float du = tan(cg::grad2rad(m_fov / 2));
   float dv = du * m_viewSize.y / max(m_viewSize.x, 1);
 
-  rp.dir = vfwd;
-  rp.right = vright * du;
-  rp.up = vup * dv;
+  rp.dir = make_float3(vfwd);
+  rp.right = make_float3(vright * du);
+  rp.up = make_float3(vup * dv);
   
-  rp.lightPos = m_pos;
-  
+  rp.specularExp = 10.0;
+  rp.ambient = make_float3(0.1f);
+
+  for (int i = 0; i < MaxLightsNum; ++i)
+    rp.lights[i] = m_lights[i];
+
   rp.ditherCoef = m_ditherCoef;
   rp.rndSeed = 0;//cg::rand((int)m_noiseBuf.size());
 
-  Run_InitEyeRays(grid, block, rp, m_rayDataBuf.d_ptr(), m_noiseBuf.d_ptr());
-  Run_Trace(grid, block, rp, m_rayDataBuf.d_ptr());
-  Run_ShadeSimple(grid, block, rp, m_rayDataBuf.d_ptr(), (uchar4*)d_dstBuf);
+  CuSetSymbol(rp, "rp");
+
+  Run_InitEyeRays(make_grid2d(m_viewSize, point_2i(16, 28)), m_rayDataBuf.d_ptr(), m_noiseBuf.d_ptr());
+  CUT_CHECK_ERROR("ttt");
+  Run_Trace(make_grid2d(m_viewSize, point_2i(16, 28)), m_rayDataBuf.d_ptr());
+  CUT_CHECK_ERROR("ttt");
+  Run_ShadeSimple(make_grid2d(m_viewSize, point_2i(16, 16)), m_rayDataBuf.d_ptr(), (uchar4*)d_dstBuf);
+  CUT_CHECK_ERROR("ttt");
 }

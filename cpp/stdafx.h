@@ -1,33 +1,18 @@
 #pragma once
 
-#ifdef __CUDACC__
 #define TARGET_CUDA
-#endif
 
-#if defined(TARGET_PPU) || defined(TARGET_SPU)
-  #define TARGET_CELL
+#ifdef __CUDACC__
+  #define TARGET_CUDA_DEVICE
 #else
-  #define TARGET_GPU
+  #define TARGET_CUDA_HOST
 #endif
 
-#if !defined(TARGET_CUDA)// && !defined(TARGET_PPU) && !defined(TARGET_SPU)
-#define USE_CG
-#endif
 
-#if !defined(TARGET_CUDA) && !defined(TARGET_SPU)
-#define USE_STL
+#if !defined(TARGET_CUDA_DEVICE)
+  #define USE_CG
+  #define USE_STL
 #endif
-
-#ifdef TARGET_SPU
-  #include <stdio.h>
-  #include <stdlib.h>
-  #include <spu_intrinsics.h>
-  
-  extern "C" {
-  #include <spu_mfcio.h>
-  }
-#endif
-
 
 #ifdef USE_STL
   #include <stdexcept>
@@ -46,28 +31,13 @@
   #else
     #include <boost/shared_ptr.hpp>
   #endif
-#endif
 
-#ifdef __GNUC__
-  #include <sys/time.h>
-#endif
-
-#ifdef TARGET_GPU
-  #include <cuda_runtime.h>
-#endif
-
-#ifndef TARGET_CUDA
   #include <boost/noncopyable.hpp>
 #endif
 
-#if !defined(TARGET_CUDA)
-  #define GLOBAL_FUNC
-#else
-  #include <cuda_runtime.h>
-  #include "cutil_math.h"
 
-  #define GLOBAL_FUNC __device__ __host__
-#endif
+#include "cutil_math.h"
+#include <cuda_runtime.h>
 
 
 #ifdef _MSC_VER
@@ -84,12 +54,19 @@
   #include "rotation.h"
 #endif
 
-#ifdef USE_CG
+/*#ifdef USE_CG
   using cg::min;
   using cg::max;
 #elif defined(USE_STL)
   using std::min;
   using std::max;
+#endif*/
+
+
+#ifdef TARGET_CUDA_DEVICE
+  #define GLOBAL_FUNC __device__ __host__
+#else
+  #define GLOBAL_FUNC 
 #endif
 
 
@@ -107,12 +84,16 @@
   template <class T> inline GLOBAL_FUNC void swap(T & a, T & b) { T c = a; a = b; b = c; }
 #endif
 
-#ifdef TARGET_CUDA
-  #include "points_cu.h"
+#ifdef USE_STL
+  using boost::noncopyable;
 #endif
 
-#ifndef TARGET_CUDA
-  using boost::noncopyable;
+
+#ifdef TARGET_CUDA_DEVICE
+  #include "cu_cu.h"
+  #include "points_cu.h"
+#else
+  #include "cu_cpp.h"
 #endif
 
 typedef unsigned int uint;

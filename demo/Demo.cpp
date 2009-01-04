@@ -115,7 +115,8 @@ void Demo::Idle()
   if (curTime - m_lastFPSTime > 0.5)
   {
     float fps = (float)(m_frameCount / (curTime - m_lastFPSTime));
-    glutSetWindowTitle(format("yoxel-voxel -- fps: {0}") % fps);
+    int svoSize = m_svo.GetNodes().getPageNum() * m_svo.GetNodes().getPageSize();
+    glutSetWindowTitle(format("yoxel-voxel -- fps: {0},  mem: {1} mb") % fps % (svoSize / 1024.0f / 1024.0f));
     m_lastFPSTime = curTime;
     m_frameCount = 0;
   }
@@ -130,13 +131,34 @@ void Demo::Idle()
   m_renderer.SetViewDir(fwdDir);
   m_renderer.SetViewPos(m_pos);
 
+  LightParams lp;
+  lp.enabled = true;
+  lp.pos = make_float3(m_pos);
+  lp.diffuse = make_float3(1.0);
+  lp.specular = make_float3(0.3f);
+  lp.attenuationCoefs = make_float3(1, 0, 1);
+  m_renderer.SetLigth(0, lp);
+  
   if (m_editAction != EditNone && curTime - m_lastEditTime > 0.02)
   {
     for (int i = 0; i < 100; ++i)
       DoEdit(fwdDir);
-    cout << m_svo.GetNodes().getPageNum() << endl;
     m_renderer.UpdateSVO();
     m_lastEditTime = curTime;
+    
+    TraceResult traceRes;
+    lp.enabled = m_svo.TraceRay(m_pos, fwdDir, traceRes);
+    lp.pos = make_float3(m_pos + fwdDir * (traceRes.t - 0.05));
+    lp.diffuse = make_float3(3, 3, 3);
+    lp.specular = make_float3(0.3f);
+    lp.attenuationCoefs = make_float3(1, 10, 400);
+    m_renderer.SetLigth(1, lp);
+  }
+
+  if (curTime - m_lastEditTime > 0.1)
+  {
+    lp.enabled = false;
+    m_renderer.SetLigth(1, lp);
   }
 
 
