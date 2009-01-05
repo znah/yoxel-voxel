@@ -53,8 +53,6 @@ void SVORenderer::SetViewSize(int width, int height)
   
   m_noiseBuf.resize(noiseBuf.size());
   m_noiseBuf.write(0, noiseBuf.size(), &noiseBuf[0]);
-
-
 }
 
 inline dim3 MakeGrid(const point_2i & size, const dim3 & block)

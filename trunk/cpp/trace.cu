@@ -225,16 +225,19 @@ __device__ point_3f SampleWldPos(int xi, int yi)
 
 __device__ point_3f SampleNormal(int xi, int yi)
 {
-  if (xi == 0 || xi == rp.viewWidth-1)
+  int tid = yi * rp.viewWidth + xi;
+  int step = max((int)(rp.rays[tid].endNodeSize / (rp.rays[tid].t*rp.detailCoef)), 1);
+  
+  if (xi < step || xi > rp.viewWidth-step-1)
     return make_float3(0, 0, 1);
-  if (yi == 0 || yi == rp.viewHeight-1)
+  if (yi < step || yi > rp.viewHeight-step-1)
     return make_float3(0, 0, 1);
 
-  point_3f u1 = SampleWldPos(xi-1, yi);
-  point_3f u2 = SampleWldPos(xi+1, yi);
+  point_3f u1 = SampleWldPos(xi-step, yi);
+  point_3f u2 = SampleWldPos(xi+step, yi);
   point_3f du = u2-u1;
-  point_3f v1 = SampleWldPos(xi, yi-1);
-  point_3f v2 = SampleWldPos(xi, yi+1);
+  point_3f v1 = SampleWldPos(xi, yi-step);
+  point_3f v2 = SampleWldPos(xi, yi+step);
   point_3f dv = v2-v1;
   point_3f n = normalize(cross(du, dv));
 
@@ -269,9 +272,11 @@ __global__ void ShadeSimple(uchar4 * img)
   uchar4 col;
   col = UnpackColorCU(c16);
 
-  //float3 norm;
-  //UnpackNormal(n16, norm.x, norm.y, norm.z);
-  point_3f norm = SampleNormal(xi, yi);
+  point_3f norm;
+  if (((xi/256 + yi/256) & 1) != 0)
+    UnpackNormal(n16, norm.x, norm.y, norm.z);
+  else
+    norm = SampleNormal(xi, yi);
 
   float3 pt = p + dir*t;
   point_3f materialColor = point_3f(col.x, col.y, col.z) / 256.0f;
