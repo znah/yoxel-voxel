@@ -136,7 +136,7 @@ void Demo::Idle()
   lp.pos = make_float3(m_pos);
   lp.diffuse = make_float3(1.0);
   lp.specular = make_float3(0.3f);
-  lp.attenuationCoefs = make_float3(1, 0, 1);
+  lp.attenuationCoefs = make_float3(1, 0, 0.5);
   m_renderer.SetLigth(0, lp);
   
   if (m_editAction != EditNone && curTime - m_lastEditTime > 0.02)

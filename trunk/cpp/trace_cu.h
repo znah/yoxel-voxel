@@ -19,28 +19,6 @@ struct LightParams
 
 const int MaxLightsNum = 3;
 
-struct RenderParams
-{
-  int viewWidth;
-  int viewHeight;
-
-  float detailCoef;
-
-  float3 eyePos;
-  float3 dir;
-  float3 right;
-  float3 up;
-
-  LightParams lights[MaxLightsNum];
-  float specularExp;
-  float3 ambient;
-
-  float ditherCoef;
-
-  int rndSeed;
-};
-
-
 struct RayData
 {
   point_3f pos;
@@ -51,14 +29,35 @@ struct RayData
   float endNodeSize;
 };
 
+struct RenderParams
+{
+  int viewWidth;
+  int viewHeight;
+
+  float detailCoef;
+  float ditherCoef;
+
+  float3 eyePos;
+  float3 dir;
+  float3 right;
+  float3 up;
+
+  LightParams lights[MaxLightsNum];
+  float specularExp;
+  float3 ambient;
+
+  int rndSeed;
+
+  RayData * rays;
+};
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void Run_InitEyeRays(GridShape grid, RayData * rays, float * noiseBuf);
-void Run_Trace(GridShape grid, RayData * rays);
-void Run_ShadeSimple(GridShape grid, const RayData * eyeRays, uchar4 * img);
+void Run_InitEyeRays(GridShape grid, float * noiseBuf);
+void Run_Trace(GridShape grid);
+void Run_ShadeSimple(GridShape grid, uchar4 * img);
 
 #ifdef __cplusplus
 }

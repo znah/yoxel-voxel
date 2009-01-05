@@ -49,10 +49,7 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
 __device__ VoxData GetVoxData  (VoxNodeId id) { return tree.nodes[id].data; }
 
 
-extern "C" {
-
-
-__global__ void InitEyeRays(RayData * rays, float * noiseBuf)
+__global__ void InitEyeRays(float * noiseBuf)
 {
   INIT_THREAD
 
@@ -61,15 +58,15 @@ __global__ void InitEyeRays(RayData * rays, float * noiseBuf)
 
   int noiseBase = (tid*3 + rp.rndSeed) % (3*sx*sy-3);
   point_3f noiseShift = point_3f(noiseBuf[noiseBase], noiseBuf[noiseBase+1], noiseBuf[noiseBase+2]) * rp.ditherCoef;
-  rays[tid].pos = rp.eyePos + noiseShift;
-  rays[tid].dir = dir;
+  rp.rays[tid].pos = rp.eyePos + noiseShift;
+  rp.rays[tid].dir = dir;
 
-  rays[tid].endNode = 0;
-  rays[tid].endNodeChild = EmptyNode;
+  rp.rays[tid].endNode = 0;
+  rp.rays[tid].endNodeChild = EmptyNode;
 }
 
 
-__global__ void InitFishEyeRays(RayData * rays)
+/*__global__ void InitFishEyeRays(RayData * rays)
 {
   INIT_THREAD
 
@@ -96,23 +93,23 @@ __global__ void InitFishEyeRays(RayData * rays)
 
   rays[tid].endNode = 0;
   rays[tid].endNodeChild = EmptyNode;
-}
+}*/
 
-__global__ void Trace(RayData * rays)
+__global__ void Trace()
 {
   INIT_THREAD
 
-  if (IsNull(rays[tid].endNode))
+  if (IsNull(rp.rays[tid].endNode))
     return;
 
-  point_3f dir = rays[tid].dir;
+  point_3f dir = rp.rays[tid].dir;
   AdjustDir(dir);
 
   point_3f t1, t2;
   uint dirFlags = 0;
-  if (!SetupTrace(rays[tid].pos, dir, t1, t2, dirFlags)) //rp.eyePos
+  if (!SetupTrace(rp.rays[tid].pos, dir, t1, t2, dirFlags)) //rp.eyePos
   {
-    rays[tid].endNode = EmptyNode;
+    rp.rays[tid].endNode = EmptyNode;
     return;
   }
 
@@ -163,7 +160,7 @@ __global__ void Trace(RayData * rays)
         VoxNodeId p = GetParent(nodePtr);
         if (IsNull(p)) 
         { 
-          rays[tid].endNode = EmptyNode;
+          rp.rays[tid].endNode = EmptyNode;
           state = ST_EXIT; 
           break; 
         }
@@ -184,10 +181,10 @@ __global__ void Trace(RayData * rays)
 
       case ST_SAVE:
       {
-        rays[tid].endNode = Ptr2Id(nodePtr);
-        rays[tid].endNodeChild = childId^dirFlags;
-        rays[tid].t = maxCoord(t1);
-        rays[tid].endNodeSize = nodeSize;
+        rp.rays[tid].endNode = Ptr2Id(nodePtr);
+        rp.rays[tid].endNodeChild = childId^dirFlags;
+        rp.rays[tid].t = maxCoord(t1);
+        rp.rays[tid].endNodeSize = nodeSize;
         state = ST_EXIT;
         break;
       }
@@ -220,11 +217,35 @@ __device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
   return accum;
 }
 
-__global__ void ShadeSimple(const RayData * eyeRays, uchar4 * img)
+__device__ point_3f SampleWldPos(int xi, int yi)
+{
+  int tid = yi * rp.viewWidth + xi;
+  return rp.eyePos + rp.rays[tid].t*rp.rays[tid].dir;
+}
+
+__device__ point_3f SampleNormal(int xi, int yi)
+{
+  if (xi == 0 || xi == rp.viewWidth-1)
+    return make_float3(0, 0, 1);
+  if (yi == 0 || yi == rp.viewHeight-1)
+    return make_float3(0, 0, 1);
+
+  point_3f u1 = SampleWldPos(xi-1, yi);
+  point_3f u2 = SampleWldPos(xi+1, yi);
+  point_3f du = u2-u1;
+  point_3f v1 = SampleWldPos(xi, yi-1);
+  point_3f v2 = SampleWldPos(xi, yi+1);
+  point_3f dv = v2-v1;
+  point_3f n = normalize(cross(du, dv));
+
+  return n;
+}
+
+__global__ void ShadeSimple(uchar4 * img)
 {
   INIT_THREAD
 
-  VoxNodeId node = eyeRays[tid].endNode;
+  VoxNodeId node = rp.rays[tid].endNode;
   if (IsNull(node))
   {
     img[tid] = make_uchar4(0, node == EmptyNode ? 0 : 64, 0, 255);
@@ -232,11 +253,11 @@ __global__ void ShadeSimple(const RayData * eyeRays, uchar4 * img)
   }
 
   float3 p = rp.eyePos;                          
-  float3 dir = eyeRays[tid].dir;
-  float t = eyeRays[tid].t;
+  float3 dir = rp.rays[tid].dir;
+  float t = rp.rays[tid].t;
 
   VoxData vd;
-  int childId = eyeRays[tid].endNodeChild;
+  int childId = rp.rays[tid].endNodeChild;
   if (childId < 0)
     vd = GetVoxData(node);
   else
@@ -246,48 +267,35 @@ __global__ void ShadeSimple(const RayData * eyeRays, uchar4 * img)
   Normal16 n16;
   UnpackVoxData(vd, c16, n16);
   uchar4 col;
-  float3 norm;
   col = UnpackColorCU(c16);
-  UnpackNormal(n16, norm.x, norm.y, norm.z);
+
+  //float3 norm;
+  //UnpackNormal(n16, norm.x, norm.y, norm.z);
+  point_3f norm = SampleNormal(xi, yi);
 
   float3 pt = p + dir*t;
-  /*float3 lightDir = rp.lightPos - pt;
-  float lightDist = length(lightDir);
-  lightDir /= lightDist;
-  float fade = 1.0; //0.1 / (lightDist);
-
-  float diff = 0.7 * max(dot(lightDir, norm), 0.0f);
-  float amb = 0.3;
-  float l = diff * fade + amb;
-
-  float3 viewerDir = normalize(make_float3(0)-dir);
-  float3 hv = normalize(viewerDir + lightDir);
-  float spec = pow(max(0.0f, dot(hv, norm)), 10) * 50;
-  spec *= fade;
-
-
-  float3 res = make_float3(col.x*l + spec, col.y*l + spec, col.z*l + spec);
-  res = fminf(res, make_float3(255));*/
-
   point_3f materialColor = point_3f(col.x, col.y, col.z) / 256.0f;
   point_3f res = fminf(CalcLighting(pt, norm, materialColor) * 256.0f, point_3f(255, 255, 255));
 
   img[tid] = make_uchar4(res.x, res.y, res.z, 255);
 }
 
-void Run_InitEyeRays(GridShape grid, RayData * rays, float * noiseBuf)
+
+extern "C" {
+
+void Run_InitEyeRays(GridShape grid, float * noiseBuf)
 {
-  InitEyeRays<<<grid.grid, grid.block>>>(rays, noiseBuf);
+  InitEyeRays<<<grid.grid, grid.block>>>(noiseBuf);
 }
 
-void Run_Trace(GridShape grid, RayData * rays)
+void Run_Trace(GridShape grid)
 {
-  Trace<<<grid.grid, grid.block>>>(rays);
+  Trace<<<grid.grid, grid.block>>>();
 }
 
-void Run_ShadeSimple(GridShape grid, const RayData * eyeRays, uchar4 * img)
+void Run_ShadeSimple(GridShape grid, uchar4 * img)
 {
-  ShadeSimple<<<grid.grid, grid.block>>>(eyeRays, img);
+  ShadeSimple<<<grid.grid, grid.block>>>(img);
 }
 
 }
