@@ -58,6 +58,8 @@ extern "C" {
 void Run_InitEyeRays(GridShape grid, float * noiseBuf);
 void Run_Trace(GridShape grid);
 void Run_ShadeSimple(GridShape grid, uchar4 * img);
+void Run_Blur(GridShape grid, const uchar4 * src, uchar4 * dst);
+void Run_BlendLayer(GridShape grid, float t1, float t2, const uchar4 * color, uchar4 * dst);
 
 #ifdef __cplusplus
 }

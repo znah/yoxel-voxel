@@ -15,6 +15,7 @@ Demo::Demo()
 , m_frameCount(0)
 , m_editAction(EditNone)
 , m_lastEditTime(0)
+, m_dumpCount(0)
 {
   cout << "loading scene ...";
   if (!m_svo.Load("../data/scene.vox"))
@@ -96,7 +97,7 @@ void Demo::DoEdit(const point_3f & fwdDir)
       Normal16 n;
       UnpackVoxData(res.node.data, c, n);
       SphereSource src(4, UnpackColor(c), false);
-      m_svo.BuildRange(11, pt*(1<<11)+shotDir*4, BUILD_MODE_GROW, &src);
+      m_svo.BuildRange(11, pt*(1<<11)+shotDir*3, BUILD_MODE_GROW, &src);
     }
     else
     {
@@ -134,7 +135,7 @@ void Demo::Idle()
   LightParams lp;
   lp.enabled = true;
   lp.pos = make_float3(m_pos);
-  lp.diffuse = make_float3(1.0);
+  lp.diffuse = make_float3(0.7);
   lp.specular = make_float3(0.3f);
   lp.attenuationCoefs = make_float3(1, 0, 0.5);
   m_renderer.SetLigth(0, lp);
@@ -149,7 +150,7 @@ void Demo::Idle()
     TraceResult traceRes;
     lp.enabled = m_svo.TraceRay(m_pos, fwdDir, traceRes);
     lp.pos = make_float3(m_pos + fwdDir * (traceRes.t - 0.05));
-    lp.diffuse = make_float3(3, 3, 3);
+    lp.diffuse = make_float3(1, 1, 1);
     lp.specular = make_float3(0.3f);
     lp.attenuationCoefs = make_float3(1, 10, 400);
     m_renderer.SetLigth(1, lp);
@@ -192,11 +193,17 @@ void Demo::KeyDown(unsigned char key, int x, int y)
   if (key == '-') m_renderer.SetFOV( m_renderer.GetFOV()*1.1f );
   if (key == '=') m_renderer.SetFOV( m_renderer.GetFOV()*0.9f );
 
-  if (key == '[') m_renderer.SetDither( m_renderer.GetDither()*1.1f );
-  if (key == ']') m_renderer.SetDither( m_renderer.GetDither()*0.9f );
+  if (key == '[') m_renderer.SetDither( m_renderer.GetDither() + 0.1f/(1<<11));
+  if (key == ']') m_renderer.SetDither( m_renderer.GetDither() - 0.1f/(1<<11) );
 
   if (key == '1') m_editAction = EditGrow;
   if (key == '2') m_editAction = EditClear;
+
+  if (key == 'q') 
+  {
+    m_renderer.DumpTraceData(formatStr("dmp_{0}") % (m_dumpCount++));
+    cout << "dump written" << endl;
+  }
 }
 
 void Demo::KeyUp(unsigned char key, int x, int y)

@@ -18,6 +18,8 @@ public:
   CudaSVO();
 
   void SetSVO(DynamicSVO * svo);
+  DynamicSVO * GetSVO();
+
   void Update();
 
   VoxNodeId GetRoot();

@@ -151,9 +151,9 @@ namespace cg
     return f > 0 ? int(f) : int(f - 0.9999999999);
   }
   
-  inline int64 nfloor64(double f) {
-    return f > 0 ? int64(f) : int64(f - 0.9999999999);
-  }
+//  inline int64 nfloor64(double f) {
+//    return f > 0 ? int64(f) : int64(f - 0.9999999999);
+//  }
   
   inline int floor(double f) { return nfloor(f); }
   
@@ -199,11 +199,11 @@ namespace cg
   inline unsigned long min(unsigned long a, unsigned long b) { return a < b ? a : b; }
   inline unsigned long max(unsigned long a, unsigned long b) { return a > b ? a : b; }
 
-  inline int64 min(int64 a, int64 b) { return a < b ? a : b; }
-  inline int64 max(int64 a, int64 b) { return a > b ? a : b; }
+  //inline int64 min(int64 a, int64 b) { return a < b ? a : b; }
+  //inline int64 max(int64 a, int64 b) { return a > b ? a : b; }
   
-  inline uint64 min(uint64 a, uint64 b) { return a < b ? a : b; }
-  inline uint64 max(uint64 a, uint64 b) { return a > b ? a : b; }
+  //inline uint64 min(uint64 a, uint64 b) { return a < b ? a : b; }
+  //inline uint64 max(uint64 a, uint64 b) { return a > b ? a : b; }
 
   inline double min(double a, double b) { return a < b ? a : b; }
   inline double max(double a, double b) { return a > b ? a : b; }
