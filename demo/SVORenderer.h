@@ -33,6 +33,8 @@ public:
   void Render(void * d_dstBuf);
   void UpdateSVO();
 
+  void DumpTraceData(std::string);
+
 private:
   CudaSVO m_svo;
 
@@ -49,6 +51,10 @@ private:
 
   CuVector<RayData> m_rayDataBuf;
   CuVector<float> m_noiseBuf;
+  CuVector<uchar4> m_tmpColorBuf;
+  CuVector<uchar4> m_tmpBlurBuf;
 
   const textureReference * m_dataTexRef;
+
+  void Blur(void * d_dstBuf);
 };

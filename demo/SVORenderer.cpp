@@ -2,6 +2,8 @@
 #include "SVORenderer.h"
 
 #include "trace_cu.h"
+#include "format.h"
+
 
 SVORenderer::SVORenderer() 
 : m_dir(1, 0, 0)
@@ -9,7 +11,7 @@ SVORenderer::SVORenderer()
 , m_viewSize(640, 480)
 , m_fov(70.0f)
 , m_detailCoef(1.0)
-, m_ditherCoef(0/*1.0f/2048.0f*/)
+, m_ditherCoef(0*1.0f/2048.0f)
 {
   cudaGetTextureReference(&m_dataTexRef, "nodes_tex");
 
@@ -46,6 +48,8 @@ void SVORenderer::SetViewSize(int width, int height)
 {
   m_viewSize = point_2i(width, height);
   m_rayDataBuf.resize(width * height);
+  m_tmpColorBuf.resize(width * height);
+  m_tmpBlurBuf.resize(width * height);
   
   std::vector<float> noiseBuf(3*width * height);
   for (size_t i = 0; i < noiseBuf.size(); ++i)
@@ -92,7 +96,7 @@ void SVORenderer::Render(void * d_dstBuf)
   rp.ditherCoef = m_ditherCoef;
   rp.rndSeed = 0;//cg::rand((int)m_noiseBuf.size());
 
-  rp.rays = m_rayDataBuf.d_ptr();
+  rp.rays = m_rayDataBuf.d_ptr(); 
 
   CuSetSymbol(rp, "rp");
 
@@ -100,6 +104,72 @@ void SVORenderer::Render(void * d_dstBuf)
   CUT_CHECK_ERROR("ttt");
   Run_Trace(make_grid2d(m_viewSize, point_2i(16, 28)));
   CUT_CHECK_ERROR("ttt");
-  Run_ShadeSimple(make_grid2d(m_viewSize, point_2i(16, 16)), (uchar4*)d_dstBuf);
+  Run_ShadeSimple(make_grid2d(m_viewSize, point_2i(16, 16)), /*m_tmpColorBuf.d_ptr()*/(uchar4*)d_dstBuf);
   CUT_CHECK_ERROR("ttt");
+
+  /*cudaMemset(d_dstBuf, 0, m_tmpColorBuf.size()*sizeof(uchar4));
+  for (int i = 0; i < 3; ++i)
+  {
+    Run_BlendLayer(make_grid2d(m_viewSize, point_2i(16, 16)), 0.1*i, 0.1*(i+1), m_tmpColorBuf.d_ptr(), (uchar4*)d_dstBuf);
+    Blur(d_dstBuf);
+  }
+  
+  Run_BlendLayer(make_grid2d(m_viewSize, point_2i(16, 16)), 0.1*3, 1000, m_tmpColorBuf.d_ptr(), (uchar4*)d_dstBuf);*/
+}
+
+void SVORenderer::Blur(void * d_dstBuf)
+{
+  Run_Blur(make_grid2d(m_viewSize, point_2i(16, 16)), (uchar4*)d_dstBuf, m_tmpBlurBuf.d_ptr());
+  CUT_CHECK_ERROR("ttt");
+  Run_Blur(make_grid2d(m_viewSize, point_2i(16, 16)), m_tmpBlurBuf.d_ptr(), (uchar4*)d_dstBuf);
+  CUT_CHECK_ERROR("ttt");
+}
+
+template <class T>
+inline void WriteVec(std::string fn, const std::vector<T> & buf)
+{
+  std::ofstream ss(fn.c_str(), std::ios::binary);
+  ss.write((const char*)&buf[0], (int)(sizeof(T)*buf.size()));
+}
+
+void SVORenderer::DumpTraceData(std::string fnbase)
+{
+  std::vector<RayData> buf;
+  m_rayDataBuf.read(buf);
+  std::vector<point_3f> posBuf(buf.size());
+  std::vector<point_3f> dirBuf(buf.size());
+  std::vector<float> distBuf(buf.size());
+  std::vector<Color32> colorBuf(buf.size());
+  std::vector<point_3f> normalBuf(buf.size());
+
+  for (size_t i = 0; i < buf.size(); ++i)
+  {
+    const RayData & rd = buf[i];
+    distBuf[i] = rd.t;
+    dirBuf[i] = rd.dir;
+    posBuf[i] = rd.pos;
+
+    if (IsNull(rd.endNode))
+      continue;
+
+    const VoxNode & node = m_svo.GetSVO()->GetNodes()[rd.endNode];
+    VoxData data;
+    if (rd.endNodeChild < 0)
+      data = node.data;
+    else
+      data = node.child[rd.endNodeChild];
+    
+    Color16 c16;
+    Normal16 n16;
+    UnpackVoxData(data, c16, n16);
+    colorBuf[i] = UnpackColor(c16);
+    normalBuf[i] = UnpackNormal(n16);
+  }
+
+  fnbase += formatStr("_{0}x{1}") % m_viewSize.x % m_viewSize.y;
+  WriteVec(fnbase + ".pos",    posBuf);
+  WriteVec(fnbase + ".dir",    dirBuf);
+  WriteVec(fnbase + ".dist",   distBuf);
+  WriteVec(fnbase + ".color",  colorBuf);
+  WriteVec(fnbase + ".normal", normalBuf);
 }

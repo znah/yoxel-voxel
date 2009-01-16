@@ -6,12 +6,12 @@
 #define USE_TEXLOOKUP
 
 #define INIT_THREAD \
-  int xi = blockIdx.x * blockDim.x + threadIdx.x; \
-  int yi = blockIdx.y * blockDim.y + threadIdx.y; \
-  int sx = rp.viewWidth;                          \
-  int sy = rp.viewHeight;                         \
+  const int xi = blockIdx.x * blockDim.x + threadIdx.x; \
+  const int yi = blockIdx.y * blockDim.y + threadIdx.y; \
+  const int sx = rp.viewWidth;                          \
+  const int sy = rp.viewHeight;                         \
   if (xi >= sx || yi >= sy ) return; \
-  int tid = yi*sx + xi;        \
+  const int tid = yi*sx + xi;        \
 
 __constant__ VoxStructTree tree;
 __constant__ RenderParams rp;
@@ -225,8 +225,9 @@ __device__ point_3f SampleWldPos(int xi, int yi)
 
 __device__ point_3f SampleNormal(int xi, int yi)
 {
-  int tid = yi * rp.viewWidth + xi;
-  int step = max((int)(rp.rays[tid].endNodeSize / (rp.rays[tid].t*rp.detailCoef)), 1);
+  //int tid = yi * rp.viewWidth + xi;
+  int step = 1;
+  //int step = max((int)(rp.rays[tid].endNodeSize / (rp.rays[tid].t*rp.detailCoef)), 1);
   
   if (xi < step || xi > rp.viewWidth-step-1)
     return make_float3(0, 0, 1);
@@ -273,16 +274,66 @@ __global__ void ShadeSimple(uchar4 * img)
   col = UnpackColorCU(c16);
 
   point_3f norm;
-  if (((xi/256 + yi/256) & 1) != 0)
+  //if (((xi/256 + yi/256) & 1) != 0)
     UnpackNormal(n16, norm.x, norm.y, norm.z);
-  else
-    norm = SampleNormal(xi, yi);
+  //else
+  //  norm = SampleNormal(xi, yi);
 
   float3 pt = p + dir*t;
   point_3f materialColor = point_3f(col.x, col.y, col.z) / 256.0f;
   point_3f res = fminf(CalcLighting(pt, norm, materialColor) * 256.0f, point_3f(255, 255, 255));
 
   img[tid] = make_uchar4(res.x, res.y, res.z, 255);
+}
+
+__device__ float4 c2f(const uchar4 & v) { return make_float4(v.x, v.y, v.z, v.w); }
+
+__global__ void Blur(const uchar4 * src, uchar4 * dst)
+{
+  INIT_THREAD
+  
+  const int rad = 1;
+
+  if (xi < rad || yi < rad || xi > rp.viewWidth-1-rad || yi > rp.viewHeight-1-rad)
+    return;
+
+  float4 accum = make_float4(0);
+  for (int y = -rad; y <= rad; ++y)
+    for (int x = -rad; x <= rad; ++x)
+      accum += c2f(src[(yi+y)*rp.viewWidth + (xi+x)]);
+  
+  int diam = 2*rad+1;
+  accum /= diam*diam;
+  dst[tid] = make_uchar4(accum.x, accum.y, accum.z, accum.w);
+}
+
+__global__ void BlendLayer(float t1, float t2, const uchar4 * color, uchar4 * dst)
+{
+  INIT_THREAD;
+
+  float t = rp.rays[tid].t;
+  if (t < t1 || t2 <= t)
+    return;
+
+  uchar4 s = color[tid];
+  uchar4 d = dst[tid];
+  
+  float da = d.w / 255.0;
+  d.x *= da;
+  d.y *= da;
+  d.z *= da;
+
+  float ds = 1 - da;
+  s.x *= ds;
+  s.y *= ds;
+  s.z *= ds;
+
+  uchar4 res;
+  res.x = d.x + s.x; 
+  res.y = d.y + s.y; 
+  res.z = d.z + s.z; 
+  res.w = max(d.w + s.w, 255); 
+  dst[tid] = res;
 }
 
 
@@ -301,6 +352,16 @@ void Run_Trace(GridShape grid)
 void Run_ShadeSimple(GridShape grid, uchar4 * img)
 {
   ShadeSimple<<<grid.grid, grid.block>>>(img);
+}
+
+void Run_Blur(GridShape grid, const uchar4 * src, uchar4 * dst)
+{
+  Blur<<<grid.grid, grid.block>>>(src, dst);
+}
+
+void Run_BlendLayer(GridShape grid, float t1, float t2, const uchar4 * color, uchar4 * dst)
+{
+  BlendLayer<<<grid.grid, grid.block>>>(t1, t2, color, dst);
 }
 
 }

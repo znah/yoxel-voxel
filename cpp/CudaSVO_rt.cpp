@@ -12,6 +12,11 @@ void CudaSVO::SetSVO(DynamicSVO * svo)
   Update();
 }
 
+DynamicSVO * CudaSVO::GetSVO()
+{
+  return m_svo;
+}
+
 template <class T>
 void CudaSVO::UpdatePages(CuVector<T> & buf, const HomoStorage<T> & storage)
 {
