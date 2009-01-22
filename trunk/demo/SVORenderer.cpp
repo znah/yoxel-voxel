@@ -48,8 +48,6 @@ void SVORenderer::SetViewSize(int width, int height)
 {
   m_viewSize = point_2i(width, height);
   m_rayDataBuf.resize(width * height);
-  m_tmpColorBuf.resize(width * height);
-  m_tmpBlurBuf.resize(width * height);
   
   std::vector<float> noiseBuf(3*width * height);
   for (size_t i = 0; i < noiseBuf.size(); ++i)
@@ -104,24 +102,7 @@ void SVORenderer::Render(void * d_dstBuf)
   CUT_CHECK_ERROR("ttt");
   Run_Trace(make_grid2d(m_viewSize, point_2i(16, 28)));
   CUT_CHECK_ERROR("ttt");
-  Run_ShadeSimple(make_grid2d(m_viewSize, point_2i(16, 16)), /*m_tmpColorBuf.d_ptr()*/(uchar4*)d_dstBuf);
-  CUT_CHECK_ERROR("ttt");
-
-  /*cudaMemset(d_dstBuf, 0, m_tmpColorBuf.size()*sizeof(uchar4));
-  for (int i = 0; i < 3; ++i)
-  {
-    Run_BlendLayer(make_grid2d(m_viewSize, point_2i(16, 16)), 0.1*i, 0.1*(i+1), m_tmpColorBuf.d_ptr(), (uchar4*)d_dstBuf);
-    Blur(d_dstBuf);
-  }
-  
-  Run_BlendLayer(make_grid2d(m_viewSize, point_2i(16, 16)), 0.1*3, 1000, m_tmpColorBuf.d_ptr(), (uchar4*)d_dstBuf);*/
-}
-
-void SVORenderer::Blur(void * d_dstBuf)
-{
-  Run_Blur(make_grid2d(m_viewSize, point_2i(16, 16)), (uchar4*)d_dstBuf, m_tmpBlurBuf.d_ptr());
-  CUT_CHECK_ERROR("ttt");
-  Run_Blur(make_grid2d(m_viewSize, point_2i(16, 16)), m_tmpBlurBuf.d_ptr(), (uchar4*)d_dstBuf);
+  Run_ShadeSimple(make_grid2d(m_viewSize, point_2i(16, 16)), (uchar4*)d_dstBuf);
   CUT_CHECK_ERROR("ttt");
 }
 

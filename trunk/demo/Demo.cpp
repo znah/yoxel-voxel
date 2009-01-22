@@ -18,7 +18,7 @@ Demo::Demo()
 , m_dumpCount(0)
 {
   cout << "loading scene ...";
-  if (!m_svo.Load("../data/scene.vox"))
+  if (!m_svo.Load("../data/_scene.vox"))
     throw std::runtime_error("Can't load scene");
   cout << " OK" << endl;
   
@@ -96,12 +96,12 @@ void Demo::DoEdit(const point_3f & fwdDir)
       Color16 c;
       Normal16 n;
       UnpackVoxData(res.node.data, c, n);
-      SphereSource src(4, UnpackColor(c), false);
+      SphereSource src(32, UnpackColor(c), false);
       m_svo.BuildRange(11, pt*(1<<11)+shotDir*3, BUILD_MODE_GROW, &src);
     }
     else
     {
-      SphereSource src(16, Color32(192, 182, 128, 255), true);
+      SphereSource src(32, Color32(192, 182, 128, 255), true);
       m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_CLEAR, &src);
     }
   }
@@ -135,14 +135,14 @@ void Demo::Idle()
   LightParams lp;
   lp.enabled = true;
   lp.pos = make_float3(m_pos);
-  lp.diffuse = make_float3(0.7);
+  lp.diffuse = make_float3(0.7f);
   lp.specular = make_float3(0.3f);
   lp.attenuationCoefs = make_float3(1, 0, 0.5);
   m_renderer.SetLigth(0, lp);
   
   if (m_editAction != EditNone && curTime - m_lastEditTime > 0.02)
   {
-    for (int i = 0; i < 100; ++i)
+    for (int i = 0; i < 10; ++i)
       DoEdit(fwdDir);
     m_renderer.UpdateSVO();
     m_lastEditTime = curTime;

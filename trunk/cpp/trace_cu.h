@@ -34,6 +34,7 @@ struct RenderParams
   int viewWidth;
   int viewHeight;
 
+
   float detailCoef;
   float ditherCoef;
 

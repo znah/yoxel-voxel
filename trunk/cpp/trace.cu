@@ -274,10 +274,10 @@ __global__ void ShadeSimple(uchar4 * img)
   col = UnpackColorCU(c16);
 
   point_3f norm;
-  //if (((xi/256 + yi/256) & 1) != 0)
+  if (((xi/256 + yi/256) & 1) != 0)
     UnpackNormal(n16, norm.x, norm.y, norm.z);
-  //else
-  //  norm = SampleNormal(xi, yi);
+  else
+    norm = SampleNormal(xi, yi);
 
   float3 pt = p + dir*t;
   point_3f materialColor = point_3f(col.x, col.y, col.z) / 256.0f;

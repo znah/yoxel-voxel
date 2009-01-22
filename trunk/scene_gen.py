@@ -85,19 +85,26 @@ def buildHeightmap(bld, hmap, tex, level, pos):
 
 
 def addHeightmaps(bld):
-    im = Image.open("data/heightmap2048.png")
-    hmap = fromstring(im.tostring(), uint16)
-    print hmap.shape
+    hmap = asarray(Image.open("data/gcanyon_height.png"))
+    tex = asarray(Image.open("data/gcanyon_color_4k2k.png"))
+    
+    n = 2048
+    hmap = hmap[:n, :n]
+    tex = tex[:n, :n]
 
-    tex = asarray(Image.open("data/boulder-rock-texture.jpg"))
+    #import pylab
+    #pylab.imshow(hmap)
+    #pylab.show()
+    hmap = hmap.astype(float32)
+    hmap *= 2.0
+    from scipy import signal
+    g = signal.gaussian(5, 1.0)
+    g = outer(g, g)
+    g /= g.sum()
+    hmap2 = signal.convolve2d(hmap, g, "same", "symm")
 
-    s = im.size
-    print s
-    hmap.shape = (s[0], s[1], 2)
-    hmap = hmap[...,0].astype(float32)
-    hmap *= 2.0/256
 
-    buildHeightmap(bld, hmap, tex, 11, (0, 0, 0))
+    buildHeightmap(bld, hmap2, tex, 11, (0, 0, 0))
     #buildHeightmap(bld, hmap, 11, (768, 768, 256))
 
 
