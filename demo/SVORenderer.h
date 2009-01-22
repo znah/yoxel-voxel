@@ -51,8 +51,6 @@ private:
 
   CuVector<RayData> m_rayDataBuf;
   CuVector<float> m_noiseBuf;
-  CuVector<uchar4> m_tmpColorBuf;
-  CuVector<uchar4> m_tmpBlurBuf;
 
   const textureReference * m_dataTexRef;
 

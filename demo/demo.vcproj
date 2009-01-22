@@ -186,6 +186,12 @@
 				RelativePath="..\cpp\trace_cu.h">
 			</File>
 		</Filter>
+		<File
+			RelativePath="..\cpp\matrix.h">
+		</File>
+		<File
+			RelativePath="..\cpp\stdafx.h">
+		</File>
 	</Files>
 	<Globals>
 	</Globals>
