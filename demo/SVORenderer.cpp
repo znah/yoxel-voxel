@@ -72,9 +72,11 @@ void SVORenderer::Render(void * d_dstBuf)
   rp.viewHeight = m_viewSize.y;
   rp.detailCoef = m_detailCoef * cg::grad2rad(m_fov / 2) / m_viewSize.x;
 
+
+
   rp.eyePos = make_float3(m_pos);
 
-  point_3f vfwd = cg::normalized(m_dir);
+  /*point_3f vfwd = cg::normalized(m_dir);
   point_3f vright = cg::normalized(vfwd ^ m_up);
   point_3f vup = vright ^ vfwd;
   
@@ -83,7 +85,12 @@ void SVORenderer::Render(void * d_dstBuf)
 
   rp.dir = make_float3(vfwd);
   rp.right = make_float3(vright * du);
-  rp.up = make_float3(vup * dv);
+  rp.up = make_float3(vup * dv);*/
+
+  rp.viewToWldMtx = cg::MakeViewToWld(m_pos, m_pos + m_dir, m_up);
+  cg::inverse(rp.viewToWldMtx, rp.wldToViewMtx);
+
+
   
   rp.specularExp = 10.0;
   rp.ambient = make_float3(0.1f);

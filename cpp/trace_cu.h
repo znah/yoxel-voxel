@@ -39,9 +39,9 @@ struct RenderParams
   float ditherCoef;
 
   float3 eyePos;
-  float3 dir;
-  float3 right;
-  float3 up;
+  
+  matrix_4f viewToWldMtx;
+  matrix_4f wldToViewMtx;
 
   LightParams lights[MaxLightsNum];
   float specularExp;

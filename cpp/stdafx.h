@@ -97,6 +97,9 @@
 #endif
 
 #include "matrix.h"
+#ifndef TARGET_CUDA_DEVICE
+  #include "matrix_ops.h"
+#endif
 
 typedef unsigned int uint;
 typedef unsigned char uchar;
