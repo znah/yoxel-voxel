@@ -190,6 +190,9 @@
 			RelativePath="..\cpp\matrix.h">
 		</File>
 		<File
+			RelativePath="..\cpp\matrix_ops.h">
+		</File>
+		<File
 			RelativePath="..\cpp\stdafx.h">
 		</File>
 	</Files>

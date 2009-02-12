@@ -51,9 +51,12 @@ __device__ VoxData GetVoxData  (VoxNodeId id) { return tree.nodes[id].data; }
 
 __global__ void InitEyeRays(float * noiseBuf)
 {
-  INIT_THREAD
+  INIT_THREAD;
 
-  float3 dir = rp.dir + 2*(xi-sx/2)*rp.right/sx + 2*(yi-sy/2)*rp.up/sy;
+  point_3f dir(2*(float)xi/sx-1, 2*(float)yi/sy-1, -1);
+  dir = rp.viewToWldMtx * dir;
+    
+  //float3 dir = rp.dir + 2*(xi-sx/2)*rp.right/sx + 2*(yi-sy/2)*rp.up/sy;
   dir = normalize(dir);
 
   int noiseBase = (tid*3 + rp.rndSeed) % (3*sx*sy-3);
