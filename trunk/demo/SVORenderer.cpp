@@ -48,13 +48,6 @@ void SVORenderer::SetViewSize(int width, int height)
 {
   m_viewSize = point_2i(width, height);
   m_rayDataBuf.resize(width * height);
-  
-  std::vector<float> noiseBuf(3*width * height);
-  for (size_t i = 0; i < noiseBuf.size(); ++i)
-    noiseBuf[i] = cg::rand(1.0f)-0.5f;
-  
-  m_noiseBuf.resize(noiseBuf.size());
-  m_noiseBuf.write(0, noiseBuf.size(), &noiseBuf[0]);
 }
 
 inline dim3 MakeGrid(const point_2i & size, const dim3 & block)
@@ -70,27 +63,13 @@ void SVORenderer::Render(void * d_dstBuf)
   RenderParams rp;
   rp.viewWidth = m_viewSize.x;
   rp.viewHeight = m_viewSize.y;
+  rp.fovCoef = tan( 0.5f * cg::grad2rad(m_fov));
   rp.detailCoef = m_detailCoef * cg::grad2rad(m_fov / 2) / m_viewSize.x;
 
-
-
   rp.eyePos = make_float3(m_pos);
-
-  /*point_3f vfwd = cg::normalized(m_dir);
-  point_3f vright = cg::normalized(vfwd ^ m_up);
-  point_3f vup = vright ^ vfwd;
   
-  float du = tan(cg::grad2rad(m_fov / 2));
-  float dv = du * m_viewSize.y / max(m_viewSize.x, 1);
-
-  rp.dir = make_float3(vfwd);
-  rp.right = make_float3(vright * du);
-  rp.up = make_float3(vup * dv);*/
-
-  rp.viewToWldMtx = cg::MakeViewToWld(m_pos, m_pos + m_dir, m_up);
+  rp.viewToWldMtx = cg::MakeViewToWld(m_pos, m_dir, m_up);
   cg::inverse(rp.viewToWldMtx, rp.wldToViewMtx);
-
-
   
   rp.specularExp = 10.0;
   rp.ambient = make_float3(0.1f);
@@ -98,15 +77,10 @@ void SVORenderer::Render(void * d_dstBuf)
   for (int i = 0; i < MaxLightsNum; ++i)
     rp.lights[i] = m_lights[i];
 
-  rp.ditherCoef = m_ditherCoef;
-  rp.rndSeed = 0;//cg::rand((int)m_noiseBuf.size());
-
   rp.rays = m_rayDataBuf.d_ptr(); 
 
   CuSetSymbol(rp, "rp");
 
-  Run_InitEyeRays(make_grid2d(m_viewSize, point_2i(16, 28)), m_noiseBuf.d_ptr());
-  CUT_CHECK_ERROR("ttt");
   Run_Trace(make_grid2d(m_viewSize, point_2i(16, 28)));
   CUT_CHECK_ERROR("ttt");
   Run_ShadeSimple(make_grid2d(m_viewSize, point_2i(16, 16)), (uchar4*)d_dstBuf);
@@ -124,8 +98,6 @@ void SVORenderer::DumpTraceData(std::string fnbase)
 {
   std::vector<RayData> buf;
   m_rayDataBuf.read(buf);
-  std::vector<point_3f> posBuf(buf.size());
-  std::vector<point_3f> dirBuf(buf.size());
   std::vector<float> distBuf(buf.size());
   std::vector<Color32> colorBuf(buf.size());
   std::vector<point_3f> normalBuf(buf.size());
@@ -134,8 +106,6 @@ void SVORenderer::DumpTraceData(std::string fnbase)
   {
     const RayData & rd = buf[i];
     distBuf[i] = rd.t;
-    dirBuf[i] = rd.dir;
-    posBuf[i] = rd.pos;
 
     if (IsNull(rd.endNode))
       continue;
@@ -155,8 +125,6 @@ void SVORenderer::DumpTraceData(std::string fnbase)
   }
 
   fnbase += formatStr("_{0}x{1}") % m_viewSize.x % m_viewSize.y;
-  WriteVec(fnbase + ".pos",    posBuf);
-  WriteVec(fnbase + ".dir",    dirBuf);
   WriteVec(fnbase + ".dist",   distBuf);
   WriteVec(fnbase + ".color",  colorBuf);
   WriteVec(fnbase + ".normal", normalBuf);

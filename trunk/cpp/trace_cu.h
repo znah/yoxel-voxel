@@ -21,8 +21,6 @@ const int MaxLightsNum = 3;
 
 struct RayData
 {
-  point_3f pos;
-  point_3f dir;
   float t;
   VoxNodeId endNode;
   int endNodeChild;
@@ -34,9 +32,8 @@ struct RenderParams
   int viewWidth;
   int viewHeight;
 
-
+  float fovCoef; // tan(rp.fov/2)
   float detailCoef;
-  float ditherCoef;
 
   float3 eyePos;
   
@@ -47,20 +44,16 @@ struct RenderParams
   float specularExp;
   float3 ambient;
 
-  int rndSeed;
-
   RayData * rays;
+  float * tBuf;
 };
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void Run_InitEyeRays(GridShape grid, float * noiseBuf);
 void Run_Trace(GridShape grid);
 void Run_ShadeSimple(GridShape grid, uchar4 * img);
-void Run_Blur(GridShape grid, const uchar4 * src, uchar4 * dst);
-void Run_BlendLayer(GridShape grid, float t1, float t2, const uchar4 * color, uchar4 * dst);
 
 #ifdef __cplusplus
 }

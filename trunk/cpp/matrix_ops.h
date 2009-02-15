@@ -92,9 +92,9 @@ inline bool inverse ( const matrix_4f & m, matrix_4f & res )
 }
 
 
-inline matrix_4f MakeViewToWld(const point_3f & eye, const point_3f & target, const point_3f & up)
+inline matrix_4f MakeViewToWld(const point_3f & eye, const point_3f & dir, const point_3f & up)
 {
-  point_3f fwd = normalized(target - eye);
+  point_3f fwd = normalized(dir);
   point_3f right = normalized(fwd ^ up);
   point_3f vup = right ^ fwd;
 

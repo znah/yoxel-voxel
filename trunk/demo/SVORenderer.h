@@ -25,9 +25,6 @@ public:
   void SetDetailCoef(float coef) { m_detailCoef = coef; }
   float GetDetailCoef() const { return m_detailCoef; }
 
-  void SetDither(float coef) { m_ditherCoef = coef; }
-  float GetDither() const { return m_ditherCoef; }
-
   void SetLigth(int i, const LightParams & lp) { m_lights[i] = lp; }
 
   void Render(void * d_dstBuf);
@@ -50,7 +47,6 @@ private:
   float m_detailCoef;
 
   CuVector<RayData> m_rayDataBuf;
-  CuVector<float> m_noiseBuf;
 
   const textureReference * m_dataTexRef;
 

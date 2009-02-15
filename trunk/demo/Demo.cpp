@@ -193,9 +193,6 @@ void Demo::KeyDown(unsigned char key, int x, int y)
   if (key == '-') m_renderer.SetFOV( m_renderer.GetFOV()*1.1f );
   if (key == '=') m_renderer.SetFOV( m_renderer.GetFOV()*0.9f );
 
-  if (key == '[') m_renderer.SetDither( m_renderer.GetDither() + 0.1f/(1<<11));
-  if (key == ']') m_renderer.SetDither( m_renderer.GetDither() - 0.1f/(1<<11) );
-
   if (key == '1') m_editAction = EditGrow;
   if (key == '2') m_editAction = EditClear;
 

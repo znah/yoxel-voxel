@@ -49,25 +49,20 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
 __device__ VoxData GetVoxData  (VoxNodeId id) { return tree.nodes[id].data; }
 
 
-__global__ void InitEyeRays(float * noiseBuf)
+__device__ float3 CalcRayDirView(int xi, int yi)
 {
-  INIT_THREAD;
-
-  point_3f dir(2*(float)xi/sx-1, 2*(float)yi/sy-1, -1);
-  dir = rp.viewToWldMtx * dir;
-    
-  //float3 dir = rp.dir + 2*(xi-sx/2)*rp.right/sx + 2*(yi-sy/2)*rp.up/sy;
-  dir = normalize(dir);
-
-  int noiseBase = (tid*3 + rp.rndSeed) % (3*sx*sy-3);
-  point_3f noiseShift = point_3f(noiseBuf[noiseBase], noiseBuf[noiseBase+1], noiseBuf[noiseBase+2]) * rp.ditherCoef;
-  rp.rays[tid].pos = rp.eyePos + noiseShift;
-  rp.rays[tid].dir = dir;
-
-  rp.rays[tid].endNode = 0;
-  rp.rays[tid].endNodeChild = EmptyNode;
+  const int sx = rp.viewWidth;
+  const int sy = rp.viewHeight;
+  return point_3f(2*rp.fovCoef*(float)(xi-sx/2)/sx, 2*rp.fovCoef*(float)(yi-sy/2)/sx, -1);
 }
 
+__device__ float3 CalcRayDirWorld(int xi, int yi)
+{
+  point_3f dir = CalcRayDirView(xi, yi);
+  dir = rp.viewToWldMtx * dir;
+  dir = dir - rp.eyePos;
+  return dir;
+}
 
 /*__global__ void InitFishEyeRays(RayData * rays)
 {
@@ -102,15 +97,18 @@ __global__ void Trace()
 {
   INIT_THREAD
 
+  rp.rays[tid].endNode = 0;
+  rp.rays[tid].endNodeChild = EmptyNode;
+
+
   if (IsNull(rp.rays[tid].endNode))
     return;
 
-  point_3f dir = rp.rays[tid].dir;
-  AdjustDir(dir);
+  point_3f dir = CalcRayDirWorld(xi, yi);
 
   point_3f t1, t2;
   uint dirFlags = 0;
-  if (!SetupTrace(rp.rays[tid].pos, dir, t1, t2, dirFlags)) //rp.eyePos
+  if (!SetupTrace(rp.eyePos, dir, t1, t2, dirFlags)) //rp.eyePos
   {
     rp.rays[tid].endNode = EmptyNode;
     return;
@@ -220,7 +218,7 @@ __device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
   return accum;
 }
 
-__device__ point_3f SampleWldPos(int xi, int yi)
+/*__device__ point_3f SampleWldPos(int xi, int yi)
 {
   int tid = yi * rp.viewWidth + xi;
   return rp.eyePos + rp.rays[tid].t*rp.rays[tid].dir;
@@ -246,7 +244,7 @@ __device__ point_3f SampleNormal(int xi, int yi)
   point_3f n = normalize(cross(du, dv));
 
   return n;
-}
+}*/
 
 __global__ void ShadeSimple(uchar4 * img)
 {
@@ -260,8 +258,10 @@ __global__ void ShadeSimple(uchar4 * img)
   }
 
   float3 p = rp.eyePos;                          
-  float3 dir = rp.rays[tid].dir;
-  float t = rp.rays[tid].t;
+  float3 dir = CalcRayDirWorld(xi, yi);
+  float dl = length(dir);
+  dir /= dl;
+  float t = rp.rays[tid].t / dl;
 
   VoxData vd;
   int childId = rp.rays[tid].endNodeChild;
@@ -277,10 +277,10 @@ __global__ void ShadeSimple(uchar4 * img)
   col = UnpackColorCU(c16);
 
   point_3f norm;
-  if (((xi/256 + yi/256) & 1) != 0)
+  //if (((xi/256 + yi/256) & 1) != 0)
     UnpackNormal(n16, norm.x, norm.y, norm.z);
-  else
-    norm = SampleNormal(xi, yi);
+  //else
+  //  norm = SampleNormal(xi, yi);
 
   float3 pt = p + dir*t;
   point_3f materialColor = point_3f(col.x, col.y, col.z) / 256.0f;
@@ -289,63 +289,8 @@ __global__ void ShadeSimple(uchar4 * img)
   img[tid] = make_uchar4(res.x, res.y, res.z, 255);
 }
 
-__device__ float4 c2f(const uchar4 & v) { return make_float4(v.x, v.y, v.z, v.w); }
-
-__global__ void Blur(const uchar4 * src, uchar4 * dst)
-{
-  INIT_THREAD
-  
-  const int rad = 1;
-
-  if (xi < rad || yi < rad || xi > rp.viewWidth-1-rad || yi > rp.viewHeight-1-rad)
-    return;
-
-  float4 accum = make_float4(0);
-  for (int y = -rad; y <= rad; ++y)
-    for (int x = -rad; x <= rad; ++x)
-      accum += c2f(src[(yi+y)*rp.viewWidth + (xi+x)]);
-  
-  int diam = 2*rad+1;
-  accum /= diam*diam;
-  dst[tid] = make_uchar4(accum.x, accum.y, accum.z, accum.w);
-}
-
-__global__ void BlendLayer(float t1, float t2, const uchar4 * color, uchar4 * dst)
-{
-  INIT_THREAD;
-
-  float t = rp.rays[tid].t;
-  if (t < t1 || t2 <= t)
-    return;
-
-  uchar4 s = color[tid];
-  uchar4 d = dst[tid];
-  
-  float da = d.w / 255.0;
-  d.x *= da;
-  d.y *= da;
-  d.z *= da;
-
-  float ds = 1 - da;
-  s.x *= ds;
-  s.y *= ds;
-  s.z *= ds;
-
-  uchar4 res;
-  res.x = d.x + s.x; 
-  res.y = d.y + s.y; 
-  res.z = d.z + s.z; 
-  res.w = max(d.w + s.w, 255); 
-  dst[tid] = res;
-}
-
 
 extern "C" {
-
-void Run_InitEyeRays(GridShape grid, float * noiseBuf)
-{
-  InitEyeRays<<<grid.grid, grid.block>>>(noiseBuf);
-}
 
 void Run_Trace(GridShape grid)
 {
@@ -356,15 +301,4 @@ void Run_ShadeSimple(GridShape grid, uchar4 * img)
 {
   ShadeSimple<<<grid.grid, grid.block>>>(img);
 }
-
-void Run_Blur(GridShape grid, const uchar4 * src, uchar4 * dst)
-{
-  Blur<<<grid.grid, grid.block>>>(src, dst);
-}
-
-void Run_BlendLayer(GridShape grid, float t1, float t2, const uchar4 * color, uchar4 * dst)
-{
-  BlendLayer<<<grid.grid, grid.block>>>(t1, t2, color, dst);
-}
-
 }
