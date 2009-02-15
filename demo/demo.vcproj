@@ -195,6 +195,9 @@
 		<File
 			RelativePath="..\cpp\stdafx.h">
 		</File>
+		<File
+			RelativePath="..\cpp\trace_utils.h">
+		</File>
 	</Files>
 	<Globals>
 	</Globals>

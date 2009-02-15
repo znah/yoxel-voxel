@@ -12,6 +12,8 @@ SVORenderer::SVORenderer()
 , m_fov(70.0f)
 , m_detailCoef(1.0)
 , m_ditherCoef(0*1.0f/2048.0f)
+, m_ssna(true)
+, m_showNormals(false)
 {
   cudaGetTextureReference(&m_dataTexRef, "nodes_tex");
 
@@ -49,6 +51,7 @@ void SVORenderer::SetViewSize(int width, int height)
   m_viewSize = point_2i(width, height);
   m_rayDataBuf.resize(width * height);
   m_zBuf.resize(width * height);
+  m_zBuf2.resize(width * height);
 }
 
 inline dim3 MakeGrid(const point_2i & size, const dim3 & block)
@@ -80,11 +83,19 @@ void SVORenderer::Render(void * d_dstBuf)
 
   rp.rays = m_rayDataBuf.d_ptr();
   rp.zBuf = m_zBuf.d_ptr();
+  rp.zBuf2 = m_zBuf2.d_ptr();
+
+  rp.ssna = m_ssna;
+  rp.showNormals = m_showNormals;
 
   CuSetSymbol(rp, "rp");
 
   Run_Trace(make_grid2d(m_viewSize, point_2i(16, 28)));
   CUT_CHECK_ERROR("ttt");
+
+  Run_BlurZBuf(make_grid2d(m_viewSize, point_2i(16, 16)));
+  CUT_CHECK_ERROR("ttt");
+
   Run_ShadeSimple(make_grid2d(m_viewSize, point_2i(16, 16)), (uchar4*)d_dstBuf);
   CUT_CHECK_ERROR("ttt");
 }

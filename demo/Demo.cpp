@@ -196,6 +196,9 @@ void Demo::KeyDown(unsigned char key, int x, int y)
   if (key == '1') m_editAction = EditGrow;
   if (key == '2') m_editAction = EditClear;
 
+  if (key == '3') m_renderer.SetSSNA( !m_renderer.GetSSNA() );
+  if (key == '4') m_renderer.SetShowNormals( !m_renderer.GetShowNormals() );
+
   if (key == 'q') 
   {
     m_renderer.DumpTraceData(formatStr("dmp_{0}") % (m_dumpCount++));
