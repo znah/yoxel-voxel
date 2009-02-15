@@ -184,7 +184,7 @@ __global__ void Trace()
       {
         rp.rays[tid].endNode = Ptr2Id(nodePtr);
         rp.rays[tid].endNodeChild = childId^dirFlags;
-        rp.rays[tid].t = maxCoord(t1);
+        rp.zBuf[tid] = maxCoord(t1);
         rp.rays[tid].endNodeSize = nodeSize;
         state = ST_EXIT;
         break;
@@ -261,7 +261,7 @@ __global__ void ShadeSimple(uchar4 * img)
   float3 dir = CalcRayDirWorld(xi, yi);
   float dl = length(dir);
   dir /= dl;
-  float t = rp.rays[tid].t / dl;
+  float t = rp.zBuf[tid] / dl;
 
   VoxData vd;
   int childId = rp.rays[tid].endNodeChild;

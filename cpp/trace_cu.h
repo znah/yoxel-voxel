@@ -21,7 +21,6 @@ const int MaxLightsNum = 3;
 
 struct RayData
 {
-  float t;
   VoxNodeId endNode;
   int endNodeChild;
   float endNodeSize;
@@ -45,7 +44,7 @@ struct RenderParams
   float3 ambient;
 
   RayData * rays;
-  float * tBuf;
+  float * zBuf;
 };
 
 #ifdef __cplusplus
