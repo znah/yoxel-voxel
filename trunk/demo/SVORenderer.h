@@ -47,6 +47,7 @@ private:
   float m_detailCoef;
 
   CuVector<RayData> m_rayDataBuf;
+  CuVector<float> m_zBuf;
 
   const textureReference * m_dataTexRef;
 

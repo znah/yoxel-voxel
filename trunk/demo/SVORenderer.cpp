@@ -48,6 +48,7 @@ void SVORenderer::SetViewSize(int width, int height)
 {
   m_viewSize = point_2i(width, height);
   m_rayDataBuf.resize(width * height);
+  m_zBuf.resize(width * height);
 }
 
 inline dim3 MakeGrid(const point_2i & size, const dim3 & block)
@@ -77,7 +78,8 @@ void SVORenderer::Render(void * d_dstBuf)
   for (int i = 0; i < MaxLightsNum; ++i)
     rp.lights[i] = m_lights[i];
 
-  rp.rays = m_rayDataBuf.d_ptr(); 
+  rp.rays = m_rayDataBuf.d_ptr();
+  rp.zBuf = m_zBuf.d_ptr();
 
   CuSetSymbol(rp, "rp");
 
@@ -105,7 +107,7 @@ void SVORenderer::DumpTraceData(std::string fnbase)
   for (size_t i = 0; i < buf.size(); ++i)
   {
     const RayData & rd = buf[i];
-    distBuf[i] = rd.t;
+    //distBuf[i] = rd.t;
 
     if (IsNull(rd.endNode))
       continue;
