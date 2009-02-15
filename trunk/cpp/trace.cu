@@ -60,7 +60,7 @@ __device__ float3 CalcRayDirWorld(int xi, int yi)
 {
   point_3f dir = CalcRayDirView(xi, yi);
   dir = rp.viewToWldMtx * dir;
-  dir = dir - rp.eyePos;
+  dir -= rp.eyePos;
   return dir;
 }
 
@@ -99,12 +99,14 @@ __global__ void Trace()
 
   rp.rays[tid].endNode = 0;
   rp.rays[tid].endNodeChild = EmptyNode;
+  rp.zBuf[tid] = 4;
 
 
   if (IsNull(rp.rays[tid].endNode))
     return;
 
   point_3f dir = CalcRayDirWorld(xi, yi);
+  AdjustDir(dir);
 
   point_3f t1, t2;
   uint dirFlags = 0;
@@ -201,7 +203,8 @@ __device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
     if (!rp.lights[i].enabled)
       continue;
 
-    point_3f lightDir = rp.lights[i].pos - pos;
+    point_3f ligthPos = rp.wldToViewMtx * rp.lights[i].pos;
+    point_3f lightDir = ligthPos - pos;
     float lightDist2 = dot(lightDir, lightDir);
     float lightDist = sqrtf(lightDist2);
     float attenuation = 1.0f / dot(point_3f(1.0f, lightDist, lightDist2), rp.lights[i].attenuationCoefs);
@@ -209,7 +212,7 @@ __device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
 
     point_3f diffuse = rp.lights[i].diffuse * color * max(dot(lightDir, normal), 0.0f);
     
-    point_3f viewerDir = normalize(rp.eyePos - pos);
+    point_3f viewerDir = normalize(point_3f(0, 0, 0) - pos);
     point_3f hv = normalize(viewerDir + lightDir);
     point_3f specular = rp.lights[i].specular * pow(max(0.0f, dot(hv, normal)), rp.specularExp);
 
@@ -218,37 +221,33 @@ __device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
   return accum;
 }
 
-/*__device__ point_3f SampleWldPos(int xi, int yi)
-{
-  int tid = yi * rp.viewWidth + xi;
-  return rp.eyePos + rp.rays[tid].t*rp.rays[tid].dir;
-}
-
 __device__ point_3f SampleNormal(int xi, int yi)
 {
-  //int tid = yi * rp.viewWidth + xi;
-  int step = 1;
-  //int step = max((int)(rp.rays[tid].endNodeSize / (rp.rays[tid].t*rp.detailCoef)), 1);
+  int tid = yi * rp.viewWidth + xi;
+  if (xi == 0 || yi == 0 || xi == rp.viewWidth-1 || yi == rp.viewHeight-1 )
+    return point_3f(0, 0, 1);
   
-  if (xi < step || xi > rp.viewWidth-step-1)
-    return make_float3(0, 0, 1);
-  if (yi < step || yi > rp.viewHeight-step-1)
-    return make_float3(0, 0, 1);
+  float z = rp.zBuf2[tid];
+  float zl = rp.zBuf2[tid-1];
+  float zr = rp.zBuf2[tid+1];
+  float zd = rp.zBuf2[tid-rp.viewWidth];
+  float zu = rp.zBuf2[tid+rp.viewWidth];
 
-  point_3f u1 = SampleWldPos(xi-step, yi);
-  point_3f u2 = SampleWldPos(xi+step, yi);
-  point_3f du = u2-u1;
-  point_3f v1 = SampleWldPos(xi, yi-step);
-  point_3f v2 = SampleWldPos(xi, yi+step);
-  point_3f dv = v2-v1;
-  point_3f n = normalize(cross(du, dv));
-
-  return n;
-}*/
+  float dx = (zr - zl)/2;
+  float dy = (zu - zd)/2;
+  
+  //nx = -d * dx * z
+  //ny = -d * dy * z
+  //nz = d * d * z * z
+  float d = 2*rp.fovCoef / rp.viewWidth;
+  point_3f n(dx, dy, d*z);
+  n *= d*z;
+  return normalize(n);
+}
 
 __global__ void ShadeSimple(uchar4 * img)
 {
-  INIT_THREAD
+  INIT_THREAD;
 
   VoxNodeId node = rp.rays[tid].endNode;
   if (IsNull(node))
@@ -257,11 +256,10 @@ __global__ void ShadeSimple(uchar4 * img)
     return;
   }
 
-  float3 p = rp.eyePos;                          
-  float3 dir = CalcRayDirWorld(xi, yi);
+  float3 dir = CalcRayDirView(xi, yi);
   float dl = length(dir);
   dir /= dl;
-  float t = rp.zBuf[tid] / dl;
+  float t = rp.zBuf2[tid] / dl;
 
   VoxData vd;
   int childId = rp.rays[tid].endNodeChild;
@@ -277,16 +275,49 @@ __global__ void ShadeSimple(uchar4 * img)
   col = UnpackColorCU(c16);
 
   point_3f norm;
-  //if (((xi/256 + yi/256) & 1) != 0)
+  if (!rp.ssna)
+  {
     UnpackNormal(n16, norm.x, norm.y, norm.z);
-  //else
-  //  norm = SampleNormal(xi, yi);
+    norm = rp.wldToViewMtx * (norm + rp.eyePos);
+  }
+  else
+    norm = SampleNormal(xi, yi);
 
-  float3 pt = p + dir*t;
+
+  float3 pt = dir*t;
   point_3f materialColor = point_3f(col.x, col.y, col.z) / 256.0f;
   point_3f res = fminf(CalcLighting(pt, norm, materialColor) * 256.0f, point_3f(255, 255, 255));
 
+  if (rp.showNormals)
+    res = norm*255;
+
   img[tid] = make_uchar4(res.x, res.y, res.z, 255);
+}
+
+__global__ void BlurZBuf()
+{
+  INIT_THREAD;
+  
+  const int kernSize = 4;
+
+  int x1 = max(xi - kernSize, 0);
+  int x2 = min(xi + kernSize, rp.viewWidth-1);
+  int y1 = max(yi - kernSize, 0);
+  int y2 = min(yi + kernSize, rp.viewHeight-1);
+
+  float z = rp.zBuf[tid];
+  float acc = 0, count = 0;
+  for (int y = y1; y <= y2; ++y)
+    for (int x = x1; x <= x2; ++x)
+    {
+      float s = rp.zBuf[y * rp.viewWidth + x];
+      //if (z - s < 1.0 / 2048)
+      {
+        acc += s;
+        count += 1.0;
+      }
+    }
+  rp.zBuf2[tid] = acc / count;
 }
 
 
@@ -301,4 +332,10 @@ void Run_ShadeSimple(GridShape grid, uchar4 * img)
 {
   ShadeSimple<<<grid.grid, grid.block>>>(img);
 }
+
+void Run_BlurZBuf(GridShape grid)
+{
+  BlurZBuf<<<grid.grid, grid.block>>>();
+}
+
 }

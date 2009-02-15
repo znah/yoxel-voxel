@@ -31,7 +31,7 @@ struct RenderParams
   int viewWidth;
   int viewHeight;
 
-  float fovCoef; // tan(rp.fov/2)
+  float fovCoef; // tan(fov/2)
   float detailCoef;
 
   float3 eyePos;
@@ -45,6 +45,10 @@ struct RenderParams
 
   RayData * rays;
   float * zBuf;
+  float * zBuf2;
+
+  bool ssna;
+  bool showNormals;
 };
 
 #ifdef __cplusplus
@@ -53,6 +57,7 @@ extern "C" {
 
 void Run_Trace(GridShape grid);
 void Run_ShadeSimple(GridShape grid, uchar4 * img);
+void Run_BlurZBuf(GridShape grid);
 
 #ifdef __cplusplus
 }

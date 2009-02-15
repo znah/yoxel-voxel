@@ -25,6 +25,12 @@ public:
   void SetDetailCoef(float coef) { m_detailCoef = coef; }
   float GetDetailCoef() const { return m_detailCoef; }
 
+  void SetSSNA(bool enable) { m_ssna = enable; }
+  bool GetSSNA() const { return m_ssna; }
+
+  void SetShowNormals(bool enable) { m_showNormals = enable; }
+  bool GetShowNormals() const { return m_showNormals; }
+
   void SetLigth(int i, const LightParams & lp) { m_lights[i] = lp; }
 
   void Render(void * d_dstBuf);
@@ -34,6 +40,9 @@ public:
 
 private:
   CudaSVO m_svo;
+
+  bool m_ssna;
+  bool m_showNormals;
 
   point_3f m_pos;
   point_3f m_dir;
@@ -48,6 +57,7 @@ private:
 
   CuVector<RayData> m_rayDataBuf;
   CuVector<float> m_zBuf;
+  CuVector<float> m_zBuf2;
 
   const textureReference * m_dataTexRef;
 
