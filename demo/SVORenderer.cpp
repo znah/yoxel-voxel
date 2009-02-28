@@ -19,6 +19,8 @@ SVORenderer::SVORenderer()
 
   for (int i = 0; i < MaxLightsNum; ++i)
     m_lights[i].enabled = false;
+
+  InitBlur();
 }
 
 SVORenderer::~SVORenderer() {}
@@ -45,13 +47,39 @@ void SVORenderer::UpdateSVO()
   CuSetSymbol(tree, "tree");
 }
 
+void SVORenderer::InitBlur()
+{
+  float kern[BlurZKernSize][BlurZKernSize];
+  float h = BlurZKernSize / 2;
+  float scale = 2.0f;
+  float sum = 0;
+  for (int y = 0; y < BlurZKernSize; ++y)
+  {
+    for (int x = 0; x < BlurZKernSize; ++x)
+    {
+      float tx = scale * ((float)x - h) / h;
+      float ty = scale * ((float)y - h) / h;
+      tx = tx*tx;
+      ty = ty*ty;
+      float v = exp(-(tx + ty));
+      kern[y][x] = v;
+      sum += v;
+    }
+  }
+  for (int y = 0; y < BlurZKernSize; ++y)
+    for (int x = 0; x < BlurZKernSize; ++x)
+      kern[y][x] /= sum;
+
+  CuSetSymbol(kern, "BlurZKernel");
+}
+
 
 void SVORenderer::SetViewSize(int width, int height)
 {
   m_viewSize = point_2i(width, height);
   m_rayDataBuf.resize(width * height);
-  m_zBuf.resize(width * height);
-  m_zBuf2.resize(width * height);
+  m_zbuf[0].resize(width * height);
+  m_zbuf[1].resize(width * height);
 }
 
 inline dim3 MakeGrid(const point_2i & size, const dim3 & block)
@@ -69,6 +97,7 @@ void SVORenderer::Render(void * d_dstBuf)
   rp.viewHeight = m_viewSize.y;
   rp.fovCoef = tan( 0.5f * cg::grad2rad(m_fov));
   rp.detailCoef = m_detailCoef * cg::grad2rad(m_fov / 2) / m_viewSize.x;
+  rp.pixelAng = cg::grad2rad(m_fov) / m_viewSize.x;
 
   rp.eyePos = make_float3(m_pos);
   
@@ -82,8 +111,7 @@ void SVORenderer::Render(void * d_dstBuf)
     rp.lights[i] = m_lights[i];
 
   rp.rays = m_rayDataBuf.d_ptr();
-  rp.zBuf = m_zBuf.d_ptr();
-  rp.zBuf2 = m_zBuf2.d_ptr();
+  rp.zbuf = m_zbuf[0].d_ptr();
 
   rp.ssna = m_ssna;
   rp.showNormals = m_showNormals;
@@ -93,10 +121,28 @@ void SVORenderer::Render(void * d_dstBuf)
   Run_Trace(make_grid2d(m_viewSize, point_2i(16, 28)));
   CUT_CHECK_ERROR("ttt");
 
-  Run_BlurZBuf(make_grid2d(m_viewSize, point_2i(16, 16)));
-  CUT_CHECK_ERROR("ttt");
+  
+  const float voxSize = 1.0 / 2048.0f;
+  int srcBuf = 0;
+  for (int i = 0; i < 10; ++i)
+  {
+    Run_BleedZ(make_grid2d(m_viewSize, point_2i(16, 16)), m_zbuf[srcBuf].d_ptr(), m_zbuf[1 - srcBuf].d_ptr());
+    srcBuf  = 1 - srcBuf;
+  }
 
-  Run_ShadeSimple(make_grid2d(m_viewSize, point_2i(16, 16)), (uchar4*)d_dstBuf);
+  float blurSize = 1;
+
+  for (int i = 0; i < 5; ++i)
+  {
+    float zlimit = 3.0 * voxSize / (rp.pixelAng * blurSize);
+
+    Run_BlurZ(make_grid2d(m_viewSize, point_2i(16, 16)), zlimit, m_zbuf[srcBuf].d_ptr(), m_zbuf[1 - srcBuf].d_ptr());
+    CUT_CHECK_ERROR("ttt");
+    srcBuf = 1 - srcBuf;
+    blurSize += 1;
+  }
+
+  Run_ShadeSimple(make_grid2d(m_viewSize, point_2i(16, 16)), (uchar4*)d_dstBuf, m_zbuf[srcBuf].d_ptr());
   CUT_CHECK_ERROR("ttt");
 }
 

@@ -56,10 +56,9 @@ private:
   float m_detailCoef;
 
   CuVector<RayData> m_rayDataBuf;
-  CuVector<float> m_zBuf;
-  CuVector<float> m_zBuf2;
+  CuVector<float> m_zbuf[2];
 
   const textureReference * m_dataTexRef;
 
-  void Blur(void * d_dstBuf);
+  void InitBlur();
 };
