@@ -32,6 +32,7 @@ struct RenderParams
   int viewHeight;
 
   float fovCoef; // tan(fov/2)
+  float pixelAng; // fov / viewWidth
   float detailCoef;
 
   float3 eyePos;
@@ -44,20 +45,22 @@ struct RenderParams
   float3 ambient;
 
   RayData * rays;
-  float * zBuf;
-  float * zBuf2;
+  float * zbuf;
 
   bool ssna;
   bool showNormals;
 };
+
+const int BlurZKernSize = 7;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void Run_Trace(GridShape grid);
-void Run_ShadeSimple(GridShape grid, uchar4 * img);
-void Run_BlurZBuf(GridShape grid);
+void Run_ShadeSimple(GridShape grid, uchar4 * img, const float * zbuf);
+void Run_BlurZ(GridShape grid, float farLimit, const float * src, float * dst);
+void Run_BleedZ(GridShape grid, const float * src, float * dst);
 
 #ifdef __cplusplus
 }

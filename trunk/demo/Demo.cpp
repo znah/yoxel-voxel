@@ -8,9 +8,9 @@ using std::endl;
 
 Demo::Demo() 
 : m_pboNeedUnreg(false)
-, m_pos(0.15224274f, 0.50049937f, 0.12925711f)
-, m_crs(300.0f)
-, m_pitch(-17.0f)
+, m_pos( 0.16560096, 0.46532935, 0.11644295 ) // 0.15224274f, 0.50049937f, 0.12925711f
+, m_crs(281) // 300
+, m_pitch(-11.0f) // -17
 , m_mouseMoving(false)
 , m_frameCount(0)
 , m_editAction(EditNone)
@@ -96,13 +96,13 @@ void Demo::DoEdit(const point_3f & fwdDir)
       Color16 c;
       Normal16 n;
       UnpackVoxData(res.node.data, c, n);
-      SphereSource src(32, UnpackColor(c), false);
+      SphereSource src(5, UnpackColor(c), false);
       m_svo.BuildRange(11, pt*(1<<11)+shotDir*3, BUILD_MODE_GROW, &src);
     }
     else
     {
       SphereSource src(32, Color32(192, 182, 128, 255), true);
-      m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_CLEAR, &src);
+      m_svo.BuildRange(5, pt*(1<<11), BUILD_MODE_CLEAR, &src);
     }
   }
 }
@@ -142,7 +142,7 @@ void Demo::Idle()
   
   if (m_editAction != EditNone && curTime - m_lastEditTime > 0.02)
   {
-    for (int i = 0; i < 10; ++i)
+    for (int i = 0; i < 30; ++i)
       DoEdit(fwdDir);
     m_renderer.UpdateSVO();
     m_lastEditTime = curTime;

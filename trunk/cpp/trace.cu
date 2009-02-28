@@ -16,6 +16,12 @@
 __constant__ VoxStructTree tree;
 __constant__ RenderParams rp;
 
+
+__constant__ float BlurZKernel[BlurZKernSize][BlurZKernSize];
+const int halfKernSize = BlurZKernSize / 2;
+
+__constant__ float EdgeThresholdCoef = 4.0f;
+
 texture<uint, 1, cudaReadModeElementType> nodes_tex;
 
 
@@ -99,7 +105,7 @@ __global__ void Trace()
 
   rp.rays[tid].endNode = 0;
   rp.rays[tid].endNodeChild = EmptyNode;
-  rp.zBuf[tid] = 4;
+  rp.zbuf[tid] = 100.0;
 
 
   if (IsNull(rp.rays[tid].endNode))
@@ -186,7 +192,7 @@ __global__ void Trace()
       {
         rp.rays[tid].endNode = Ptr2Id(nodePtr);
         rp.rays[tid].endNodeChild = childId^dirFlags;
-        rp.zBuf[tid] = maxCoord(t1);
+        rp.zbuf[tid] = maxCoord(t1);
         rp.rays[tid].endNodeSize = nodeSize;
         state = ST_EXIT;
         break;
@@ -221,20 +227,48 @@ __device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
   return accum;
 }
 
-__device__ point_3f SampleNormal(int xi, int yi)
+__device__ float absmin(float a, float b)
+{
+  return abs(a) <  abs(b) ? a : b;
+}
+
+__device__ float approxDeriv(float z0, float z1, float z2)
+{
+  float threshold = EdgeThresholdCoef * z1 * rp.pixelAng;
+
+  float dz = 0;
+  float c = 0;
+  float d1 = z1 - z0;
+  float d2 = z2 - z1;
+  if (abs(d1) < threshold)
+  {
+    dz += d1;
+    c += 1.0f;
+  }
+  if (abs(d2) < threshold)
+  {
+    dz += d2;
+    c += 1.0f;
+  }
+  if (c == 0)
+    return (d1 + d2) / 2;
+  return dz / c;
+}
+
+__device__ point_3f SampleNormal(int xi, int yi, const float * zbuf)
 {
   int tid = yi * rp.viewWidth + xi;
   if (xi == 0 || yi == 0 || xi == rp.viewWidth-1 || yi == rp.viewHeight-1 )
     return point_3f(0, 0, 1);
   
-  float z = rp.zBuf2[tid];
-  float zl = rp.zBuf2[tid-1];
-  float zr = rp.zBuf2[tid+1];
-  float zd = rp.zBuf2[tid-rp.viewWidth];
-  float zu = rp.zBuf2[tid+rp.viewWidth];
+  float z = zbuf[tid];
+  float zl = zbuf[tid-1];
+  float zr = zbuf[tid+1];
+  float zd = zbuf[tid-rp.viewWidth];
+  float zu = zbuf[tid+rp.viewWidth];
 
-  float dx = (zr - zl)/2;
-  float dy = (zu - zd)/2;
+  float dx = approxDeriv(zl, z, zr);
+  float dy = approxDeriv(zd, z, zu);
   
   //nx = -d * dx * z
   //ny = -d * dy * z
@@ -245,7 +279,7 @@ __device__ point_3f SampleNormal(int xi, int yi)
   return normalize(n);
 }
 
-__global__ void ShadeSimple(uchar4 * img)
+__global__ void ShadeSimple(uchar4 * img, const float * zbuf )
 {
   INIT_THREAD;
 
@@ -259,7 +293,7 @@ __global__ void ShadeSimple(uchar4 * img)
   float3 dir = CalcRayDirView(xi, yi);
   float dl = length(dir);
   dir /= dl;
-  float t = rp.zBuf2[tid] / dl;
+  float t = zbuf[tid] / dl;
 
   VoxData vd;
   int childId = rp.rays[tid].endNodeChild;
@@ -281,7 +315,7 @@ __global__ void ShadeSimple(uchar4 * img)
     norm = rp.wldToViewMtx * (norm + rp.eyePos);
   }
   else
-    norm = SampleNormal(xi, yi);
+    norm = SampleNormal(xi, yi, zbuf);
 
 
   float3 pt = dir*t;
@@ -294,30 +328,99 @@ __global__ void ShadeSimple(uchar4 * img)
   img[tid] = make_uchar4(res.x, res.y, res.z, 255);
 }
 
-__global__ void BlurZBuf()
+__global__ void BlurZ(float farLimit, const float * src, float * dst)
 {
   INIT_THREAD;
   
-  const int kernSize = 4;
+  int x1 = max(xi - halfKernSize, 0);
+  int x2 = min(xi + halfKernSize, rp.viewWidth-1);
+  int y1 = max(yi - halfKernSize, 0);
+  int y2 = min(yi + halfKernSize, rp.viewHeight-1);
 
-  int x1 = max(xi - kernSize, 0);
-  int x2 = min(xi + kernSize, rp.viewWidth-1);
-  int y1 = max(yi - kernSize, 0);
-  int y2 = min(yi + kernSize, rp.viewHeight-1);
+  int kx = xi - halfKernSize;
+  int ky = yi - halfKernSize;
 
-  float z = rp.zBuf[tid];
+  float z = src[tid];
+  if (z > farLimit)
+  {
+    dst[tid] = z;
+    return;
+  }
+  float threshold = EdgeThresholdCoef * z * rp.pixelAng;
+  threshold = max(threshold, 3.0 / 2048);
+
+
   float acc = 0, count = 0;
   for (int y = y1; y <= y2; ++y)
+  {
     for (int x = x1; x <= x2; ++x)
     {
-      float s = rp.zBuf[y * rp.viewWidth + x];
-      //if (z - s < 1.0 / 2048)
+      float s = src[y * rp.viewWidth + x];
+      float dz = s - z;
+      if (dz > threshold) // too far
       {
-        acc += s;
-        count += 1.0;
+        s = z + 0.3*threshold;
       }
+      else if (dz < - threshold) // too close
+        s = z;
+
+      float k = BlurZKernel[y - ky][x - kx];
+      acc += s * k;
+      count += k;
     }
-  rp.zBuf2[tid] = acc / count;
+  }
+  dst[tid] = acc / count;
+}
+
+__global__ void BleedZ(const float * src, float * dst)
+{
+  INIT_THREAD;
+
+  float z  = src[tid];
+  float z0 = z;
+  float z1 = z;
+  float z2 = z;
+
+
+  int halfKernSize = 3;
+
+  int x1 = max(xi - halfKernSize, 0);
+  int x2 = min(xi + halfKernSize, rp.viewWidth-1);
+  int y1 = max(yi - halfKernSize, 0);
+  int y2 = min(yi + halfKernSize, rp.viewHeight-1);
+
+  int h2 = halfKernSize*halfKernSize;
+
+  for (int y = y1; y <= y2; ++y)
+  {
+    for (int x = x1; x <= x2; ++x)
+    {
+      int dx = x - xi;
+      int dy = y - yi;
+      if (dx*dx + dy*dy >= h2)
+        continue;
+      float s = src[y * rp.viewWidth + x];
+      if (s < z0)
+      {
+        z2 = z1;
+        z1 = z0;
+        z0 = s;
+      }
+      else if (s < z1)
+      {
+        z2 = z1;
+        z1 = s;
+      }
+      else if (s < z2)
+        z2 = s;
+    }
+  }
+
+  if (z - z2 > 10.0 / 2048)
+    dst[tid] = z2;
+  else
+    dst[tid] = z;
+
 }
 
 
@@ -328,14 +431,20 @@ void Run_Trace(GridShape grid)
   Trace<<<grid.grid, grid.block>>>();
 }
 
-void Run_ShadeSimple(GridShape grid, uchar4 * img)
+void Run_ShadeSimple(GridShape grid, uchar4 * img, const float * zbuf)
 {
-  ShadeSimple<<<grid.grid, grid.block>>>(img);
+  ShadeSimple<<<grid.grid, grid.block>>>(img, zbuf);
 }
 
-void Run_BlurZBuf(GridShape grid)
+void Run_BlurZ(GridShape grid, float farLimit, const float * src, float * dst)
 {
-  BlurZBuf<<<grid.grid, grid.block>>>();
+  BlurZ<<<grid.grid, grid.block>>>(farLimit, src, dst);
 }
+
+void Run_BleedZ(GridShape grid, const float * src, float * dst)
+{
+  BleedZ<<<grid.grid, grid.block>>>(src, dst);
+}
+
 
 }
