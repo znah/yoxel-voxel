@@ -81,28 +81,34 @@ void Demo::Resize(int width, int height)
 
 void Demo::DoEdit(const point_3f & fwdDir)
 {
-  point_3f spread;
-  for (int i = 0; i < 3; ++i)
-    spread[i] = cg::symmetric_rand(1.0f);
-  point_3f shotDir = cg::normalized(fwdDir + spread * 0.1f);
-  TraceResult res;
-  if (!m_svo.TraceRay(m_pos, shotDir, res))
-    return;
-  if (res.t > 0.0)
+  int count = m_editAction == EditGrow ? 1 : 100;
+
+  for (int i = 0; i < count; ++i)
   {
-    point_3f pt = m_pos + shotDir*res.t;
-    if (m_editAction == EditGrow)
+    point_3f spread;
+    for (int i = 0; i < 3; ++i)
+      spread[i] = cg::symmetric_rand(1.0f);
+    point_3f shotDir = cg::normalized(fwdDir + spread * 0.1f);
+    TraceResult res;
+    if (!m_svo.TraceRay(m_pos, shotDir, res))
+      return;
+    if (res.t > 0.0)
     {
-      Color16 c;
-      Normal16 n;
-      UnpackVoxData(res.node.data, c, n);
-      SphereSource src(4, UnpackColor(c), false);
-      m_svo.BuildRange(11, pt*(1<<11)+shotDir*3, BUILD_MODE_GROW, &src);
-    }
-    else
-    {
-      SphereSource src(4, Color32(192, 182, 128, 255), true);
-      m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_CLEAR, &src);
+      point_3f pt = m_pos + shotDir*res.t;
+      if (m_editAction == EditGrow)
+      {
+        Color16 c;
+        Normal16 n;
+        UnpackVoxData(res.node.data, c, n);
+        //SphereSource src(4, UnpackColor(c), false);
+        SpongeSource src(7, 0.8);
+        m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_GROW, &src);
+      }
+      else
+      {
+        SphereSource src(4, Color32(192, 182, 128, 255), true);
+        m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_CLEAR, &src);
+      }
     }
   }
 }
@@ -142,8 +148,7 @@ void Demo::Idle()
   
   if (m_editAction != EditNone && curTime - m_lastEditTime > 0.02)
   {
-    for (int i = 0; i < 100; ++i)
-      DoEdit(fwdDir);
+    DoEdit(fwdDir);
     m_renderer.UpdateSVO();
     m_lastEditTime = curTime;
     
