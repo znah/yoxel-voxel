@@ -124,10 +124,9 @@ __global__ void Trace()
 
   NodePtr nodePtr = GetNodePtr(tree.root);
   int childId = 0;
-  int level = 0;
-  float nodeSize = pow(0.5f, level);
+  float nodeSize = 1.0f;
 
-  enum States { ST_EXIT, ST_ANALYSE, ST_SAVE, ST_GOUP, ST_GODOWN, ST_GONEXT };
+  enum States { ST_EXIT, ST_ANALYSE, ST_SAVE, ST_GOUP, ST_GODOWN, ST_GONEXT, ST_LEAF };
   int state = ST_ANALYSE;
   while (state != ST_EXIT)
   {
@@ -147,12 +146,11 @@ __global__ void Trace()
       {
         if (minCoord(t2) < 0) { state = ST_GONEXT; break; }
 
-        if (GetLeafFlag(GetNodeInfo(nodePtr), childId^dirFlags)) { state = ST_SAVE; break; }
+        if (GetLeafFlag(GetNodeInfo(nodePtr), childId^dirFlags)) { state = ST_LEAF; break; }
         
         VoxNodeId ch = GetChild(nodePtr, childId^dirFlags);
         if (IsNull(ch)) {state = ST_GONEXT; break; }
         nodePtr = GetNodePtr(ch);
-        ++level;
         nodeSize /= 2;
         state = ST_ANALYSE;
         break;
@@ -182,9 +180,15 @@ __global__ void Trace()
         }
         childId = GetSelfChildId(GetNodeInfo(nodePtr))^dirFlags;
         nodePtr = GetNodePtr(p);
-        --level;
         nodeSize *= 2;
         state = ST_GONEXT;
+        break;
+      }
+
+      case ST_LEAF:
+      {
+        state = ST_SAVE;
+
         break;
       }
 
@@ -309,7 +313,7 @@ __global__ void ShadeSimple(uchar4 * img, const float * zbuf )
   col = UnpackColorCU(c16);
 
   point_3f norm;
-  if (!rp.ssna)
+  if (!rp.ssna) // ((xi/64 + yi/64) & 1) == 0
   {
     UnpackNormal(n16, norm.x, norm.y, norm.z);
     norm = rp.wldToViewMtx * (norm + rp.eyePos);
