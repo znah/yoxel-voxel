@@ -372,57 +372,6 @@ __global__ void BlurZ(float farLimit, const float * src, float * dst)
   dst[tid] = acc / count;
 }
 
-__global__ void BleedZ(const float * src, float * dst)
-{
-  INIT_THREAD;
-
-  float z  = src[tid];
-  float z0 = z;
-  float z1 = z;
-  float z2 = z;
-
-
-  int halfKernSize = 3;
-
-  int x1 = max(xi - halfKernSize, 0);
-  int x2 = min(xi + halfKernSize, rp.viewWidth-1);
-  int y1 = max(yi - halfKernSize, 0);
-  int y2 = min(yi + halfKernSize, rp.viewHeight-1);
-
-  int h2 = halfKernSize*halfKernSize;
-
-  for (int y = y1; y <= y2; ++y)
-  {
-    for (int x = x1; x <= x2; ++x)
-    {
-      int dx = x - xi;
-      int dy = y - yi;
-      if (dx*dx + dy*dy >= h2)
-        continue;
-      float s = src[y * rp.viewWidth + x];
-      if (s < z0)
-      {
-        z2 = z1;
-        z1 = z0;
-        z0 = s;
-      }
-      else if (s < z1)
-      {
-        z2 = z1;
-        z1 = s;
-      }
-      else if (s < z2)
-        z2 = s;
-    }
-  }
-
-  if (z - z2 > 10.0 / 2048)
-    dst[tid] = z2;
-  else
-    dst[tid] = z;
-
-}
-
 
 extern "C" {
 
@@ -440,11 +389,5 @@ void Run_BlurZ(GridShape grid, float farLimit, const float * src, float * dst)
 {
   BlurZ<<<grid.grid, grid.block>>>(farLimit, src, dst);
 }
-
-void Run_BleedZ(GridShape grid, const float * src, float * dst)
-{
-  BleedZ<<<grid.grid, grid.block>>>(src, dst);
-}
-
 
 }
