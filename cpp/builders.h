@@ -180,7 +180,12 @@ public:
       if (hi < level)
         return ResEmpty;
       if (level <= lo)
-        return ResFull;
+      {
+        outColor = m_color;
+        outNormal = Normal32(1, 0, 0, 0);
+        return ResSurface;
+        //return ResFull;
+      }
       return ResGoDown;
     }
     else

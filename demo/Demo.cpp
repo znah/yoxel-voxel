@@ -18,7 +18,7 @@ Demo::Demo()
 , m_dumpCount(0)
 {
   cout << "loading scene ...";
-  if (!m_svo.Load("../data/_scene.vox"))
+  if (!m_svo.Load("../data/scene.vox"))
     throw std::runtime_error("Can't load scene");
   cout << " OK" << endl;
   
@@ -133,7 +133,7 @@ void Demo::Idle()
   point_3f upDir(0, 0, 1);
   point_3f rightDir = cg::normalized(fwdDir ^ upDir);
   point_3f dir = fwdDir*m_motionVel.y + rightDir*m_motionVel.x;
-  m_pos += dir*dt*0.3; 
+  m_pos += dir*dt*0.03; 
 
   m_renderer.SetViewDir(fwdDir);
   m_renderer.SetViewPos(m_pos);

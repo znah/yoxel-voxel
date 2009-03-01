@@ -17,10 +17,11 @@ __constant__ VoxStructTree tree;
 __constant__ RenderParams rp;
 
 
+__constant__ float NoiseBuf[NoiseBufSize];
 __constant__ float BlurZKernel[BlurZKernSize][BlurZKernSize];
 const int halfKernSize = BlurZKernSize / 2;
 
-__constant__ float EdgeThresholdCoef = 4.0f;
+__constant__ float EdgeThresholdCoef = 8.0f;
 
 texture<uint, 1, cudaReadModeElementType> nodes_tex;
 
@@ -99,11 +100,84 @@ __device__ float3 CalcRayDirWorld(int xi, int yi)
   rays[tid].endNodeChild = EmptyNode;
 }*/
 
-__device__ bool TraceLeaf(point_3f & t1, point_3f & t2, float nodeSize, const uint & dirFlags)
-{
-  
 
-  return true;
+const int MaxLeavLevel = 8;
+__constant__ float LeafLevelProb[MaxLeavLevel] = {1.0, 0.8, 0.8, 0.7, 0.7, 0.7, 0.7, 0.7};
+
+__device__ bool TraceLeaf(point_3f & t1, point_3f & t2, float nodeSize, const uint & dirFlags, int seed)
+{
+  int childId = 0;
+  int level = 0;
+  int x(0), y(0), z(0);
+
+  enum States { ST_EXIT, ST_ENTER, ST_GOUP, ST_GODOWN, ST_GONEXT };
+  int state = ST_ENTER;
+  while (state != ST_EXIT)
+  {
+    switch (state)
+    {
+      case ST_ENTER:
+      {
+        // t1, t2 -- for cur node
+        int key = (x*11+y*23+z*57 + seed) % NoiseBufSize;
+        if (NoiseBuf[key] > LeafLevelProb[level]) { state = ST_GOUP; break; }
+        
+        if (level == MaxLeavLevel-1 || maxCoord(t1) * rp.detailCoef > nodeSize) 
+          return true;
+
+        childId = FindFirstChild(t1, t2);
+        state = ST_GODOWN; 
+        break;
+      }
+
+      case ST_GODOWN:
+      {
+        if (minCoord(t2) < 0) { state = ST_GONEXT; break; }
+
+        // t1, t2 -- for childId
+        int wldCh = childId ^ dirFlags;
+        x = x<<1 | (wldCh & 1 );
+        y = y<<1 | ((wldCh>>1) & 1);
+        z = z<<1 | ((wldCh>>2) & 1);
+        ++level;
+        nodeSize /= 2;
+
+        state = ST_ENTER; 
+        break;
+      }
+
+      case ST_GOUP:
+      {
+        // t1, t2 -- for cur node
+
+        if (level == 0) { state = ST_EXIT; break; }
+
+        childId = ((z&1)<<2 | (y&1)<<1 | (x&1)) ^ dirFlags;
+        x >>= 1;
+        y >>= 1;
+        z >>= 1;
+        --level;
+        nodeSize *= 2;
+
+        state = ST_GONEXT;
+        break;
+      }
+
+      case ST_GONEXT:
+      {
+        // t1, t2 -- for childId
+        if (GoNext(childId, t1, t2))
+        {
+          state = ST_GODOWN;
+          break;
+        }
+        GoUp(childId, t1, t2);
+        state = ST_GOUP;
+        break;
+      }
+    }
+  }
+  return false;
 }
 
 __global__ void Trace()
@@ -155,7 +229,8 @@ __global__ void Trace()
 
         if (GetLeafFlag(GetNodeInfo(nodePtr), childId^dirFlags)) 
         { 
-          state = TraceLeaf(t1, t2, nodeSize / 2, dirFlags) ? ST_SAVE : ST_GONEXT;
+          int seed = Ptr2Id(nodePtr) + 119*(childId^dirFlags);
+          state = TraceLeaf(t1, t2, nodeSize / 2, dirFlags, seed) ? ST_SAVE : ST_GONEXT;
           break; 
         }
         
@@ -350,7 +425,7 @@ __global__ void BlurZ(float farLimit, const float * src, float * dst)
     return;
   }
   float threshold = EdgeThresholdCoef * z * rp.pixelAng;
-  threshold = max(threshold, 3.0 / 2048);
+  threshold = max(threshold, EdgeThresholdCoef / 2048);
 
 
   float acc = 0, count = 0;
@@ -362,7 +437,7 @@ __global__ void BlurZ(float farLimit, const float * src, float * dst)
       float dz = s - z;
       if (dz > threshold) // too far
       {
-        s = z + 0.3*threshold;
+        s = z + threshold / EdgeThresholdCoef;
       }
       else if (dz < - threshold) // too close
         s = z;
