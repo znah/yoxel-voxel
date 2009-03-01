@@ -99,6 +99,13 @@ __device__ float3 CalcRayDirWorld(int xi, int yi)
   rays[tid].endNodeChild = EmptyNode;
 }*/
 
+__device__ bool TraceLeaf(point_3f & t1, point_3f & t2, float nodeSize, const uint & dirFlags)
+{
+  
+
+  return true;
+}
+
 __global__ void Trace()
 {
   INIT_THREAD
@@ -116,7 +123,7 @@ __global__ void Trace()
 
   point_3f t1, t2;
   uint dirFlags = 0;
-  if (!SetupTrace(rp.eyePos, dir, t1, t2, dirFlags)) //rp.eyePos
+  if (!SetupTrace(rp.eyePos, dir, t1, t2, dirFlags))
   {
     rp.rays[tid].endNode = EmptyNode;
     return;
@@ -126,7 +133,7 @@ __global__ void Trace()
   int childId = 0;
   float nodeSize = 1.0f;
 
-  enum States { ST_EXIT, ST_ANALYSE, ST_SAVE, ST_GOUP, ST_GODOWN, ST_GONEXT, ST_LEAF };
+  enum States { ST_EXIT, ST_ANALYSE, ST_SAVE, ST_GOUP, ST_GODOWN, ST_GONEXT };
   int state = ST_ANALYSE;
   while (state != ST_EXIT)
   {
@@ -146,7 +153,11 @@ __global__ void Trace()
       {
         if (minCoord(t2) < 0) { state = ST_GONEXT; break; }
 
-        if (GetLeafFlag(GetNodeInfo(nodePtr), childId^dirFlags)) { state = ST_LEAF; break; }
+        if (GetLeafFlag(GetNodeInfo(nodePtr), childId^dirFlags)) 
+        { 
+          state = TraceLeaf(t1, t2, nodeSize / 2, dirFlags) ? ST_SAVE : ST_GONEXT;
+          break; 
+        }
         
         VoxNodeId ch = GetChild(nodePtr, childId^dirFlags);
         if (IsNull(ch)) {state = ST_GONEXT; break; }
@@ -172,23 +183,11 @@ __global__ void Trace()
           break; 
         }
 
-        for (int i = 0; i < 3; ++i)
-        {
-          int mask = 1<<i;
-          float dt = t2[i] - t1[i];
-          ((childId & mask) == 0) ? t2[i] += dt : t1[i] -= dt;
-        }
+        GoUp(childId, t1, t2);
         childId = GetSelfChildId(GetNodeInfo(nodePtr))^dirFlags;
         nodePtr = GetNodePtr(p);
         nodeSize *= 2;
         state = ST_GONEXT;
-        break;
-      }
-
-      case ST_LEAF:
-      {
-        state = ST_SAVE;
-
         break;
       }
 
