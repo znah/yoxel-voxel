@@ -21,6 +21,11 @@ SVORenderer::SVORenderer()
     m_lights[i].enabled = false;
 
   InitBlur();
+
+  float buf[NoiseBufSize];
+  for (int i = 0; i < NoiseBufSize; ++i)
+    buf[i] = cg::rand(1.0f);
+  CuSetSymbol(buf, "NoiseBuf");
 }
 
 SVORenderer::~SVORenderer() {}
@@ -118,7 +123,7 @@ void SVORenderer::Render(void * d_dstBuf)
 
   CuSetSymbol(rp, "rp");
 
-  Run_Trace(make_grid2d(m_viewSize, point_2i(16, 28)));
+  Run_Trace(make_grid2d(m_viewSize, point_2i(16, 16)));
   CUT_CHECK_ERROR("ttt");
 
   
@@ -127,15 +132,15 @@ void SVORenderer::Render(void * d_dstBuf)
 
   if (m_ssna)
   {
-    float blurSize = 2;
+    float blurSize = 3;
     for (int i = 0; i < 5; ++i)
     {
-      float zlimit = 5.0 * voxSize / (rp.pixelAng * blurSize);
+      float zlimit = 5.0f * voxSize / (rp.pixelAng * blurSize);
 
       Run_BlurZ(make_grid2d(m_viewSize, point_2i(16, 16)), zlimit, m_zbuf[srcBuf].d_ptr(), m_zbuf[1 - srcBuf].d_ptr());
       CUT_CHECK_ERROR("ttt");
       srcBuf = 1 - srcBuf;
-      blurSize += 2;
+      blurSize += 3;
     }
   }
 

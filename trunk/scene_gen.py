@@ -134,8 +134,8 @@ if __name__ == '__main__':
     
     bld = DynamicSVO()
 
-    addHeightmaps(bld)
-    #addTrees(bld)
+    #addHeightmaps(bld)
+    addTrees(bld)
     
     print "saving tree..."
     bld.Save("data/scene.vox")

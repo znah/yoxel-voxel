@@ -51,7 +51,8 @@ struct RenderParams
   bool showNormals;
 };
 
-const int BlurZKernSize = 5;
+const int BlurZKernSize = 7;
+const int NoiseBufSize = 256;
 
 #ifdef __cplusplus
 extern "C" {
