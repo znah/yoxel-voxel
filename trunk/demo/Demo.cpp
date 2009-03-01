@@ -96,13 +96,13 @@ void Demo::DoEdit(const point_3f & fwdDir)
       Color16 c;
       Normal16 n;
       UnpackVoxData(res.node.data, c, n);
-      SphereSource src(5, UnpackColor(c), false);
+      SphereSource src(4, UnpackColor(c), false);
       m_svo.BuildRange(11, pt*(1<<11)+shotDir*3, BUILD_MODE_GROW, &src);
     }
     else
     {
-      SphereSource src(32, Color32(192, 182, 128, 255), true);
-      m_svo.BuildRange(5, pt*(1<<11), BUILD_MODE_CLEAR, &src);
+      SphereSource src(4, Color32(192, 182, 128, 255), true);
+      m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_CLEAR, &src);
     }
   }
 }
@@ -142,7 +142,7 @@ void Demo::Idle()
   
   if (m_editAction != EditNone && curTime - m_lastEditTime > 0.02)
   {
-    for (int i = 0; i < 30; ++i)
+    for (int i = 0; i < 100; ++i)
       DoEdit(fwdDir);
     m_renderer.UpdateSVO();
     m_lastEditTime = curTime;

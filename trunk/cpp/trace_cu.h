@@ -51,7 +51,7 @@ struct RenderParams
   bool showNormals;
 };
 
-const int BlurZKernSize = 7;
+const int BlurZKernSize = 5;
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,7 +60,6 @@ extern "C" {
 void Run_Trace(GridShape grid);
 void Run_ShadeSimple(GridShape grid, uchar4 * img, const float * zbuf);
 void Run_BlurZ(GridShape grid, float farLimit, const float * src, float * dst);
-void Run_BleedZ(GridShape grid, const float * src, float * dst);
 
 #ifdef __cplusplus
 }
