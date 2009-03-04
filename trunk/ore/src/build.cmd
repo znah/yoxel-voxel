@@ -1,7 +1,7 @@
 @echo off
 rem set CUDA_SDK_ROOT=C:\Program Files\NVIDIA Corporation\NVIDIA CUDA SDK
 
-set cfg=release
+set cfg=debug
 
 bjam toolset=msvc-7.1 %cfg%
 mkdir %cfg%

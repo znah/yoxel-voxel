@@ -410,3 +410,25 @@ int DynamicSVO::CountTransfrerSize() const
   int count = m_nodes.countPages(m_curVersion) * m_nodes.getPageSize();
   return count;
 }
+
+void DynamicSVO::RecNodeCount(VoxNodeId nodeId, int level, std::vector<int> & res) const
+{
+  if (res.size() < level+1)
+    res.resize(level+1, 0);
+  ++res[level];
+
+  VoxNode node = m_nodes[nodeId];
+  for (int i = 0; i < 8; ++i)
+  {
+    if (GetLeafFlag(node.flags, i) || IsNull(node.child[i]))
+      continue;
+    RecNodeCount(node.child[i], level+1, res);
+  }
+}
+
+std::vector<int> DynamicSVO::GetNodeCountByLevel() const
+{
+  std::vector<int> res;
+  RecNodeCount(m_root, 0, res);
+  return res;
+}

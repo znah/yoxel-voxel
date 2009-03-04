@@ -17,14 +17,14 @@ project boost-python-quickstart
     <include>../../cpp
     <include>c:/cuda/include
     <include>C:/Python25/Lib/site-packages/numpy/core/include/
-    <library>c:/cuda/lib/cuda.lib
+    #<library>c:/cuda/lib/cuda.lib
     ;
 
 # Make the definition of the python-extension rule available
 import python ;
 
 # Declare a Python extension called hello.
-python-extension _ore : main.cpp ../../cpp/DynamicSVO.cpp ../../cpp/CudaSVO.cpp ;
-#python-extension _ore : main.cpp ../../cpp/DynamicSVO.cpp ;
+#python-extension _ore : main.cpp ../../cpp/DynamicSVO.cpp ../../cpp/CudaSVO.cpp ;
+python-extension _ore : main.cpp ../../cpp/DynamicSVO.cpp ;
 
 
