@@ -43,7 +43,7 @@ def calcNormals(z):
     return n
 
 
-def calcLight(n, z):
+def calcLight(n, z, lightPos):
     d = 2*tan(fov/2) / n.shape[1]
     y, x = mgrid[:n.shape[0], :n.shape[1]]
     x -= n.shape[1]/2
@@ -51,10 +51,8 @@ def calcLight(n, z):
     v = (x*d, y*d, ones_like(x))
     v = dstack(v)
 
-    print v.shape, z.shape
-
     v *= z[1:-1, 1:-1][...,newaxis]
-    #v -= array([0, 0, 0.2])
+    v -= array(lightPos)
     
     vl = sqrt( (v*v).sum(-1) )
     v /= vl[...,newaxis]
@@ -63,8 +61,8 @@ def calcLight(n, z):
     return maximum(c, 0)
 
     
-def lightByZ(z):
-    return calcLight(calcNormals(z), z)
+def lightByZ(z, lightPos = (0, 0, 0)):
+    return calcLight(calcNormals(z), z, lightPos)
 
 
 def makeGauss2d(n):
@@ -194,7 +192,34 @@ def limitedGaussBlur(z, kernelSize, threshold, zrange, res, edgePadCoef):
               if (s > d + threshold)
                 s = d + edgePadCoef * threshold;
               else if ( d > s + threshold )
-                k = 0;
+              {
+                if (mode == 0)
+                  k = 0;
+                else 
+                if (mode == 1)
+                {
+                  int kx = sx - x1;
+                  int ky = sy - y1;
+
+                  float ssym = az(x2-kx-1, y2-ky-1);
+                  if (ssym > s + threshold)
+                    k = 0;
+                  else
+                    d = ssym;
+                }
+                else if (mode == 2)
+                {
+                  int kx = sx - x1;
+                  int ky = sy - y1;
+
+                  float ssym = az(x2-kx-1, y2-ky-1);
+                  if (d > ssym + threshold)
+                    k = 0;
+                  else
+                    s = ssym;
+                }
+
+              }
             
               acc += s * k;
               c += k;
@@ -203,7 +228,8 @@ def limitedGaussBlur(z, kernelSize, threshold, zrange, res, edgePadCoef):
         }
       return_val = count;
     '''
-    count = weave.inline(code, ["z", "res", "kern", "threshold", "edgePadCoef", "zrange"], headers=['"array_2d.h"'], include_dirs=["."])
+    mode = 2
+    count = weave.inline(code, ["z", "res", "kern", "threshold", "edgePadCoef", "zrange", "mode"], headers=['"array_2d.h"'], include_dirs=["."])
     print count
 
 
@@ -283,7 +309,7 @@ def test1(z, c):
     res[...,0] = choose( m > 0, (res[...,0],1) )
     return res
 
-def test2(z, c):
+def test2(z, c, lightPos = (0, 0, 0)):
     #z1 = adaptiveGaussBlur(z, 8.0*wldVoxelSize)
     z1 = multipassGaussBlur(z, 4.0*wldVoxelSize)
     light = lightByZ(z1)
@@ -294,17 +320,31 @@ def saveImage(arr, fn):
     from PIL import Image
     im = Image.fromarray((arr*255).astype(uint8))
     im.save(fn)
-    
+    print fn, "saved"
+
+
+def animTest(z, c):
+     z1 = multipassGaussBlur(z, 4.0*wldVoxelSize)
+     n = calcNormals(z1)
+     for i in xrange(0, 50):
+        ang = 2*pi/50*i
+        lightPos = ( 0.2*sin(ang), -0.2, (1-cos(ang))*0.2 )
+        light = calcLight(n, z1, lightPos)
+        res = c[1:-1, 1:-1] * light[...,newaxis]
+        saveImage(res, "anim/frame_%02d.bmp" % i)
+
 
 if __name__ == '__main__':
     from pylab import *
     
     #(z, c) = loadData("dmp_3_1280x968.dist")
-    (z, c) = loadData("dmp_0_800x600.dist")
+    (z, c) = loadData("dmp_7_800x600.dist")
     
+    #animTest(z, c)
+
     res = test2(z, c)
-    
+        
     saveImage(res, "out.png")
-    imshow(res, interpolation = 'nearest')
-    show()
+    #imshow(res, interpolation = 'nearest')
+    #show()
     
