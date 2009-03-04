@@ -3,7 +3,7 @@
 #include <boost/python.hpp>
 
 #include "DynamicSVO.h"
-#include "CudaSVO.h"
+//#include "CudaSVO.h"
 #include "builders.h"
 #include "pybuf.h"
 
@@ -11,7 +11,7 @@
 namespace py = boost::python;
 
 
-py::tuple CudaSVO_GetData(CudaSVO * svo)
+/*py::tuple CudaSVO_GetData(CudaSVO * svo)
 {
   VoxNodeId root = svo->GetRoot();
 
@@ -23,7 +23,7 @@ py::tuple CudaSVO_GetData(CudaSVO * svo)
 
   py::tuple res = py::make_tuple(root, nodes);
   return res;
-}
+}*/
 
 inline Color32 extractColor32(py::object obj)
 {
@@ -73,6 +73,14 @@ void IsoSource_SetColor(IsoSource * dst, py::object color)
   dst->SetColor(extractColor32(color));
 }
 
+py::list DynamicSVO_GetNodeCountByLevel(DynamicSVO * svo)
+{
+  std::vector<int> res = svo->GetNodeCountByLevel();
+  py::list lst;
+  for (int i = 0; i < res.size(); ++i)
+    lst.append(res[i]);
+  return lst;
+}
 
 BOOST_PYTHON_MODULE(_ore)
 {
@@ -117,10 +125,11 @@ BOOST_PYTHON_MODULE(_ore)
       .def("TraceRay", &DynamicSVO::TraceRay)
       .add_property("nodecount", &DynamicSVO::GetNodeCount)
       .def("CountChangedPages", &DynamicSVO::CountChangedPages)
-      .def("CountTransfrerSize", &DynamicSVO::CountTransfrerSize);
+      .def("CountTransfrerSize", &DynamicSVO::CountTransfrerSize)
+      .def("GetNodeCountByLevel1", &DynamicSVO_GetNodeCountByLevel);
 
-    class_<CudaSVO, boost::noncopyable>("CudaSVO")
+    /*class_<CudaSVO, boost::noncopyable>("CudaSVO")
       .def("SetSVO", &CudaSVO::SetSVO)
       .def("Update", &CudaSVO::Update)
-      .def("GetData", &CudaSVO_GetData);
+      .def("GetData", &CudaSVO_GetData);*/
 }

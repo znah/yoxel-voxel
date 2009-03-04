@@ -29,6 +29,8 @@ private:
 
   VoxNodeId RecTrace(VoxNodeId node, cg::point_3f t1, cg::point_3f t2, const uint dirFlags, float & t) const;
 
+  void RecNodeCount(VoxNodeId node, int level, std::vector<int> & res) const;
+
 public:
   explicit DynamicSVO() : m_root(CreateNode()), m_curVersion(0) {}
 
@@ -47,4 +49,6 @@ public:
   bool Load(std::string filename);
 
   bool TraceRay(const cg::point_3f & p, cg::point_3f dir, TraceResult & res ) const;
+
+  std::vector<int> GetNodeCountByLevel() const;
 };
