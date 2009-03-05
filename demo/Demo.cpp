@@ -81,7 +81,7 @@ void Demo::Resize(int width, int height)
 
 void Demo::DoEdit(const point_3f & fwdDir)
 {
-  int count = m_editAction == EditGrow ? 1 : 100;
+  int count = m_editAction == EditGrow ? 100 : 100;
 
   for (int i = 0; i < count; ++i)
   {
@@ -100,8 +100,8 @@ void Demo::DoEdit(const point_3f & fwdDir)
         Color16 c;
         Normal16 n;
         UnpackVoxData(res.node.data, c, n);
-        //SphereSource src(4, UnpackColor(c), false);
-        SpongeSource src(7, 0.8);
+        SphereSource src(4, UnpackColor(c), false);
+        //SpongeSource src(7, 0.8);
         m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_GROW, &src);
       }
       else
