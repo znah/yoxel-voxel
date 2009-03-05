@@ -106,6 +106,7 @@ __constant__ float LeafLevelProb[MaxLeavLevel] = {1.0, 0.8, 0.8, 0.7, 0.7, 0.7, 
 
 __device__ bool TraceLeaf(point_3f & t1, point_3f & t2, float nodeSize, const uint & dirFlags, int seed)
 {
+  return true;
   int childId = 0;
   int level = 0;
   int x(0), y(0), z(0);
