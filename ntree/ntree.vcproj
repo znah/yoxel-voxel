@@ -109,10 +109,25 @@
 	</References>
 	<Files>
 		<Filter
-			Name="Source Files"
+			Name="ntree"
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
+			<File
+				RelativePath=".\ntree\nodes.h">
+			</File>
+			<File
+				RelativePath=".\ntree\ntree.cpp">
+			</File>
+			<File
+				RelativePath=".\ntree\ntree.h">
+			</File>
 		</Filter>
+		<File
+			RelativePath=".\main.cpp">
+		</File>
+		<File
+			RelativePath=".\stdafx.h">
+		</File>
 	</Files>
 	<Globals>
 	</Globals>
