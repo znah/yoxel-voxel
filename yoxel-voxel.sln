@@ -1,5 +1,9 @@
 Microsoft Visual Studio Solution File, Format Version 8.00
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "demo", "demo.vcproj", "{19FE1D2C-7154-4DEE-B662-6910BF3A181C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "demo", "demo\demo.vcproj", "{19FE1D2C-7154-4DEE-B662-6910BF3A181C}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ntree", "ntree\ntree.vcproj", "{B96C5640-E3FB-49C4-A0B3-BE12E4EAED94}"
 	ProjectSection(ProjectDependencies) = postProject
 	EndProjectSection
 EndProject
@@ -13,6 +17,10 @@ Global
 		{19FE1D2C-7154-4DEE-B662-6910BF3A181C}.Debug.Build.0 = Debug|Win32
 		{19FE1D2C-7154-4DEE-B662-6910BF3A181C}.Release.ActiveCfg = Release|Win32
 		{19FE1D2C-7154-4DEE-B662-6910BF3A181C}.Release.Build.0 = Release|Win32
+		{B96C5640-E3FB-49C4-A0B3-BE12E4EAED94}.Debug.ActiveCfg = Debug|Win32
+		{B96C5640-E3FB-49C4-A0B3-BE12E4EAED94}.Debug.Build.0 = Debug|Win32
+		{B96C5640-E3FB-49C4-A0B3-BE12E4EAED94}.Release.ActiveCfg = Release|Win32
+		{B96C5640-E3FB-49C4-A0B3-BE12E4EAED94}.Release.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 	EndGlobalSection
