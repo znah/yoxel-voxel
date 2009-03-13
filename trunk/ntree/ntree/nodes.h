@@ -3,14 +3,18 @@
 namespace ntree
 {
 
+const int NodeSizePow = 2;
+const int NodeSize = 1 << NodeSizePow;
+const int NodeSize3 = NodeSize*NodeSize*NodeSize;
 typedef uchar4 ValueType;
+const ValueType DefValue = {0, 0, 0, 0};
 
-
-class Node
+struct Node;
+typedef Node * NodePtr;
+struct Node
 {
-  int size;
   ValueType * data;
-  Node      * children;
+  NodePtr   * child;
 };
 
 

@@ -1,11 +1,12 @@
 #include "stdafx.h"
 
-#include "ntree.h"
+#include "ntree/ntree.h"
 
 int main()
 {
   ntree::Scene scene;
-  scene.load();
+
+
 
   
 
