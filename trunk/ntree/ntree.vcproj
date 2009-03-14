@@ -67,7 +67,7 @@
 			CharacterSet="2">
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\cpp"
+				AdditionalIncludeDirectories=".\;..\cpp"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="4"
 				UsePrecompiledHeader="0"
@@ -118,14 +118,17 @@
 				RelativePath=".\ntree\nodes.h">
 			</File>
 			<File
-				RelativePath=".\ntree\ntree.cpp">
-			</File>
-			<File
 				RelativePath=".\ntree\ntree.h">
 			</File>
 		</Filter>
 		<File
 			RelativePath=".\main.cpp">
+		</File>
+		<File
+			RelativePath=".\scene.cpp">
+		</File>
+		<File
+			RelativePath=".\scene.h">
 		</File>
 		<File
 			RelativePath=".\stdafx.h">
