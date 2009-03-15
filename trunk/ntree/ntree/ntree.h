@@ -47,6 +47,12 @@ inline point_3i ci2pt(uint ci)
   return point_3i(ci & mask, (ci>>NodeSizePow) & mask, (ci>>(2*NodeSizePow)) & mask);
 }
 
+inline uint pt2ci(const point_3i & pt)
+{
+  uint ci = pt.x | (pt.y << NodeSizePow) | (pt.z << (2*NodeSizePow));
+  return ci;
+}
+
 
 struct RangeBuilder
 {

@@ -19,6 +19,8 @@
 
 #include <boost/noncopyable.hpp>
 
+#define GLOBAL_FUNC
+
 #include "points.h"
 #include "range.h"
 #include "common/grid_walk.h"
@@ -27,9 +29,10 @@
 
 using boost::noncopyable;
 using std::swap;
+using cg::min;
+using cg::max;
 
 
 typedef unsigned int uint;
 typedef unsigned char uchar;
 typedef unsigned short ushort;
-
