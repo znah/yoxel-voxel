@@ -19,6 +19,8 @@ public:
   void AddVolume(cg::point_3i pos, cg::point_3i size, const ntree::ValueType * data);
 
   std::string GetStats();
+
+  ntree::ValueType TraceRay(const point_3f & p, point_3f dir);
   
 private:
   template <class NodeProc>

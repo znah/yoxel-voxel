@@ -24,7 +24,7 @@ int main()
     int s = raw[i];
     s = (s - 32) * 16;  // [32; 48)
     s = cg::bound(s, 0, 255);
-    uchar4 d = {s, s, s, s};
+    uchar4 d = {cg::rand(255), 128, 128, s};
     data[i] = d;
   }
   
