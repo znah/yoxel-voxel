@@ -88,28 +88,34 @@ inline bool GoNext2(point_3i & ch, point_3f & t1, point_3f & t2)
   return true;
 }
 
-
+bool accumLight(float dt, ValueType sample, point_4f & res)
+{
+  dt *= 256;
+  point_4f v = point_4f(sample.x, sample.y, sample.z, sample.w) / 256;
+  float opaq = 1.0f - powf((1.0f - v.w), dt);
+  v &= point_4f(opaq, opaq, opaq, 1.0f) * (1.0f - res.w);
+  res += v;
+  return false;
+}
 
 bool walkNode(NodePtr node, point_3f t1, point_3f t2, const uint dirFlags, point_4f & res)
 {
   if (minCoord(t2) <= 0)
-    return true;
+    return false;
 
   point_3i ch = FindFirstChild2(t1, t2);
+  bool done = false;
   do {
     int ci = pt2ci(ch);
     if (node->child != NULL && node->child[ci] != NULL)
-      walkNode(node->child[ci], t1, t2, dirFlags, res);
+      done = walkNode(node->child[ci], t1, t2, dirFlags, res);
     else
     {
       float dt = minCoord(t2) - maxCoord(t1);
-
-
-
+      done = accumLight(dt, node->data[ci], res);
     }
-
-  } while (GoNext2(ch, t1, t2));
-  return false;
+  } while (!done && GoNext2(ch, t1, t2));
+  return done;
 }
 
 ValueType Scene::TraceRay(const point_3f & p, point_3f dir)
@@ -120,7 +126,11 @@ ValueType Scene::TraceRay(const point_3f & p, point_3f dir)
   uint dirFlags;
   if (SetupTrace(p, dir, t1, t2, dirFlags))
     walkNode(m_root, t1, t2, dirFlags, res);
+  else
+    res = point_4f(0, 0, 0, 1);
   res *= 256;
+  for (int i = 0; i < 4; ++i)
+    res[i] = cg::bound(res[i], 0.0f, 255.0f);
   uchar4 c = {(uchar)res.x, (uchar)res.y, (uchar)res.z, (uchar)res.w};
   return c;
 }

@@ -133,8 +133,8 @@ struct RangeBuilder
       point_3i dst = i.p + upd2node;
       point_3i src = dst + node2data;
 
-      int dstOfs = (dst.z * NodeSize  + dst.y) * NodeSize  + dst.x;
       int srcOfs = (src.z * srcSize.y + src.y) * srcSize.x + src.x;
+      int dstOfs = (dst.z * NodeSize  + dst.y) * NodeSize  + dst.x;
       dstBuf[dstOfs] = data[srcOfs];
     }
   }

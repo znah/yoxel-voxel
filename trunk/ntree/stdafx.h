@@ -19,13 +19,18 @@
 
 #include <boost/noncopyable.hpp>
 
+#include <cuda_runtime.h>
+
+
 #define GLOBAL_FUNC
 
 #include "points.h"
 #include "range.h"
 #include "common/grid_walk.h"
 
-#include <cuda_runtime.h>
+#include "matrix.h"
+#include "matrix_ops.h"
+
 
 using boost::noncopyable;
 using std::swap;
