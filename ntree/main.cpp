@@ -47,15 +47,15 @@ int main()
   const int n = 256;
   std::vector<uchar> raw(n*n*n);
   //LoadBuf("..\\data\\bucky.raw", raw);
-  LoadBuf("..\\data\\bonsai.raw", raw);
+  LoadBuf("..\\data\\bonsai32.raw", raw);
 
   std::vector<uchar4> data(raw.size());
   for (size_t i = 0; i < raw.size(); ++i)
   {
     int s = raw[i];
-    s = (s - 32) * 16;  // [32; 48)
-    s = cg::bound(s, 0, 255);
-    uchar4 d = {128, 128, 128, s};
+    /*s = (s - 32) * 16;  // [32; 48)
+    s = cg::bound(s, 0, 255);*/
+    uchar4 d = {192, 128, 128, s};
     data[i] = d;
   }
   

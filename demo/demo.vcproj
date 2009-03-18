@@ -1,115 +1,179 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="7.10"
+	Version="8.00"
 	Name="demo"
 	ProjectGUID="{19FE1D2C-7154-4DEE-B662-6910BF3A181C}"
 	RootNamespace="demo"
-	Keyword="Win32Proj">
+	Keyword="Win32Proj"
+	>
 	<Platforms>
 		<Platform
-			Name="Win32"/>
+			Name="Win32"
+		/>
 	</Platforms>
+	<ToolFiles>
+	</ToolFiles>
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
 			OutputDirectory="Debug"
 			IntermediateDirectory="Debug"
 			ConfigurationType="1"
-			CharacterSet="2">
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="../cpp;../freeglut/include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
-				MinimalRebuild="TRUE"
+				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
-				Detect64BitPortabilityProblems="TRUE"
-				DebugInformationFormat="4"/>
+				Detect64BitPortabilityProblems="true"
+				DebugInformationFormat="4"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="glew32.lib cuda.lib cudart.lib"
 				OutputFile="$(OutDir)/demo.exe"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="../freeglut/lib"
-				GenerateDebugInformation="TRUE"
+				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(OutDir)/demo.pdb"
 				SubSystem="1"
-				TargetMachine="1"/>
+				TargetMachine="1"
+			/>
 			<Tool
-				Name="VCMIDLTool"/>
+				Name="VCALinkTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCManifestTool"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCXDCMakeTool"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCBscMakeTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"/>
+				Name="VCFxCopTool"
+			/>
 			<Tool
-				Name="VCWebServiceProxyGeneratorTool"/>
+				Name="VCAppVerifierTool"
+			/>
 			<Tool
-				Name="VCXMLDataGeneratorTool"/>
+				Name="VCWebDeploymentTool"
+			/>
 			<Tool
-				Name="VCWebDeploymentTool"/>
-			<Tool
-				Name="VCManagedWrapperGeneratorTool"/>
-			<Tool
-				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
 			OutputDirectory="Release"
 			IntermediateDirectory="Release"
 			ConfigurationType="1"
-			CharacterSet="2">
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				AdditionalIncludeDirectories="../cpp;../freeglut/include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
-				RuntimeLibrary="4"
+				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
-				Detect64BitPortabilityProblems="TRUE"
-				DebugInformationFormat="3"/>
+				Detect64BitPortabilityProblems="true"
+				DebugInformationFormat="3"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="glew32.lib cuda.lib cudart.lib"
 				OutputFile="$(OutDir)/demo.exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="../freeglut/lib"
-				GenerateDebugInformation="TRUE"
+				GenerateDebugInformation="true"
 				SubSystem="1"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
-				TargetMachine="1"/>
+				TargetMachine="1"
+			/>
 			<Tool
-				Name="VCMIDLTool"/>
+				Name="VCALinkTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCManifestTool"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCXDCMakeTool"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCBscMakeTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"/>
+				Name="VCFxCopTool"
+			/>
 			<Tool
-				Name="VCWebServiceProxyGeneratorTool"/>
+				Name="VCAppVerifierTool"
+			/>
 			<Tool
-				Name="VCXMLDataGeneratorTool"/>
+				Name="VCWebDeploymentTool"
+			/>
 			<Tool
-				Name="VCWebDeploymentTool"/>
-			<Tool
-				Name="VCManagedWrapperGeneratorTool"/>
-			<Tool
-				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 	</Configurations>
 	<References>
@@ -118,85 +182,106 @@
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
+			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
+			>
 			<File
-				RelativePath=".\Demo.cpp">
+				RelativePath=".\Demo.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\Demo.h">
+				RelativePath=".\Demo.h"
+				>
 			</File>
 			<File
-				RelativePath=".\main.cpp">
+				RelativePath=".\main.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\SVORenderer.cpp">
+				RelativePath=".\SVORenderer.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\SVORenderer.h">
+				RelativePath=".\SVORenderer.h"
+				>
 			</File>
 		</Filter>
 		<Filter
 			Name="svo"
-			Filter="">
+			>
 			<File
-				RelativePath="..\cpp\builders.h">
+				RelativePath="..\cpp\builders.h"
+				>
 			</File>
 			<File
-				RelativePath="..\cpp\CudaSVO_rt.cpp">
+				RelativePath="..\cpp\CudaSVO_rt.cpp"
+				>
 			</File>
 			<File
-				RelativePath="..\cpp\CudaSVO_rt.h">
+				RelativePath="..\cpp\CudaSVO_rt.h"
+				>
 			</File>
 			<File
-				RelativePath="..\cpp\DynamicSVO.cpp">
+				RelativePath="..\cpp\DynamicSVO.cpp"
+				>
 			</File>
 			<File
-				RelativePath="..\cpp\DynamicSVO.h">
+				RelativePath="..\cpp\DynamicSVO.h"
+				>
 			</File>
 			<File
-				RelativePath="..\cpp\vox_node.h">
+				RelativePath="..\cpp\vox_node.h"
+				>
 			</File>
 		</Filter>
 		<Filter
 			Name="cuda"
-			Filter="">
+			>
 			<File
-				RelativePath="..\cpp\cu_cpp.h">
+				RelativePath="..\cpp\cu_cpp.h"
+				>
 			</File>
 			<File
-				RelativePath="..\cpp\trace.cu">
+				RelativePath="..\cpp\trace.cu"
+				>
 				<FileConfiguration
-					Name="Debug|Win32">
+					Name="Debug|Win32"
+					>
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="../utils/nvcc_debug.cmd $(InputPath)
-"
-						Outputs="$(TargetDir)\$(InputName).obj"/>
+						CommandLine="../utils/nvcc_debug.cmd $(InputPath)&#x0D;&#x0A;"
+						Outputs="$(TargetDir)\$(InputName).obj"
+					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release|Win32">
+					Name="Release|Win32"
+					>
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="../utils/nvcc_release.cmd $(InputPath)
-"
-						Outputs="$(TargetDir)\$(InputName).obj"/>
+						CommandLine="../utils/nvcc_release.cmd $(InputPath)&#x0D;&#x0A;"
+						Outputs="$(TargetDir)\$(InputName).obj"
+					/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\cpp\trace_cu.h">
+				RelativePath="..\cpp\trace_cu.h"
+				>
 			</File>
 		</Filter>
 		<File
-			RelativePath="..\cpp\matrix.h">
+			RelativePath="..\cpp\matrix.h"
+			>
 		</File>
 		<File
-			RelativePath="..\cpp\matrix_ops.h">
+			RelativePath="..\cpp\matrix_ops.h"
+			>
 		</File>
 		<File
-			RelativePath="..\cpp\stdafx.h">
+			RelativePath="..\cpp\stdafx.h"
+			>
 		</File>
 		<File
-			RelativePath="..\cpp\trace_utils.h">
+			RelativePath="..\cpp\trace_utils.h"
+			>
 		</File>
 	</Files>
 	<Globals>

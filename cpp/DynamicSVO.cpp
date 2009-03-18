@@ -413,7 +413,7 @@ int DynamicSVO::CountTransfrerSize() const
 
 void DynamicSVO::RecNodeCount(VoxNodeId nodeId, int level, std::vector<int> & res) const
 {
-  if (res.size() < level+1)
+  if ((int)res.size() < level+1)
     res.resize(level+1, 0);
   ++res[level];
 
