@@ -15,6 +15,8 @@ struct Node
 {
   ValueType * data;
   NodePtr   * child;
+
+
 };
 
 
