@@ -205,7 +205,19 @@
 			</File>
 		</Filter>
 		<File
+			RelativePath=".\BrickManager.h"
+			>
+		</File>
+		<File
 			RelativePath=".\main.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\ntree_trace.cu"
+			>
+		</File>
+		<File
+			RelativePath=".\ntree_trace.cuh"
 			>
 		</File>
 		<File

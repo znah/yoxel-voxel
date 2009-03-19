@@ -20,6 +20,7 @@
 #include <boost/noncopyable.hpp>
 
 #include <cuda_runtime.h>
+#include "cutil_math.h"
 
 
 #define GLOBAL_FUNC
