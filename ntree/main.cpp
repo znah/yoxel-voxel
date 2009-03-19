@@ -1,8 +1,10 @@
 #include "stdafx.h"
 #include "scene.h"
-#include <conio.h>
+#include "ntree_trace.cuh"
 
+#include <conio.h>
 #include <Magick++.h>
+
 
 using std::cout;
 using std::endl;

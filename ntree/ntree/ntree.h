@@ -25,9 +25,10 @@ NodePtr DelTree(NodePtr node)
   return NULL;
 }
 
-inline NodePtr createNode(bool hasChildren)
+inline NodePtr createNode(bool hasChildren, NodePtr parent)
 {
   NodePtr node = new Node;
+  node->parent = parent;
   node->data = new ValueType[NodeSize3];
   std::fill(node->data, node->data + NodeSize3, DefValue);
   if (hasChildren)
@@ -37,6 +38,10 @@ inline NodePtr createNode(bool hasChildren)
   }
   else
     node->child = NULL;
+
+  node->gpuRef = NullGpuRef;
+  node->gpuData = make_uchar4(0, 0, 0, 0);
+  node->gpuChild = make_uchar4(0, 0, 0, 0);
   
   return node;
 }
@@ -62,25 +67,25 @@ struct RangeBuilder
   NodePtr build(NodePtr root, int depth)
   {
     ValueType t;
-    return updateNode(root, depth-1, 1<<(NodeSizePow*depth), point_3i(0, 0, 0), t);
+    return updateNode(root, NULL, depth-1, 1<<(NodeSizePow*depth), point_3i(0, 0, 0), t);
   }
 
-  NodePtr updateNode(NodePtr node, int level, int voxSize, const point_3i & voxPos, ValueType & nodeVal)
+  NodePtr updateNode(NodePtr node, NodePtr parent, int level, int voxSize, const point_3i & voxPos, ValueType & nodeVal)
   {
     range_3i range(voxPos, voxSize);
     if (!range.intersects(dstRange))
       return node;
 
     if (level == 0)
-      return updateLeaf(node, range, nodeVal);
+      return updateLeaf(node, parent, range, nodeVal);
     else
-      return updateGrid(node, level, voxSize, voxPos, nodeVal);
+      return updateGrid(node, parent, level, voxSize, voxPos, nodeVal);
   }
 
-  NodePtr updateGrid(NodePtr node, int level, int voxSize, const point_3i & voxPos, ValueType & nodeVal)
+  NodePtr updateGrid(NodePtr node, NodePtr parent, int level, int voxSize, const point_3i & voxPos, ValueType & nodeVal)
   {
     if (node == NULL)
-      node = createNode(true);
+      node = createNode(true, parent);
 
     Assert(node->child != NULL);
     int chSize = voxSize / NodeSize;
@@ -89,7 +94,7 @@ struct RangeBuilder
     bool allNull = true;
     for (uint ci = 0; ci < NodeSize3; ++ci, ++pp)
     {
-      (*pp) = updateNode(*pp, level-1, chSize, voxPos + ci2pt(ci) * chSize, node->data[ci]);
+      (*pp) = updateNode(*pp, node, level-1, chSize, voxPos + ci2pt(ci) * chSize, node->data[ci]);
       allNull &= ((*pp) == NULL);
     }
 
@@ -103,10 +108,10 @@ struct RangeBuilder
     return node;
   }
 
-  NodePtr updateLeaf(NodePtr node, const range_3i & range, ValueType & nodeVal)
+  NodePtr updateLeaf(NodePtr node, NodePtr parent, const range_3i & range, ValueType & nodeVal)
   {
     if (node == NULL)
-      node = createNode(false);
+      node = createNode(false, parent);
 
     Assert(node->child == NULL);
 
