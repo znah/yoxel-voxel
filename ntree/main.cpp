@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "scene.h"
 #include "ntree_trace.cuh"
+#include "BrickManager.h"
 
 #include <conio.h>
 #include <Magick++.h>
@@ -67,6 +68,6 @@ int main()
   RenderImage(scene, "test.jpg", point_2i(800, 600));
   cout << "ready" << endl;
 
-  getch();
+  _getch();
   return 0;
 }

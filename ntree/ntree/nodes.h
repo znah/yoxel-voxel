@@ -23,9 +23,6 @@ struct Node
   uint   gpuRef;
   uchar4 gpuData;
   uchar4 gpuChild;
-
-
-
 };
 
 
