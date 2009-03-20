@@ -1,10 +1,30 @@
 #pragma once
 
-typedef texture<uchar4, 3, cudaReadModeNormalizedFloat> VoxDataTex;
-typedef texture<uchar4, 3, cudaReadModeElementType> VoxChildTex;
-typedef texture<uint4, 1, cudaReadModeElementType> VoxNodeTex;
+
+struct float4x4
+{
+  float4 m[4];
+};
+
+struct RenderParams
+{
+  int2 viewSize;
+
+  float fovCoef; // tan(fov/2)
+  float pixelAng; // fov / viewWidth
+
+  float3 eyePos;
+  
+  float4x4 viewToWldMtx;
+  float4x4 wldToViewMtx;
+};
+
 
 extern "C"
 {
-  
+  const textureReference * GetVoxDataTex();
+  const textureReference * GetVoxChildTex();
+  const textureReference * GetVoxNodeTex();
+
+  void RunTrace(const RenderParams & params, uchar4 * img);
 }
