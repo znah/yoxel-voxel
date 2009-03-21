@@ -200,10 +200,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\renderer.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\ntree\trace.h"
 				>
 			</File>
@@ -239,10 +235,6 @@
 		</File>
 		<File
 			RelativePath=".\ntree_trace.cuh"
-			>
-		</File>
-		<File
-			RelativePath=".\renderer.h"
 			>
 		</File>
 		<File

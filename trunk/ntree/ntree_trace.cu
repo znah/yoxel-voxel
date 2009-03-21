@@ -2,9 +2,8 @@
 #include "cutil_math.h"
 #include "ntree_trace.cuh"
 
-texture<uchar4, 3, cudaReadModeNormalizedFloat> VoxDataTex;
-texture<uchar4, 3, cudaReadModeElementType> VoxChildTex;
-texture<uint4, 1, cudaReadModeElementType> VoxNodeTex;
+texture<uchar4, 3, cudaReadModeNormalizedFloat> voxDataTex;
+texture<uint4, 3, cudaReadModeElementType> voxChildTex;
 
 __constant__ RenderParams rp;
 
@@ -72,9 +71,24 @@ inline GridShape make_grid2d(const int2 & size, const int2 & block)
 
 extern "C"
 {
-  const textureReference * GetVoxDataTex() {  return &VoxDataTex; }
-  const textureReference * GetVoxChildTex() { return &VoxChildTex; }
-  const textureReference * GetVoxNodeTex() { return &VoxNodeTex; }  
+  const textureReference * GetDataTex() 
+  { 
+    voxDataTex.addressMode[0] = cudaAddressModeClamp;
+    voxDataTex.addressMode[1] = cudaAddressModeClamp;
+    voxDataTex.addressMode[2] = cudaAddressModeClamp;
+    voxDataTex.filterMode = cudaFilterModeLinear;
+    voxDataTex.normalized = false;
+    return &voxDataTex; 
+  }
+  const textureReference * GetNodeTex() 
+  { 
+    voxChildTex.addressMode[0] = cudaAddressModeClamp;
+    voxChildTex.addressMode[1] = cudaAddressModeClamp;
+    voxChildTex.addressMode[2] = cudaAddressModeClamp;
+    voxChildTex.filterMode = cudaFilterModePoint;
+    voxDataTex.normalized = false;
+    return &voxChildTex; 
+  }
 
   void RunTrace(const RenderParams & params, uchar4 * img)
   {

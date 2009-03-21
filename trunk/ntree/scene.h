@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ntree/nodes.h"
+#include "BrickManager.h"
 
 class Scene
 {
@@ -23,9 +24,12 @@ public:
   ntree::ValueType TraceRay(const point_3f & p, point_3f dir);
   
 private:
-  template <class NodeProc>
-  void walkTree(NodeProc & proc);
-
   ntree::NodePtr m_root;
   int m_treeDepth;
+
+  BrickPool<uchar4> m_dataPool;
+  BrickPool<uint4> m_nodePool;
+
+
+
 };
