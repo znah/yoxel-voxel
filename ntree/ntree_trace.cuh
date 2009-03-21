@@ -22,9 +22,8 @@ struct RenderParams
 
 extern "C"
 {
-  const textureReference * GetVoxDataTex();
-  const textureReference * GetVoxChildTex();
-  const textureReference * GetVoxNodeTex();
+  const textureReference * GetDataTex();
+  const textureReference * GetNodeTex();
 
   void RunTrace(const RenderParams & params, uchar4 * img);
 }

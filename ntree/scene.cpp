@@ -3,6 +3,7 @@
 
 #include "ntree/ntree.h"
 #include "trace_utils.h"
+#include "ntree_trace.cuh"
 
 using namespace ntree;
 
@@ -10,10 +11,29 @@ using namespace ntree;
 ///////////////////////////////// Scene ////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+#define CUT_CHECK_ERROR(errorMessage) do {                                 \
+  cudaError_t err = cudaGetLastError();                                    \
+  if( cudaSuccess != err) {                                                \
+      fprintf(stderr, "Cuda error: %s in file '%s' in line %i : %s.\n",    \
+              errorMessage, __FILE__, __LINE__, cudaGetErrorString( err) );\
+      exit(EXIT_FAILURE);                                                  \
+  }                                                                        \
+  err = cudaThreadSynchronize();                                           \
+  if( cudaSuccess != err) {                                                \
+      fprintf(stderr, "Cuda error: %s in file '%s' in line %i : %s.\n",    \
+              errorMessage, __FILE__, __LINE__, cudaGetErrorString( err) );\
+      exit(EXIT_FAILURE);                                                  \
+  } } while (0)
+
+
 Scene::Scene() 
   : m_root(NULL)
   , m_treeDepth(5)
-{}
+  , m_dataPool(GetDataTex(), 5, point_3i(64, 64, 64))
+  , m_nodePool(GetNodeTex(), 4, point_3i(32, 16, 16))
+{
+//CUT_CHECK_ERROR("ttt");
+}
 
 Scene::~Scene()
 {

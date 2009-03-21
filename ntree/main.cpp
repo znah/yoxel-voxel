@@ -1,7 +1,5 @@
 #include "stdafx.h"
 #include "scene.h"
-#include "ntree_trace.cuh"
-#include "BrickManager.h"
 
 #include <conio.h>
 #include <Magick++.h>
@@ -45,12 +43,12 @@ void RenderImage(Scene & scene, const char * file, point_2i size)
 int main()
 {
   Scene scene;
-  scene.SetTreeDepth(4);
+  scene.SetTreeDepth(3);
 
-  const int n = 256;
+  const int n = 32;
   std::vector<uchar> raw(n*n*n);
-  //LoadBuf("..\\data\\bucky.raw", raw);
-  LoadBuf("..\\data\\bonsai32.raw", raw);
+  LoadBuf("..\\data\\bucky.raw", raw);
+  //LoadBuf("..\\data\\bonsai32.raw", raw);
 
   std::vector<uchar4> data(raw.size());
   for (size_t i = 0; i < raw.size(); ++i)
@@ -65,7 +63,7 @@ int main()
   cout << "adding tree" << endl;
   scene.AddVolume( point_3i(0, 0, 0), point_3i(n, n, n), &data[0] );
   cout << scene.GetStats() << endl;
-  RenderImage(scene, "test.jpg", point_2i(800, 600));
+  RenderImage(scene, "test.jpg", point_2i(400, 300));
   cout << "ready" << endl;
 
   _getch();
