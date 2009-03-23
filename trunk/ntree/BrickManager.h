@@ -4,8 +4,8 @@ template<class T>
 class BrickPool
 {
 public:
-  BrickPool(const textureReference * tex, int brickSize, point_3i poolSize) 
-    : m_tex(tex)
+  BrickPool(const char * texName, int brickSize, point_3i poolSize) 
+    : m_tex(NULL)
     , m_cuArray(NULL)
     , m_extent(poolSize)
     , m_brickSize(brickSize)
@@ -14,16 +14,18 @@ public:
   {
     m_mark.resize(poolSize.x * poolSize.y * poolSize.z, -1);
 
+    CUDA_SAFE_CALL( cudaGetTextureReference(&m_tex, texName) );
+
     cudaChannelFormatDesc desc = cudaCreateChannelDesc<T>();
     point_3i texSize = poolSize * brickSize;
     cudaExtent extent = make_cudaExtent(texSize.x, texSize.y, texSize.z);
-    cudaMalloc3DArray(&m_cuArray, &desc, extent);
-    cudaBindTextureToArray(tex, m_cuArray, &desc);
+    CUDA_SAFE_CALL( cudaMalloc3DArray(&m_cuArray, &desc, extent) );
+    CUDA_SAFE_CALL( cudaBindTextureToArray(m_tex, m_cuArray, &desc) );
   }
 
   ~BrickPool()
   {
-    cudaFreeArray(m_cuArray);
+    CUDA_SAFE_CALL( cudaFreeArray(m_cuArray) );
     m_cuArray = NULL;
   }
 
@@ -44,7 +46,7 @@ public:
     params.dstPos = make_cudaPos(id.x * m_brickSize, id.y * m_brickSize, id.z * m_brickSize);
     params.extent = make_cudaExtent(m_brickSize, m_brickSize, m_brickSize);
     params.kind = cudaMemcpyHostToDevice;
-    cudaMemcpy3D(&params);
+    CUDA_SAFE_CALL( cudaMemcpy3D(&params) );
   }
 
 private:

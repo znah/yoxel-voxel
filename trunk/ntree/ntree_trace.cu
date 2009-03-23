@@ -1,9 +1,10 @@
 #include <stdio.h>
+#include "cutil.h"
 #include "cutil_math.h"
 #include "ntree_trace.cuh"
 
 texture<uchar4, 3, cudaReadModeNormalizedFloat> voxDataTex;
-texture<uint4, 3, cudaReadModeElementType> voxChildTex;
+texture<uint4, 3, cudaReadModeElementType> voxNodeTex;
 
 __constant__ RenderParams rp;
 
@@ -55,22 +56,9 @@ inline GridShape make_grid2d(const int2 & size, const int2 & block)
   return shape;
 }
 
-#define CUT_CHECK_ERROR(errorMessage) do {                                 \
-  cudaError_t err = cudaGetLastError();                                    \
-  if( cudaSuccess != err) {                                                \
-      fprintf(stderr, "Cuda error: %s in file '%s' in line %i : %s.\n",    \
-              errorMessage, __FILE__, __LINE__, cudaGetErrorString( err) );\
-      exit(EXIT_FAILURE);                                                  \
-  }                                                                        \
-  err = cudaThreadSynchronize();                                           \
-  if( cudaSuccess != err) {                                                \
-      fprintf(stderr, "Cuda error: %s in file '%s' in line %i : %s.\n",    \
-              errorMessage, __FILE__, __LINE__, cudaGetErrorString( err) );\
-      exit(EXIT_FAILURE);                                                  \
-  } } while (0)
-
 extern "C"
 {
+
   const textureReference * GetDataTex() 
   { 
     voxDataTex.addressMode[0] = cudaAddressModeClamp;
@@ -78,16 +66,24 @@ extern "C"
     voxDataTex.addressMode[2] = cudaAddressModeClamp;
     voxDataTex.filterMode = cudaFilterModeLinear;
     voxDataTex.normalized = false;
-    return &voxDataTex; 
+
+    //const textureReference * texref(NULL);
+    //CUDA_SAFE_CALL( cudaGetTextureReference(&texref, "voxDataTex") );
+    //return texref; 
+    return &voxDataTex;
   }
   const textureReference * GetNodeTex() 
   { 
-    voxChildTex.addressMode[0] = cudaAddressModeClamp;
-    voxChildTex.addressMode[1] = cudaAddressModeClamp;
-    voxChildTex.addressMode[2] = cudaAddressModeClamp;
-    voxChildTex.filterMode = cudaFilterModePoint;
-    voxDataTex.normalized = false;
-    return &voxChildTex; 
+    voxNodeTex.addressMode[0] = cudaAddressModeClamp;
+    voxNodeTex.addressMode[1] = cudaAddressModeClamp;
+    voxNodeTex.addressMode[2] = cudaAddressModeClamp;
+    voxNodeTex.filterMode = cudaFilterModePoint;
+    voxNodeTex.normalized = false;
+
+    //const textureReference * texref;
+    //CUDA_SAFE_CALL( cudaGetTextureReference(&texref, "voxChildTex") );
+    //return texref; 
+    return &voxNodeTex;
   }
 
   void RunTrace(const RenderParams & params, uchar4 * img)
