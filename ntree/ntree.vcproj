@@ -209,6 +209,10 @@
 			>
 		</File>
 		<File
+			RelativePath=".\cutil.h"
+			>
+		</File>
+		<File
 			RelativePath=".\main.cpp"
 			>
 		</File>
@@ -219,17 +223,19 @@
 				Name="Debug|Win32"
 				>
 				<Tool
-					Name="CUDA"
-					Include="$(SolutionDir)/cpp"
+					Name="VCCustomBuildTool"
+					CommandLine="../utils/nvcc_debug.cmd $(InputPath)"
+					AdditionalDependencies=""
+					Outputs="$(TargetDir)\$(InputName).obj"
 				/>
 			</FileConfiguration>
 			<FileConfiguration
 				Name="Release|Win32"
 				>
 				<Tool
-					Name="CUDA"
-					Include="$(SolutionDir)/cpp"
-					KeepFiles="true"
+					Name="VCCustomBuildTool"
+					CommandLine="../utils/nvcc_release.cmd $(InputPath)"
+					Outputs="$(TargetDir)\$(InputName).obj"
 				/>
 			</FileConfiguration>
 		</File>
