@@ -13,9 +13,6 @@
 		/>
 	</Platforms>
 	<ToolFiles>
-		<DefaultToolFile
-			FileName="cuda.rules"
-		/>
 	</ToolFiles>
 	<Configurations>
 		<Configuration
@@ -31,9 +28,6 @@
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="CUDA"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -114,9 +108,6 @@
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="CUDA"
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -224,7 +215,7 @@
 				>
 				<Tool
 					Name="VCCustomBuildTool"
-					CommandLine="../utils/nvcc_debug.cmd $(InputPath)"
+					CommandLine="../utils/nvcc_debug.cmd $(InputPath)&#x0D;&#x0A;"
 					AdditionalDependencies=""
 					Outputs="$(TargetDir)\$(InputName).obj"
 				/>
@@ -234,7 +225,7 @@
 				>
 				<Tool
 					Name="VCCustomBuildTool"
-					CommandLine="../utils/nvcc_release.cmd $(InputPath)"
+					CommandLine="../utils/nvcc_release.cmd $(InputPath)&#x0D;&#x0A;"
 					Outputs="$(TargetDir)\$(InputName).obj"
 				/>
 			</FileConfiguration>

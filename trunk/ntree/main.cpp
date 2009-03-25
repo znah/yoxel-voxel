@@ -62,6 +62,7 @@ int main()
   
   cout << "adding tree" << endl;
   scene.AddVolume( point_3i(0, 0, 0), point_3i(n, n, n), &data[0] );
+  scene.UpdateGPU();
   cout << scene.GetStats() << endl;
   //RenderImage(scene, "test.jpg", point_2i(400, 300));
   cout << "ready" << endl;

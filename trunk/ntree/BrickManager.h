@@ -4,8 +4,8 @@ template<class T>
 class BrickPool
 {
 public:
-  BrickPool(const char * texName, int brickSize, point_3i poolSize) 
-    : m_tex(NULL)
+  BrickPool(const textureReference * tex, int brickSize, point_3i poolSize) 
+    : m_tex(tex)
     , m_cuArray(NULL)
     , m_extent(poolSize)
     , m_brickSize(brickSize)
@@ -13,8 +13,6 @@ public:
     , m_count(0)
   {
     m_mark.resize(poolSize.x * poolSize.y * poolSize.z, -1);
-
-    CUDA_SAFE_CALL( cudaGetTextureReference(&m_tex, texName) );
 
     cudaChannelFormatDesc desc = cudaCreateChannelDesc<T>();
     point_3i texSize = poolSize * brickSize;
@@ -31,7 +29,14 @@ public:
 
   uchar4 CreateBrick(const T * data = NULL)
   {
-    uchar4 id;
+    Assert(m_count < (int)m_mark.size());
+    
+    int ofs = m_count;
+    ++m_count;
+
+    // TODO brick release
+
+    uchar4 id = ofs2id(ofs);
     if (data != NULL)
       SetBrick(id, data);
     return id;
@@ -40,8 +45,9 @@ public:
 
   void SetBrick(uchar4 id, const T * data)
   {
+    //Assert();
     cudaMemcpy3DParms params = {0};
-    params.srcPtr = make_cudaPitchedPtr(data, sizeof(T) * m_brickSize, m_brickSize, m_brickSize);
+    params.srcPtr = make_cudaPitchedPtr((void*)data, sizeof(T) * m_brickSize, m_brickSize, m_brickSize);
     params.dstArray = m_cuArray;
     params.dstPos = make_cudaPos(id.x * m_brickSize, id.y * m_brickSize, id.z * m_brickSize);
     params.extent = make_cudaExtent(m_brickSize, m_brickSize, m_brickSize);
@@ -50,6 +56,18 @@ public:
   }
 
 private:
+  int id2ofs(uchar4 id) const { return id.x + m_extent.x * (id.y + id.z * m_extent.y); }
+  uchar4 ofs2id(int ofs) const 
+  { 
+    uchar4 res;
+    res.x = ofs % m_extent.x;
+    ofs /= m_extent.x;
+    res.y = ofs % m_extent.y;
+    ofs /= m_extent.y;
+    res.z = ofs % m_extent.z;
+    return res;
+  }
+
   const textureReference * m_tex;
   cudaArray * m_cuArray;
 
