@@ -20,7 +20,6 @@ struct Node
   NodePtr   * child;
 
   // gpu data
-  uint   gpuRef;
   uchar4 gpuData;
   uchar4 gpuChild;
 };

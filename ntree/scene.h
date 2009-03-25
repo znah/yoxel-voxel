@@ -22,6 +22,8 @@ public:
   std::string GetStats();
 
   ntree::ValueType TraceRay(const point_3f & p, point_3f dir);
+
+  void UpdateGPU();
   
 private:
   ntree::NodePtr m_root;
@@ -30,6 +32,11 @@ private:
   BrickPool<uchar4> m_dataPool;
   BrickPool<uint4> m_nodePool;
 
+  struct NHood
+  {
+    ntree::NodePtr p[8];
+  };
 
-
+  void UpdateGPURec(const NHood & nhood);
+  void UploadData(const NHood & nhood, uchar4 gpuRef);
 };

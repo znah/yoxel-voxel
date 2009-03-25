@@ -14,8 +14,8 @@ using namespace ntree;
 Scene::Scene() 
   : m_root(NULL)
   , m_treeDepth(5)
-  , m_dataPool("voxDataTex", 5, point_3i(64, 64, 64))
-  , m_nodePool("voxNodeTex", 4, point_3i(32, 16, 16))
+  , m_dataPool(GetDataTex(), 5, point_3i(64, 64, 64))
+  , m_nodePool(GetNodeTex(), 4, point_3i(32, 16, 16))
 {
 }
 
@@ -137,4 +137,49 @@ ValueType Scene::TraceRay(const point_3f & p, point_3f dir)
     res[i] = cg::bound(res[i], 0.0f, 255.0f);
   uchar4 c = {(uchar)res.x, (uchar)res.y, (uchar)res.z, (uchar)res.w};
   return c;
+}
+
+void Scene::UpdateGPU()
+{
+  NHood nhood = {m_root, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+  UpdateGPURec(nhood);
+}
+
+void Scene::UpdateGPURec(const NHood & nhood)
+{
+  UploadData(nhood, m_dataPool.CreateBrick());
+
+
+
+}
+
+void Scene::UploadData(const NHood & nhood, uchar4 gpuRef)
+{
+  const int size = NodeSize + 1;
+  const int size3 = size * size * size;
+  ValueType data[size3];
+  std::fill(data, data + size3, make_uchar4(0, 0, 0, 0));
+  ValueType * dst = data;
+  for (int z = 0; z <= NodeSize; ++z)
+  for (int y = 0; y <= NodeSize; ++y)
+  for (int x = 0; x <= NodeSize; ++x)
+  {
+    int fx = (x == NodeSize ? 1 : 0);
+    int fy = (y == NodeSize ? 1 : 0);
+    int fz = (z == NodeSize ? 1 : 0);
+    int nid = fx + (fy<<1) + (fz<<2);
+    NodePtr snode = nhood.p[nid];
+    int sofs = 0;
+    if (fx) sofs += x;
+    if (fy) sofs += y * NodeSize;
+    if (fz) sofs += z * NodeSize * NodeSize;
+
+    if (snode != NULL)
+    {
+      Assert(snode->data != NULL);
+      *dst = snode->data[sofs];
+    }
+    ++dst;
+  }
+  // upload
 }

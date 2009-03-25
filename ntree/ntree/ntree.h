@@ -39,7 +39,6 @@ inline NodePtr createNode(bool hasChildren, NodePtr parent)
   else
     node->child = NULL;
 
-  node->gpuRef = NullGpuRef;
   node->gpuData = make_uchar4(0, 0, 0, 0);
   node->gpuChild = make_uchar4(0, 0, 0, 0);
   
