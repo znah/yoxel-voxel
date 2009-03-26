@@ -145,9 +145,21 @@ void Scene::UpdateGPU()
   UpdateGPURec(nhood);
 }
 
-void Scene::UpdateGPURec(const NHood & nhood)
+void Scene::UpdateGPURec(const NHood & nhood, uchar & dataRef, uchar & childRef)
 {
-  UploadData(nhood, m_dataPool.CreateBrick());
+  dataRef = m_dataPool.CreateBrick();
+  UploadData(nhood, dataRef);
+
+  const int childBufSize = NodeSize3 * 4;
+  uint childBuf[childBufSize];
+  std::fill(childBuf, childBuf + childBufSize, 0);
+  for (int z = 0; z <= NodeSize; ++z)
+  for (int y = 0; y <= NodeSize; ++y)
+  for (int x = 0; x <= NodeSize; ++x)
+  {
+
+
+  }
 
 
 
