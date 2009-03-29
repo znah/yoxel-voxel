@@ -2,24 +2,6 @@
 
 #include "cu_cu.h"
 
-// TODO
-#define CUDA_SAFE_CALL 
-
-#  define CUT_CHECK_ERROR(errorMessage) do {                                 \
-    cudaError_t err = cudaGetLastError();                                    \
-    if( cudaSuccess != err) {                                                \
-        fprintf(stderr, "Cuda error: %s in file '%s' in line %i : %s.\n",    \
-                errorMessage, __FILE__, __LINE__, cudaGetErrorString( err) );\
-        exit(EXIT_FAILURE);                                                  \
-    }                                                                        \
-    err = cudaThreadSynchronize();                                           \
-    if( cudaSuccess != err) {                                                \
-        fprintf(stderr, "Cuda error: %s in file '%s' in line %i : %s.\n",    \
-                errorMessage, __FILE__, __LINE__, cudaGetErrorString( err) );\
-        exit(EXIT_FAILURE);                                                  \
-    } } while (0)
-
-
 template <class T>
 class CuVector : public noncopyable
 {
@@ -85,7 +67,6 @@ public:
     read(0, m_size, &dst[0]);
   }
 
-//  operator T* () { return d_data; }
   T* d_ptr() { return d_data; }
 };
 
@@ -104,16 +85,15 @@ void CuGetSymbol(const char * src, T & dest)
 
 inline float3 make_float3(const point_3f & p) { return make_float3(p.x, p.y, p.z); }
 
-inline int iDivUp(int a, int b)
+inline float4x4 make_float4x4(const matrix_4f & m)
 {
-  int r = a / b;
-  return (r*b < a) ? r+1 : r;
-}
-
-inline GridShape make_grid2d(const point_2i & size, const point_2i & block)
-{
-  GridShape shape;
-  shape.block = dim3(block.x, block.y, 1);
-  shape.grid = dim3(iDivUp(size.x, block.x), iDivUp(size.y, block.y), 1);
-  return shape;
+  float4x4 res;
+  for (int i = 0; i < 4; ++i)
+  {
+    res.m[i].x = m.data[i][0];
+    res.m[i].y = m.data[i][1];
+    res.m[i].z = m.data[i][2];
+    res.m[i].w = m.data[i][3];
+  }
+  return res;
 }

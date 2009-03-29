@@ -62,7 +62,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="CORE_RL_Magick++_.lib cuda.lib cudart.lib"
+				AdditionalDependencies="cuda.lib cudart.lib"
 				OutputFile="$(OutDir)/ntree.exe"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
@@ -139,7 +139,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="CORE_RL_Magick++_.lib cuda.lib cudart.lib"
+				AdditionalDependencies="cuda.lib cudart.lib"
 				OutputFile="$(OutDir)/ntree.exe"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
@@ -197,10 +197,6 @@
 		</Filter>
 		<File
 			RelativePath=".\BrickManager.h"
-			>
-		</File>
-		<File
-			RelativePath=".\cutil.h"
 			>
 		</File>
 		<File

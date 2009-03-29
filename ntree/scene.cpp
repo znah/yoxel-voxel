@@ -12,7 +12,8 @@ using namespace ntree;
 ////////////////////////////////////////////////////////////////////////////////
 
 Scene::Scene() 
-  : m_root(NULL)
+  : m_viewSize(800, 600)
+  , m_root(NULL)
   , m_treeDepth(5)
   , m_dataPool(GetDataTex(), 5, point_3i(64, 64, 64))
   , m_gridPool(GetNodeTex(), 4, point_3i(32, 16, 16))
@@ -141,7 +142,12 @@ ValueType Scene::TraceRay(const point_3f & p, point_3f dir)
 
 void Scene::UpdateGPU()
 {
-  NHood nhood = {m_root, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+  NHood nhood;
+  for (int i = 0; i < 8; ++i)
+  {
+    nhood.p[i] = (i == 0) ? m_root : NULL;
+    nhood.data[i] = make_uchar4(0, 0, 0, 0);
+  }
   
   GPURef rootData = GPUNull;
   GPURef rootGrid = GPUNull;
@@ -149,33 +155,84 @@ void Scene::UpdateGPU()
   UpdateGPURec(nhood, rootData, rootGrid);
 }
 
-void Scene::GetNHood(NHood nhood, const point_3i & p)
+inline uint ofsInNode(const point_3i & p)
 {
-  
-
+  return (p.z * NodeSize + p.y) * NodeSize + p.x;
 }
+
+void Scene::GetNHood(const NHood & nhood, const point_3i & p, NHood & res)
+{
+  for (int i = 0; i < 8; ++i)
+  {
+    point_3i ofs(i & 1, (i>>1)&1, (i>>2)&1);
+    point_3i np = p + ofs;
+    point_3i fp = np / NodeSize;
+    np %= NodeSize;
+    int nid = fp.x + (fp.y<<1) + (fp.z<<2);
+    NodePtr snode = nhood.p[nid];
+    int sofs = ofsInNode(np);
+    if (snode == NULL)
+    {
+      res.p[i] = NULL;
+      res.data[i] = nhood.data[nid];
+    }
+    else if (snode->child == NULL)
+    {
+      res.p[i] = NULL;
+      res.data[i] = snode->data[sofs];
+    }
+    else
+      res.p[i] = snode->child[sofs];
+  }
+}
+
+struct GPUChildData
+{
+  GPURef data;
+  GPURef child;
+  uint res1;
+  uint res2;
+};
 
 void Scene::UpdateGPURec(const NHood & nhood, GPURef & dataRef, GPURef & childRef)
 {
-  dataRef = m_dataPool.CreateBrick();
-  UploadData(nhood, dataRef);
+  STATIC_ASSERT( sizeof(GPUChildData) == sizeof(uint4), GPUChildData_size_error );
 
-  const int childBufSize = NodeSize3 * 4;
-  uint childBuf[childBufSize];
-  std::fill(childBuf, childBuf + childBufSize, 0);
-  for (int z = 0; z <= NodeSize; ++z)
-  for (int y = 0; y <= NodeSize; ++y)
-  for (int x = 0; x <= NodeSize; ++x)
+  if (nhood.p[0] == NULL)
   {
-
-
+    dataRef = GPUNull;
+    childRef = GPUNull;
+    return;
   }
 
+  UploadData(nhood, dataRef);
 
+  if (nhood.p[0]->child == NULL)
+  {
+    childRef = GPUNull;
+    return;
+  }
+    
+  GPUChildData childBuf[NodeSize3];
+  GPUChildData * dst = childBuf;
 
+  for (int z = 0; z < NodeSize; ++z)
+  for (int y = 0; y < NodeSize; ++y)
+  for (int x = 0; x < NodeSize; ++x)
+  {
+    point_3i p(x, y, z);
+    NHood sub;
+    GetNHood(nhood, p, sub);
+    UpdateGPURec(sub, dst->data, dst->child);
+    dst->res1 = 0;
+    dst->res2 = 0;
+    ++dst;
+  }
+
+  childRef = m_gridPool.CreateBrick((uint4*)childBuf);
 }
 
-void Scene::UploadData(const NHood & nhood, GPURef gpuRef)
+void Scene::UploadData(const NHood & nhood, GPURef & dataRef)
 {
   const int size = NodeSize + 1;
   const int size3 = size * size * size;
@@ -201,7 +258,28 @@ void Scene::UploadData(const NHood & nhood, GPURef gpuRef)
       Assert(snode->data != NULL);
       *dst = snode->data[sofs];
     }
+    else
+      *dst = nhood.data[nid];
+    
     ++dst;
   }
-  // upload
+  dataRef = m_dataPool.CreateBrick(data);
+}
+
+void Scene::Render(uchar4 * img)
+{
+  RenderParams rp;
+  rp.viewSize = make_int2(m_viewSize.x, m_viewSize.y);
+  const float fov = 45.0f;
+  rp.fovCoef = tan(cg::grad2rad(0.5f * fov));
+
+  point_3f target(0.5f, 0.5f, 0.5f);
+  point_3f eye(2.0f, 1.5f, 1.5f);
+  matrix_4f view2wld = MakeViewToWld(eye, target - eye, point_3f(0, 0, 1));
+  matrix_4f wld2view;
+  cg::inverse(view2wld, wld2view);
+  rp.viewToWldMtx = make_float4x4(view2wld);
+  rp.wldToViewMtx = make_float4x4(wld2view);
+  rp.eyePos = make_float3(eye);
+  RunTrace(rp, img);
 }

@@ -1,11 +1,5 @@
 #pragma once
 
-
-struct float4x4
-{
-  float4 m[4];
-};
-
 struct RenderParams
 {
   int2 viewSize;
