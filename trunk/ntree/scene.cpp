@@ -15,7 +15,7 @@ Scene::Scene()
   : m_root(NULL)
   , m_treeDepth(5)
   , m_dataPool(GetDataTex(), 5, point_3i(64, 64, 64))
-  , m_nodePool(GetNodeTex(), 4, point_3i(32, 16, 16))
+  , m_gridPool(GetNodeTex(), 4, point_3i(32, 16, 16))
 {
 }
 
@@ -142,10 +142,20 @@ ValueType Scene::TraceRay(const point_3f & p, point_3f dir)
 void Scene::UpdateGPU()
 {
   NHood nhood = {m_root, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
-  UpdateGPURec(nhood);
+  
+  GPURef rootData = GPUNull;
+  GPURef rootGrid = GPUNull;
+
+  UpdateGPURec(nhood, rootData, rootGrid);
 }
 
-void Scene::UpdateGPURec(const NHood & nhood, uchar & dataRef, uchar & childRef)
+void Scene::GetNHood(NHood nhood, const point_3i & p)
+{
+  
+
+}
+
+void Scene::UpdateGPURec(const NHood & nhood, GPURef & dataRef, GPURef & childRef)
 {
   dataRef = m_dataPool.CreateBrick();
   UploadData(nhood, dataRef);
@@ -165,7 +175,7 @@ void Scene::UpdateGPURec(const NHood & nhood, uchar & dataRef, uchar & childRef)
 
 }
 
-void Scene::UploadData(const NHood & nhood, uchar4 gpuRef)
+void Scene::UploadData(const NHood & nhood, GPURef gpuRef)
 {
   const int size = NodeSize + 1;
   const int size3 = size * size * size;

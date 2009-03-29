@@ -1,5 +1,9 @@
 #pragma once
 
+typedef uint GPURef;
+const GPURef GPUNull = 0xffffffff;
+
+
 namespace ntree
 {
 
@@ -9,7 +13,6 @@ const int NodeSize3 = NodeSize*NodeSize*NodeSize;
 typedef uchar4 ValueType;
 const ValueType DefValue = {0, 0, 0, 0};
 
-const uint NullGpuRef = 0xffffffff;
 
 struct Node;
 typedef Node * NodePtr;
@@ -20,8 +23,8 @@ struct Node
   NodePtr   * child;
 
   // gpu data
-  uchar4 gpuData;
-  uchar4 gpuChild;
+  GPURef gpuData;
+  GPURef gpuChild;
 };
 
 
