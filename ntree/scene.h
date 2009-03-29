@@ -30,13 +30,14 @@ private:
   int m_treeDepth;
 
   BrickPool<uchar4> m_dataPool;
-  BrickPool<uint4> m_nodePool;
+  BrickPool<uint4> m_gridPool;
 
   struct NHood
   {
     ntree::NodePtr p[8];
   };
 
-  void UpdateGPURec(const NHood & nhood);
-  void UploadData(const NHood & nhood, uchar4 gpuRef);
+  void UpdateGPURec(const NHood & nhood, GPURef & dataRef, GPURef & childRef);
+  void UploadData(const NHood & nhood, GPURef gpuRef);
+  void GetNHood(NHood nhood, const point_3i & p);
 };

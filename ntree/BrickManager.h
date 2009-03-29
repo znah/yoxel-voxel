@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ntree/nodes.h"
+
 template<class T>
 class BrickPool
 {
@@ -27,44 +29,44 @@ public:
     m_cuArray = NULL;
   }
 
-  uchar4 CreateBrick(const T * data = NULL)
+  GPURef CreateBrick(const T * data = NULL)
   {
     Assert(m_count < (int)m_mark.size());
     
-    int ofs = m_count;
+    GPURef id = m_count;
     ++m_count;
 
     // TODO brick release
 
-    uchar4 id = ofs2id(ofs);
     if (data != NULL)
       SetBrick(id, data);
     return id;
   }
 
 
-  void SetBrick(uchar4 id, const T * data)
+  void SetBrick(GPURef id, const T * data)
   {
     //Assert();
+    point_3i pos = id2pos(id);
     cudaMemcpy3DParms params = {0};
     params.srcPtr = make_cudaPitchedPtr((void*)data, sizeof(T) * m_brickSize, m_brickSize, m_brickSize);
     params.dstArray = m_cuArray;
-    params.dstPos = make_cudaPos(id.x * m_brickSize, id.y * m_brickSize, id.z * m_brickSize);
+    params.dstPos = make_cudaPos(pos.x * m_brickSize, pos.y * m_brickSize, pos.z * m_brickSize);
     params.extent = make_cudaExtent(m_brickSize, m_brickSize, m_brickSize);
     params.kind = cudaMemcpyHostToDevice;
     CUDA_SAFE_CALL( cudaMemcpy3D(&params) );
   }
 
 private:
-  int id2ofs(uchar4 id) const { return id.x + m_extent.x * (id.y + id.z * m_extent.y); }
-  uchar4 ofs2id(int ofs) const 
+  GPURef pos2id(const point_3i & pos) const { return pos.x + m_extent.x * (pos.y + pos.z * m_extent.y); }
+  point_3i id2pos(GPURef id) const 
   { 
-    uchar4 res;
-    res.x = ofs % m_extent.x;
-    ofs /= m_extent.x;
-    res.y = ofs % m_extent.y;
-    ofs /= m_extent.y;
-    res.z = ofs % m_extent.z;
+    point_3i res;
+    res.x = id % m_extent.x;
+    id /= m_extent.x;
+    res.y = id % m_extent.y;
+    id /= m_extent.y;
+    res.z = id % m_extent.z;
     return res;
   }
 
