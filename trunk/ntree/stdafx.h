@@ -11,17 +11,13 @@
 #include <cassert>
 #include <ctime>
 
-#if __GNUC__ >= 4 
-  #include <tr1/memory>
-#else
-  #include <boost/shared_ptr.hpp>
-#endif
-
-#include <boost/noncopyable.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <cuda_runtime.h>
-#include "cutil.h"
 #include "cutil_math.h"
+
+#include <boost/noncopyable.hpp>
+using boost::noncopyable;
 
 
 #define GLOBAL_FUNC
@@ -32,6 +28,8 @@
 
 #include "matrix.h"
 #include "matrix_ops.h"
+
+#include "cu_cpp.h"
 
 
 using boost::noncopyable;

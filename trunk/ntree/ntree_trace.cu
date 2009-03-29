@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "cutil.h"
 #include "cutil_math.h"
+#include "cu_cu.h"
 #include "ntree_trace.cuh"
 
 texture<uchar4, 3, cudaReadModeNormalizedFloat> voxDataTex;
@@ -36,25 +36,6 @@ __global__ void Trace(uchar4 * img)
   img[tid] = make_uchar4(0, 0, 0, 255);
 }
 
-
-inline int divUp(int a, int b)
-{
-  return (a+b-1) / b;
-}
-
-struct GridShape
-{
-  dim3 grid;
-  dim3 block;
-};
-
-inline GridShape make_grid2d(const int2 & size, const int2 & block)
-{
-  GridShape shape;
-  shape.block = dim3(block.x, block.y, 1);
-  shape.grid = dim3(divUp(size.x, block.x), divUp(size.y, block.y), 1);
-  return shape;
-}
 
 extern "C"
 {
