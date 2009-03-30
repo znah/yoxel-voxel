@@ -55,8 +55,10 @@ int main()
   cout << "rendering" << endl;
   point_2i viewSize = scene.GetViewSize();
   std::vector<uchar4> img(viewSize.x * viewSize.y);
-  scene.Render(&img[0]);
+  std::vector<float> debug(viewSize.x * viewSize.y);
+  scene.Render(&img[0], &debug[0]);
   SaveBuf("image.dat", img);
+  SaveBuf("debug.dat", debug);
   cout << "ready" << endl;
 
   _getch();
