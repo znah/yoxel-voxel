@@ -12,12 +12,14 @@ using namespace ntree;
 ////////////////////////////////////////////////////////////////////////////////
 
 Scene::Scene() 
-  : m_viewSize(800, 600)
-  , m_root(NULL)
+  : m_root(NULL)
   , m_treeDepth(5)
   , m_dataPool(GetDataTex(), 5, point_3i(64, 64, 64))
   , m_gridPool(GetNodeTex(), 4, point_3i(32, 16, 16))
+  , m_rootGrid(GPUNull)
+  , m_rootData(GPUNull)
 {
+  SetViewSize(point_2i(800, 600));
 }
 
 Scene::~Scene()
@@ -149,10 +151,7 @@ void Scene::UpdateGPU()
     nhood.data[i] = make_uchar4(0, 0, 0, 0);
   }
   
-  GPURef rootData = GPUNull;
-  GPURef rootGrid = GPUNull;
-
-  UpdateGPURec(nhood, rootData, rootGrid);
+  UpdateGPURec(nhood, m_rootData, m_rootGrid);
 }
 
 inline uint ofsInNode(const point_3i & p)
@@ -266,11 +265,19 @@ void Scene::UploadData(const NHood & nhood, GPURef & dataRef)
   dataRef = m_dataPool.CreateBrick(data);
 }
 
-void Scene::Render(uchar4 * img)
+void Scene::SetViewSize(point_2i size) 
+{ 
+  m_viewSize = size;
+  m_imgBuf.resize(size.x * size.y);
+  m_debugBuf.resize(size.x * size.y);
+}
+
+
+void Scene::Render(uchar4 * img, float * debug)
 {
   RenderParams rp;
   rp.viewSize = make_int2(m_viewSize.x, m_viewSize.y);
-  const float fov = 45.0f;
+  const float fov = 70.0f;
   rp.fovCoef = tan(cg::grad2rad(0.5f * fov));
 
   point_3f target(0.5f, 0.5f, 0.5f);
@@ -281,5 +288,10 @@ void Scene::Render(uchar4 * img)
   rp.viewToWldMtx = make_float4x4(view2wld);
   rp.wldToViewMtx = make_float4x4(wld2view);
   rp.eyePos = make_float3(eye);
-  RunTrace(rp, img);
+  rp.rootGrid = m_rootGrid;
+  rp.rootData = m_rootData;
+
+  RunTrace(rp, m_imgBuf.d_ptr(), m_debugBuf.d_ptr());
+  m_imgBuf.read(0, m_imgBuf.size(), img);
+  m_debugBuf.read(0, m_debugBuf.size(), debug);
 }

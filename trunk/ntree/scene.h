@@ -26,20 +26,23 @@ public:
 
   void UpdateGPU();
 
-  void SetViewSize(point_2i size) { m_viewSize = size; }
+  void SetViewSize(point_2i size);
   point_2i GetViewSize() const { return m_viewSize; }
 
-  void Render(uchar4 * img);
+  void Render(uchar4 * img, float * debug);
   
 private:
   point_2i m_viewSize;
   CuVector<uchar4> m_imgBuf;
+  CuVector<float> m_debugBuf;
 
   ntree::NodePtr m_root;
   int m_treeDepth;
 
   BrickPool<uchar4> m_dataPool;
   BrickPool<uint4> m_gridPool;
+  GPURef m_rootGrid;
+  GPURef m_rootData;
 
   struct NHood
   {
