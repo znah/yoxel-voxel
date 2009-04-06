@@ -13,6 +13,9 @@ NodePtr DelTree(NodePtr node)
 {
   if (node == NULL)
     return NULL;
+  if (node)
+
+
   if (node->child != NULL)
   {
     NodePtr * pp = node->child;
