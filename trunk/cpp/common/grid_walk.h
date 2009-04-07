@@ -44,7 +44,8 @@ struct walk_3
   walk_3() {}
   walk_3(int sx, int sy, int sz) : size(sx, sy, sz) {}
   explicit walk_3(const cg::point_3i & pt) : size(pt) {}
-
+  explicit walk_3(int n) : size(n, n, n) {}
+  
   bool done() const { return p.z >= size.z || p.y >= size.y || p.x >= size.x; }
 
   walk_3 & operator++() { _next(); return *this; }
