@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "scene.h"
+#include "ntree/ntree.h"
 
 #include <conio.h>
 
@@ -27,12 +28,12 @@ int main()
 {
   Scene scene;
   
-  scene.SetTreeDepth(4);
-  const int n = 256;
-  const char * sceneName = "..\\data\\bonsai32.raw";
-  /*scene.SetTreeDepth(3);
+  //scene.SetTreeDepth(4);
+  //const int n = 256;
+  //const char * sceneName = "..\\data\\bonsai.raw";
+  scene.SetTreeDepth(3);
   const int n = 32;
-  const char * sceneName = "..\\data\\bucky.raw";*/
+  const char * sceneName = "..\\data\\bucky.raw";
 
   std::vector<uchar> raw(n*n*n);
   LoadBuf(sceneName, raw);
@@ -41,11 +42,10 @@ int main()
   for (size_t i = 0; i < raw.size(); ++i)
   {
     int s = raw[i];
-    /*s = (s - 32) * 16;  // [32; 48)
-    s = cg::bound(s, 0, 255);*/
     uchar4 d = {192, 128, 128, s};
     data[i] = d;
   }
+  ntree::PrepareData(point_3i(n, n, n), 128, &data[0]);
   
   cout << "adding tree" << endl;
   scene.AddVolume( point_3i(0, 0, 0), point_3i(n, n, n), &data[0] );
