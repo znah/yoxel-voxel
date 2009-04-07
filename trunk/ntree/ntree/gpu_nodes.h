@@ -10,8 +10,9 @@ const int GridSizePow = 2;
 const int GridSize = 1 << GridSizePow;
 const int GridSize3 = GridSize*GridSize*GridSize;
 
-const int BrickSizePow = 3;
-const int BrickSize = (1 << BrickSizePow) + 1;
+const int BrickBoundary = 0;
+const int BrickSizePow = 2;
+const int BrickSize = (1 << BrickSizePow) + BrickBoundary;
 const int BrickSize3 = BrickSize*BrickSize*BrickSize;
 
 

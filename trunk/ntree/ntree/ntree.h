@@ -18,12 +18,12 @@ struct RangeBuilder
   void build(Node & node, int voxSize, point_3i posOnLevel)
   {
     point_3i voxPos = posOnLevel * voxSize;
-    range_3i range(voxPos, voxSize+1);
+    range_3i range(voxPos, voxSize+BrickBoundary);
     if (!range.intersects(dstRange))
       return;
 
-    Assert(voxSize >= BrickSize-1);
-    if (voxSize == BrickSize-1)
+    Assert(voxSize >= BrickSize-BrickBoundary);
+    if (voxSize == BrickSize-BrickBoundary)
     {
       node.MakeBrick();
       updateBrick(node.brickPtr(), range);
