@@ -9,126 +9,36 @@ namespace ntree
 ///////////////////////////////// tree utils ///////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-NodePtr DelTree(NodePtr node)
-{
-  if (node == NULL)
-    return NULL;
-  if (node)
-
-
-  if (node->child != NULL)
-  {
-    NodePtr * pp = node->child;
-    for (uint ci = 0; ci < NodeSize3; ++ci, ++pp)
-      (*pp) = DelTree(*pp);
-  }
-  delete [] node->child;
-  delete [] node->data;
-  delete node;
-  return NULL;
-}
-
-inline NodePtr createNode(bool hasChildren, NodePtr parent)
-{
-  NodePtr node = new Node;
-  node->parent = parent;
-  node->data = new ValueType[NodeSize3];
-  std::fill(node->data, node->data + NodeSize3, DefValue);
-  if (hasChildren)
-  {
-    node->child = new NodePtr[NodeSize3];
-    std::fill(node->child, node->child + NodeSize3, (NodePtr)NULL);
-  }
-  else
-    node->child = NULL;
-
-  node->gpuData = GPUNull;
-  node->gpuChild = GPUNull;
-  
-  return node;
-}
-
-inline point_3i ci2pt(uint ci)
-{
-  const uint mask = NodeSize-1;
-  return point_3i(ci & mask, (ci>>NodeSizePow) & mask, (ci>>(2*NodeSizePow)) & mask);
-}
-
-inline uint pt2ci(const point_3i & pt)
-{
-  uint ci = pt.x | (pt.y << NodeSizePow) | (pt.z << (2*NodeSizePow));
-  return ci;
-}
-
 
 struct RangeBuilder
 {
   range_3i dstRange;
   const ValueType * data;
 
-  NodePtr build(NodePtr root, int depth)
+  void build(Node & node, int voxSize, point_3i posOnLevel)
   {
-    ValueType t;
-    return updateNode(root, NULL, depth-1, 1<<(NodeSizePow*depth), point_3i(0, 0, 0), t);
-  }
-
-  NodePtr updateNode(NodePtr node, NodePtr parent, int level, int voxSize, const point_3i & voxPos, ValueType & nodeVal)
-  {
-    range_3i range(voxPos, voxSize);
+    point_3i voxPos = posOnLevel * voxSize;
+    range_3i range(voxPos, voxSize+1);
     if (!range.intersects(dstRange))
-      return node;
+      return;
 
-    if (level == 0)
-      return updateLeaf(node, parent, range, nodeVal);
+    if (voxSize > BrickSize-1)
+    {
+      node.MakeBrick();
+      updateBrick(node.brickPtr(), range);
+    }
     else
-      return updateGrid(node, parent, level, voxSize, voxPos, nodeVal);
+    {
+      node.MakeGrid();
+      point_3i p = GridSize * posOnLevel;
+      int sz = voxSize / 2;
+      for (walk_3 i(GridSize); !i.done(); ++i)
+        build(node.child(i.p), sz, p + i.p);
+    }
+    node.Shrink(false);
   }
 
-  NodePtr updateGrid(NodePtr node, NodePtr parent, int level, int voxSize, const point_3i & voxPos, ValueType & nodeVal)
-  {
-    if (node == NULL)
-      node = createNode(true, parent);
-
-    Assert(node->child != NULL);
-    int chSize = voxSize / NodeSize;
-
-    NodePtr * pp = node->child;
-    bool allNull = true;
-    for (uint ci = 0; ci < NodeSize3; ++ci, ++pp)
-    {
-      (*pp) = updateNode(*pp, node, level-1, chSize, voxPos + ci2pt(ci) * chSize, node->data[ci]);
-      allNull &= ((*pp) == NULL);
-    }
-
-    if (!calcNodeVal(node->data, nodeVal) && allNull)
-    {
-      delete node;
-      return NULL;
-    }
-    //static int count = 0;
-    //printf("node: %d %d %d; %d - %d\n", voxPos.x, voxPos.y, voxPos.z, level, ++count);
-    return node;
-  }
-
-  NodePtr updateLeaf(NodePtr node, NodePtr parent, const range_3i & range, ValueType & nodeVal)
-  {
-    if (node == NULL)
-      node = createNode(false, parent);
-
-    Assert(node->child == NULL);
-
-    updateLeafData(node->data, range);
-    if (!calcNodeVal(node->data, nodeVal))
-    {
-      delete node;
-      return NULL;
-    }
-    //static int count = 0;
-    //printf("leaf: %d %d %d - %d\n", range.p1.x, range.p1.y, range.p1.z, ++count);
-    return node;
-  }
-
-  void updateLeafData(ValueType * dstBuf, const range_3i & nodeRange)
+  void updateBrick(ValueType * dstBuf, const range_3i & nodeRange)
   {
     range_3i updateRange = nodeRange;
     updateRange &= dstRange;
@@ -141,28 +51,9 @@ struct RangeBuilder
       point_3i src = dst + node2data;
 
       int srcOfs = (src.z * srcSize.y + src.y) * srcSize.x + src.x;
-      int dstOfs = (dst.z * NodeSize  + dst.y) * NodeSize  + dst.x;
+      int dstOfs = (dst.z * BrickSize + dst.y) * BrickSize + dst.x;
       dstBuf[dstOfs] = data[srcOfs];
     }
-  }
-
-  bool calcNodeVal(ValueType * data, ValueType & nodeVal)
-  {
-    point_4i accum;
-    bool allEqual = true;
-    point_4i first = point_4i(data->x, data->y, data->z, data->w);
-    for (ValueType * p = data; p != data+NodeSize3; ++p)
-    {
-      point_4i v = point_4i(p->x, p->y, p->z, p->w);
-      accum += v;
-      allEqual &= (first == v);
-    }
-    accum /= NodeSize3;
-    nodeVal.x = accum.x;
-    nodeVal.y = accum.y;
-    nodeVal.z = accum.z;
-    nodeVal.w = accum.w;
-    return !allEqual;
   }
 };
 

@@ -12,7 +12,6 @@ private:
   ValueType m_const;
   void * m_ptr;
 
-  ValueType * brickPtr() { Assert(m_type == Brick); return static_cast<ValueType*>(m_ptr); }
   Node * gridPtr() { Assert(m_type == Grid); return static_cast<Node*>(m_ptr); }
 
   static int ch2ofs(const point_3i & p) { return (p.z * GridSize + p.y) * GridSize + p.x; }
@@ -36,34 +35,31 @@ public:
     m_const = v;
   }
 
-  void MakeBrick(const ValueType * src)
+  void MakeBrick()
   {
-    Assert(m_type == Const);
-
-    bool allSame = true;
-    for (int i = 1; i < BrickSize3 && allSame; ++i)
-      allSame = (src[i] == src[0]);
-    if (allSame)
-    {
-      m_const = src[0];
+    if (m_type == Brick)
       return;
-    }
-
+    Assert(m_type == Const);
     ValueType * data = new ValueType[BrickSize3];
-    std::copy(src, src + BrickSize3, data);
+    std::copy(src, src + BrickSize3, m_const);
     m_type = Brick;
     m_ptr = data;
   }
 
   void MakeGrid()
   {
+    if (m_type == Grid)
+      return;
     Assert(m_type == Const);
     m_type = Grid;
     m_ptr = new Node[GridSize3];
+    for (int i = 0; i < GridSize3; ++i)
+      gridPtr()[i].m_const = m_const;
   }
 
   Node & child(const point_3i & p) { return child(ch2ofs(p)); }
   Node & child(int i) { return gridPtr[i]; }
+  ValueType * brickPtr() { Assert(m_type == Brick); return static_cast<ValueType*>(m_ptr); }
 
   void Shrink(bool deep)
   {
