@@ -5,17 +5,13 @@
 namespace ntree
 {
 
+inline bool operator == (const ValueType & a, const ValueType & b)
+{
+  return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
+}
+
 class Node
 {
-private:
-  NodeType m_type;
-  ValueType m_const;
-  void * m_ptr;
-
-  Node * gridPtr() { Assert(m_type == Grid); return static_cast<Node*>(m_ptr); }
-
-  static int ch2ofs(const point_3i & p) { return (p.z * GridSize + p.y) * GridSize + p.x; }
-  
 public:
   enum NodeType {Grid, Brick, Const};
 
@@ -41,7 +37,7 @@ public:
       return;
     Assert(m_type == Const);
     ValueType * data = new ValueType[BrickSize3];
-    std::copy(src, src + BrickSize3, m_const);
+    std::fill(data, data + BrickSize3, m_const);
     m_type = Brick;
     m_ptr = data;
   }
@@ -58,7 +54,7 @@ public:
   }
 
   Node & child(const point_3i & p) { return child(ch2ofs(p)); }
-  Node & child(int i) { return gridPtr[i]; }
+  Node & child(int i) { return gridPtr()[i]; }
   ValueType * brickPtr() { Assert(m_type == Brick); return static_cast<ValueType*>(m_ptr); }
 
   void Shrink(bool deep)
@@ -78,8 +74,8 @@ public:
       for (int i = 0; i < GridSize3; ++i, ++p)
       {
         if (deep) 
-          p.Shrink(true);
-        allConst = allConst && (p->m_type == Const)
+          p->Shrink(true);
+        allConst = allConst && (p->m_type == Const);
       }
       if (!allConst)
         return;
@@ -93,5 +89,14 @@ public:
         MakeConst(c);
     }
   }
+private:
+  NodeType m_type;
+  ValueType m_const;
+  void * m_ptr;
+
+  Node * gridPtr() { Assert(m_type == Grid); return static_cast<Node*>(m_ptr); }
+
+  static int ch2ofs(const point_3i & p) { return (p.z * GridSize + p.y) * GridSize + p.x; }
 };
+
 }

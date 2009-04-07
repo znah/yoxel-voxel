@@ -22,7 +22,8 @@ struct RangeBuilder
     if (!range.intersects(dstRange))
       return;
 
-    if (voxSize > BrickSize-1)
+    Assert(voxSize >= BrickSize-1);
+    if (voxSize == BrickSize-1)
     {
       node.MakeBrick();
       updateBrick(node.brickPtr(), range);
@@ -59,22 +60,19 @@ struct RangeBuilder
 
 struct StatsBuilder
 {
-  std::vector<int> count;
+  int grids, bricks;
 
-  void walk(NodePtr node, int level)
+  StatsBuilder() : grids(0), bricks(0) {}
+
+  void walk(Node & node)
   {
-    if (node == NULL)
-      return;
-
-    if ((int)count.size() < level+1)
-      count.resize(level+1, 0);
-    ++count[level];
-    
-    if (node->child != NULL)
+    if (node.GetType() == Node::Brick)
+      ++bricks;
+    if (node.GetType() == Node::Grid)
     {
-      NodePtr * pp = node->child;
-      for (uint ci = 0; ci < NodeSize3; ++ci, ++pp)
-        walk(*pp, level+1);
+      ++grids;
+      for (int i = 0; i < GridSize3; ++i)
+        walk(node.child(i));
     }
   }
 };

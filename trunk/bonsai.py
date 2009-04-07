@@ -31,8 +31,8 @@ code = '''
         if (x1 < 0 || x1 >= nx || y1 < 0 || y1 >= ny || z1 < 0 || z1 >= nz)
           continue;
         int v1 = src(z1, y1, x1);
-        lo = min(lo, v1);
-        hi = max(hi, v1);
+        lo = std::min(lo, v1);
+        hi = std::max(hi, v1);
       }
       if (v >= level && lo >= level)
         v = 255;
