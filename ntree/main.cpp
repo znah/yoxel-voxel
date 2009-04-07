@@ -27,12 +27,12 @@ int main()
 {
   Scene scene;
   
-  /*scene.SetTreeDepth(4);
+  scene.SetTreeDepth(4);
   const int n = 256;
-  const char * sceneName = "..\\data\\bonsai32.raw";*/
-  scene.SetTreeDepth(3);
+  const char * sceneName = "..\\data\\bonsai32.raw";
+  /*scene.SetTreeDepth(3);
   const int n = 32;
-  const char * sceneName = "..\\data\\bucky.raw";
+  const char * sceneName = "..\\data\\bucky.raw";*/
 
   std::vector<uchar> raw(n*n*n);
   LoadBuf(sceneName, raw);
@@ -50,7 +50,7 @@ int main()
   cout << "adding tree" << endl;
   scene.AddVolume( point_3i(0, 0, 0), point_3i(n, n, n), &data[0] );
   cout << scene.GetStats() << endl;
-  cout << "updating gpu tree" << endl;
+  /*cout << "updating gpu tree" << endl;
   scene.UpdateGPU();
   cout << "rendering" << endl;
   point_2i viewSize = scene.GetViewSize();
@@ -58,7 +58,7 @@ int main()
   std::vector<float> debug(viewSize.x * viewSize.y);
   scene.Render(&img[0], &debug[0]);
   SaveBuf("image.dat", img);
-  SaveBuf("debug.dat", debug);
+  SaveBuf("debug.dat", debug);*/
   cout << "ready" << endl;
 
   _getch();

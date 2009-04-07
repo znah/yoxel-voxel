@@ -14,8 +14,8 @@ struct RenderParams
   float4x4 viewToWldMtx;
   float4x4 wldToViewMtx;
 
-  GPURef rootGrid;
-  GPURef rootData;
+//  GPURef rootGrid;
+//  GPURef rootData;
 };
 
 

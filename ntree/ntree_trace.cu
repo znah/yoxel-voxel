@@ -75,7 +75,7 @@ __device__ bool intersectBox(float3 p, float3 invDir, float3 boxmin, float3 boxm
 __device__ uint calcDirFlags(float3 dir)
 {
   uint res = 0;
-  if (dir.x < 0) res |= (ntree::NodeSize - 1);
+  if (dir.x < 0) res |= (ntree::No deSize - 1);
   if (dir.y < 0) res |= (ntree::NodeSize - 1) << ntree::NodeSizePow;
   if (dir.z < 0) res |= (ntree::NodeSize - 1) << (2*ntree::NodeSizePow);
   return res;
