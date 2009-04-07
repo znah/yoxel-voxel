@@ -42,7 +42,7 @@ void Scene::AddVolume(cg::point_3i pos, cg::point_3i size, const ValueType * dat
   RangeBuilder builder;
   builder.dstRange = range_3i(pos, size);
   builder.data = data;
-  builder.build(m_root, 1 << (m_treeDepth*2 + 2), point_3i(0, 0, 0));
+  builder.build(m_root, 1 << (m_treeDepth*2 + 2));
 }
 
 std::string Scene::GetStats()

@@ -9,21 +9,61 @@ namespace ntree
 ///////////////////////////////// tree utils ///////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+inline void PrepareData(point_3i size, int isoLevel, ValueType * data)
+{
+  int count = size.x * size.y * size.z;
+  std::vector<uchar> mark(count, 0);
+
+  int tLo(255), tHi(0);
+  for ( walk_3 i(size - point_3i(1, 1, 1)); !i.done(); ++i )
+  {
+    int ofs = (size.y * i.z() + i.y()) * size.x + i.x();
+    int lo(255), hi(0);
+    for (int i = 0; i < 8; ++i)
+    {
+      int v = data[ofs + (i&1) + ((i>>1)&1)*size.x + ((i>>2)&1)*size.y].w;
+      lo = cg::min(v, lo);
+      hi = cg::max(v, hi);
+    }
+    if (lo > isoLevel || hi < isoLevel)
+      continue;
+    mark[ofs] = 1;
+    tLo = cg::min(tLo, lo);
+    tHi = cg::max(tHi, hi);
+  }
+  int dv = tHi - tLo;
+  Assert(dv > 0);
+  for (int i = 0; i < count; ++i)
+  {
+    int v = data[i].w;
+    v = (v - tLo) * 255 / dv;
+    v = cg::bound(v, 0, 255);
+    v = (v & 0xfe) + mark[i];
+    data[i].w = v;
+  }
+}
+
 
 struct RangeBuilder
 {
   range_3i dstRange;
   const ValueType * data;
 
-  void build(Node & node, int voxSize, point_3i posOnLevel)
+  void build(Node & node, int sceneVoxSize)
   {
-    point_3i voxPos = posOnLevel * voxSize;
-    range_3i range(voxPos, voxSize+BrickBoundary);
+    buildNode(node, sceneVoxSize, point_3i(0, 0, 0));
+  }
+
+
+  void buildNode(Node & node, int nodeVoxSize, point_3i posOnLevel)
+  {
+    point_3i voxPos = posOnLevel * nodeVoxSize;
+    range_3i range(voxPos, nodeVoxSize+BrickBoundary);
     if (!range.intersects(dstRange))
       return;
 
-    Assert(voxSize >= BrickSize-BrickBoundary);
-    if (voxSize == BrickSize-BrickBoundary)
+    Assert(nodeVoxSize >= BrickSize-BrickBoundary);
+    if (nodeVoxSize == BrickSize-BrickBoundary)
     {
       node.MakeBrick();
       updateBrick(node.brickPtr(), range);
@@ -32,9 +72,9 @@ struct RangeBuilder
     {
       node.MakeGrid();
       point_3i p = GridSize * posOnLevel;
-      int sz = voxSize / 2;
+      int sz = nodeVoxSize / 2;
       for (walk_3 i(GridSize); !i.done(); ++i)
-        build(node.child(i.p), sz, p + i.p);
+        buildNode(node.child(i.p), sz, p + i.p);
     }
     node.Shrink(false);
   }
