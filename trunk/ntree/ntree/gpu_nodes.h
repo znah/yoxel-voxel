@@ -15,5 +15,10 @@ const int BrickSizePow = 2;
 const int BrickSize = (1 << BrickSizePow) + BrickBoundary;
 const int BrickSize3 = BrickSize*BrickSize*BrickSize;
 
+inline int CalcSceneSize(int depth)
+{
+  return (1 << (GridSizePow*(depth-1))) * (1 << BrickSizePow);
+}
+
 
 }

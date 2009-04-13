@@ -8,42 +8,6 @@ namespace ntree
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// tree utils ///////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-
-inline void PrepareData(point_3i size, int isoLevel, ValueType * data)
-{
-  int count = size.x * size.y * size.z;
-  std::vector<uchar> mark(count, 0);
-
-  int tLo(255), tHi(0);
-  for ( walk_3 i(size - point_3i(1, 1, 1)); !i.done(); ++i )
-  {
-    int ofs = (size.y * i.z() + i.y()) * size.x + i.x();
-    int lo(255), hi(0);
-    for (int i = 0; i < 8; ++i)
-    {
-      int v = data[ofs + (i&1) + ((i>>1)&1)*size.x + ((i>>2)&1)*size.y].w;
-      lo = cg::min(v, lo);
-      hi = cg::max(v, hi);
-    }
-    if (lo > isoLevel || hi < isoLevel)
-      continue;
-    mark[ofs] = 1;
-    tLo = cg::min(tLo, lo);
-    tHi = cg::max(tHi, hi);
-  }
-  int dv = tHi - tLo;
-  Assert(dv > 0);
-  for (int i = 0; i < count; ++i)
-  {
-    int v = data[i].w;
-    v = (v - tLo) * 255 / dv;
-    v = cg::bound(v, 0, 255);
-    v = (v & 0xfe) + mark[i];
-    data[i].w = v;
-  }
-}
-
-
 struct RangeBuilder
 {
   range_3i dstRange;
