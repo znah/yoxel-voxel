@@ -4,97 +4,86 @@
 namespace ntree
 {
 
+struct TraceResult
+{
+  bool hit;
+  cg::point_3f pos;
+  cg::point_3f normal;
+  cg::point_3f color;
+};
+
 struct RayTracer
 {
   const float dirEps;
 
   int isoLevel;
   const Node * root;
+  int sceneSize;
 
-  RayTracer(int isoLevel_, const Node * root_)
+  RayTracer(int _isoLevel, const Node * _root, int _sceneSize)
   : dirEps(1e-5)
-  , isoLevel(isoLevel_)
-  , root(root_)
+  , isoLevel(_isoLevel)
+  , root(_root)
+  , sceneSize(_sceneSize)
   {}
 
-  // result
-  bool hit;
-  cg::point_3f pos;
-  cg::point_3f normal;
-  cg::point_3f color;
+  TraceResult res;
 
   // local
+  point_3f rayP, rayDir;
   point_3i dirSign;
-  point_2f dxy, dyz, dzx; 
-  struct Section
-  {
-    int plane;
-    point_2f xy, yz, zx;
-  };
+  point_2f dyz, dzx, dxy;
 
-  void trace(point_3f p, point_3f dir)
+  struct VoxelIter
   {
-    hit = false;
-    adjustDir(dir);
-    dxy = point_2f(dir.x, dir.y) / dir.z;
-    dyz = point_2f(dir.y, dir.z) / dir.x;
-    dzx = point_2f(dir.z, dir.x) / dir.y;
-    Section s;
-    point_3f enterPlanes = 0.5f * (point_3f(1, 1, 1) - dirSign);
-    s.xy = p.xy + dxy * (enterPlanes.z - p.z);
-    s.yz = p.yz + dyz * (enterPlanes.x - p.x);
-    s.zx = p.zx + dzx * (enterPlanes.y - p.y);
-    s.plane = findPlane(s);
-    hit = traceNode(root, s, 1, point_3i(0, 0, 0));
+    point_3i pos;
+    point_3f yz, zx, xy;
+    int exitPlane;
   }
-  
-  bool traceNode(Node * node, Section s, int levelSize, point_3i levelPos)
+
+  int goNext(VoxelIter & vi)
   {
-    int nodeSize = (node->GetType() == Node::Brick) ? ntree::BrickSize : ntree::GridSize;
-    s.xy *= nodeSize;
-    s.yz *= nodeSize;
-    s.zx *= nodeSize;
-    point_3i child;
-    if (s.plane == 2)
+    if (vi.exitPlane == 0)
     {
-      child.x = cg::floor(s.xy[0]);
-      child.y = cg::floor(s.xy[1]);
-      child.z = dirSign.z > 0 : 0 ? nodeSize-1;
-
+      vi.pos.x += dirSign.x;
+      vi.yz += dyz;
+      vi.zx[1] -= 1;
+      vi.xy[0] -= 1;
     }
-    else if (s.plane == 0)
+    else if (vi.exitPlane == 1)
     {
-      child.x = dirSign.x > 0 : 0 ? nodeSize-1;
-      child.y = cg::floor(s.yz[0]);
-      child.z = cg::floor(s.yz[1]);
-
-    }
-    else if (s.plane == 1)
-    {
-      child.x = cg::floor(s.yz[0]);
-      child.y = dirSign.y > 0 : 0 ? nodeSize-1;
-      child.z = cg::floor(s.yz[1]);
-
+      vi.pos.y += dirSign.y;
+      vi.zx += dzx;
+      vi.xy[1] -= 1;
+      vi.yz[0] -= 1;
     }
     else
-      return false;
+    {
+      vi.pos.z + dirSign.z;
+      vi.xy += dxy;
+      vi.yz[1] -= 1;
+      vi.zx[0] -= 1;
+    }
 
 
-  }
 
-  bool inFace(const point_2f & p)
+
+  }  
+
+
+
+
+  trace(point_3f p, point_3f dir)
   {
-    return p.x >= 0 && p.y >=0 && p.x < 1 && p.y < 1;
-  }
+    res.hit = false;
+    adjustDir(dir);
+    rayP = p * sceneSize;
+    rayDir = dir;
 
-  int findPlane(const Section & s)
-  {
-    if (inFace(s.xy)) return 2;
-    if (inFace(s.yz)) return 0;
-    if (inFace(s.zx)) return 1;
-    return -1;
-  }
 
+
+  }
+  
   void adjustDir(point_3f & dir)
   {
     for (int i = 0; i < 3; +i)
@@ -106,6 +95,7 @@ struct RayTracer
       dir[i] = x;
     }
   }
+
 };
 
 

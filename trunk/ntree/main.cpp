@@ -28,7 +28,7 @@ int main()
 {
   Scene scene;
   
-  scene.SetTreeDepth(4);
+  scene.SetTreeDepth(8);
   const int n = 256;
   const char * sceneName = "..\\data\\bonsai32.raw";
   //scene.SetTreeDepth(3);
