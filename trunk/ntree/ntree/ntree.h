@@ -36,7 +36,7 @@ struct RangeBuilder
     {
       node.MakeGrid();
       point_3i p = GridSize * posOnLevel;
-      int sz = nodeVoxSize / 2;
+      int sz = nodeVoxSize / GridSize;
       for (walk_3 i(GridSize); !i.done(); ++i)
         buildNode(node.child(i.p), sz, p + i.p);
     }
