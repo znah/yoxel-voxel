@@ -1,0 +1,15 @@
+#summary Plans for Nest project.
+
+= Goal =
+
+Realtime voxel-isosurface raytracer.
+
+= Tasks =
+
+  * General ntree update/fetch code
+    * small testing framework (ntest)
+
+  * Hint tree code
+    * integration with ntest
+
+  * CPU tracer
