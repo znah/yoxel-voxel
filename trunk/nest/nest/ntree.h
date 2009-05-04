@@ -6,8 +6,17 @@ struct NTree
   typedef typename Traits::ValueType ValueType;
   static const int GridSize = Traits::GridSize;
   static const int GridSize3 = GridSize*GridSize*GridSize;
+
   static const int BrickSize = Traits::BrickSize;
   static const int BrickSize3 = BrickSize*BrickSize*BrickSize;
+
+  static int calcSceneSize(int depth)
+  {
+    int sz = 1;
+    while (depth--)
+      sz *= GridSize;
+    return sz * BrickSize;
+  }
 
   class Node
   {
@@ -52,9 +61,11 @@ struct NTree
         gridPtr()[i].m_const = m_const;
     }
 
+    Node * gridPtr() { Assert(m_type == Grid); return static_cast<Node*>(m_ptr); }
+    ValueType * brickPtr() { Assert(m_type == Brick); return static_cast<ValueType*>(m_ptr); }
     Node & child(const point_3i & p) { return child(ch2ofs(p)); }
     Node & child(int i) { return gridPtr()[i]; }
-    ValueType * brickPtr() { Assert(m_type == Brick); return static_cast<ValueType*>(m_ptr); }
+    ValueType GetValue() const { Assert(m_type == Const); return m_const; }
 
     void Shrink(bool deep)
     {
@@ -93,8 +104,6 @@ struct NTree
     ValueType m_const;
     void * m_ptr;
 
-    Node * gridPtr() { Assert(m_type == Grid); return static_cast<Node*>(m_ptr); }
-
     static int ch2ofs(const point_3i & p) { return (p.z * GridSize + p.y) * GridSize + p.x; }
   };
 
@@ -102,8 +111,7 @@ struct NTree
   {
     int sceneVoxSize;
     Node * treeRoot;
-    point_3i dataSize;
-    const ValueType * data;
+    array_3d_ref<ValueType> src;
     range_3i srcRange;
     point_3i dstOfs;
 
@@ -139,21 +147,78 @@ struct NTree
 
     void updateBrick(ValueType * dstBuf, const range_3i & nodeRange)
     {
+      array_3d_ref<ValueType> dst( point_3i(BrickSize, BrickSize, BrickSize), dstBuf );
       range_3i updateRange = nodeRange;
       updateRange &= dstRange;
       point_3i upd2node = updateRange.p1 - nodeRange.p1;
-      point_3i node2data = nodeRange.p1 - dstRange.p1;
+      point_3i node2data = nodeRange.p1 - dstRange.p1 + srcRange.p1;
       for (walk_3 i(updateRange.size()); !i.done(); ++i)
       {
-        point_3i dst = i.p + upd2node;
-        point_3i src = dst + node2data + srcRange.p1;
+        point_3i dstPt = i.p + upd2node;
+        point_3i srcPt = dstPt + node2data;
+        dst[dstPt] = src[srcPt];
+      }
+    }
+  };
 
-        int srcOfs = (src.z * dataSize.y + src.y) * dataSize.x + src.x;
-        int dstOfs = (dst.z * BrickSize + dst.y) * BrickSize + dst.x;
-        dstBuf[dstOfs] = data[srcOfs];
+  struct Fetcher
+  {
+    int sceneVoxSize;
+    Node * treeRoot;
+    array_3d_ref<ValueType> dst;
+    range_3i srcRange;
+
+    void fetch()
+    {
+      fetchNode(*treeRoot, sceneVoxSize, point_3i());
+    }
+
+    void fetchNode(Node & node, int nodeVoxSize, const point_3i & nodePos)
+    {
+      range_3i range(nodePos, nodeVoxSize);
+      if (!range.intersects(srcRange))
+        return;
+
+      if (node.GetType() == Node::Brick)
+        fetchBrick(node.brickPtr(), range);
+      else if (node.GetType() == Node::Const)
+        fetchConst(node.GetValue(), range);
+      else
+      {
+        int sz = nodeVoxSize / GridSize;
+        for (walk_3 i(GridSize); !i.done(); ++i)
+          fetchNode(node.child(i.p), sz, nodePos + (i.p) * sz);
       }
     }
 
+    void fetchBrick(const ValueType * srcBuf, const range_3i & nodeRange)
+    {
+      array_3d_ref<const ValueType> src( point_3i(BrickSize, BrickSize, BrickSize), srcBuf );
+      range_3i updateRange = nodeRange;
+      updateRange &= srcRange;
+      point_3i upd2node = updateRange.p1 - nodeRange.p1;
+      point_3i node2data = nodeRange.p1 - srcRange.p1;
+      for (walk_3 i(updateRange.size()); !i.done(); ++i)
+      {
+        point_3i srcPt = i.p + upd2node;
+        point_3i dstPt = srcPt + node2data;
+        dst[dstPt] = src[srcPt];
+      }
+    }
+
+    void fetchConst(ValueType c, const range_3i & nodeRange)
+    {
+      range_3i updateRange = nodeRange;
+      updateRange &= srcRange;
+      point_3i upd2node = updateRange.p1 - nodeRange.p1;
+      point_3i node2data = nodeRange.p1 - srcRange.p1;
+      for (walk_3 i(updateRange.size()); !i.done(); ++i)
+      {
+        point_3i srcPt = i.p + upd2node;
+        point_3i dstPt = srcPt + node2data;
+        dst[dstPt] = c;
+      }
+    }
 
   };
 };

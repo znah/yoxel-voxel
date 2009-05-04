@@ -7,8 +7,6 @@ private:
   point_3i m_extent;
   T * m_data;
 
-protected:
-
 public:
   array_3d_ref() : m_data(NULL) {}
   array_3d_ref(const point_3i & extent, T * data) 
@@ -36,7 +34,7 @@ public:
 
 
 template <class T>
-class array_3d
+class array_3d : public array_3d_ref<T>
 {
 private:
   std::vector<T> m_storage;
@@ -51,13 +49,13 @@ public:
   void resize(const point_3i & extent)
   {
     m_storage.resize(extent.x * extent.y * extent.z);
-    array_3d_base::assign(extent, &m_storage[0]);
+    array_3d_ref::assign(extent, &m_storage[0]);
   }
 
   virtual void assign(const point_3i & extent, T * data)
   {
     int sz = extent.x * extent.y * extent.z;
     m_storage.assign(data, data + sz);
-    array_3d_base::assign(extent, &m_storage[0]);
+    array_3d_ref::assign(extent, &m_storage[0]);
   }
 };
