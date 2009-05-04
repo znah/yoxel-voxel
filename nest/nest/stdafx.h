@@ -24,5 +24,6 @@ using cg::point_2i;
 
 #include "range.h"
 #include "grid_walk.h"
+#include "array_3d.h"
 
 typedef unsigned char uint8;
