@@ -210,12 +210,10 @@ struct NTree
     {
       range_3i updateRange = nodeRange;
       updateRange &= srcRange;
-      point_3i upd2node = updateRange.p1 - nodeRange.p1;
-      point_3i node2data = nodeRange.p1 - srcRange.p1;
+      point_3i upd2data = updateRange.p1 - srcRange.p1
       for (walk_3 i(updateRange.size()); !i.done(); ++i)
       {
-        point_3i srcPt = i.p + upd2node;
-        point_3i dstPt = srcPt + node2data;
+        point_3i dstPt = i.p + upd2data;
         dst[dstPt] = c;
       }
     }
