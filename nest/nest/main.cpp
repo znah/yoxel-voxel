@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "scene.h"
+#include "conio.h"
 
 
 void MakeShpere(int size, array_3d<uint8> & dst)
@@ -34,12 +35,13 @@ int main()
   array_3d<uint8> a;
   MakeShpere(10, a);
   save(a, "ttt.dat");
-  scene.updateVolume(a, point_3i(5, 10, 5), UPDATE_GROW);
+  //scene.updateVolume(a, point_3i(5, 10, 5), UPDATE_GROW);
   scene.updateVolume(a, point_3i(0, 0, 0), UPDATE_GROW);
 
-  scene.fetchVolume(range_3i(point_3i(), 32), a);
-  save(a, "res.dat");
+  array_3d<uint8> b;
+  scene.fetchVolume(range_3i(point_3i(), 32), b);
+  save(b, "res.dat");
 
-
+  _getch();
   return 0;
 }

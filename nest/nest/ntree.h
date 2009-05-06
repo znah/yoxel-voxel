@@ -204,13 +204,14 @@ struct NTree
         point_3i dstPt = srcPt + node2data;
         dst[dstPt] = src[srcPt];
       }
+      //printf("%d %d %d\n", nodeRange.p1.x, nodeRange.p1.y, nodeRange.p1.z);
     }
 
     void fetchConst(ValueType c, const range_3i & nodeRange)
     {
       range_3i updateRange = nodeRange;
       updateRange &= srcRange;
-      point_3i upd2data = updateRange.p1 - srcRange.p1
+      point_3i upd2data = updateRange.p1 - srcRange.p1;
       for (walk_3 i(updateRange.size()); !i.done(); ++i)
       {
         point_3i dstPt = i.p + upd2data;
