@@ -33,25 +33,27 @@ struct walk_2
 
 struct walk_3
 {
+  const cg::point_3i base;
   const cg::point_3i size;
   cg::point_3i p;
 
-  int x() const { return p.x; }
-  int y() const { return p.y; }
-  int z() const { return p.z; }
-  int flat() const { return p.z*size.y*size.x + p.y*size.x + p.x; }
+  int x() const { return base.x + p.x; }
+  int y() const { return base.y + p.y; }
+  int z() const { return base.z + p.z; }
+  int flat() const { return (z()*size.y + y())*size.x + x(); }
+
+  operator cg::point_3i () const { return pos(); }
+  cg::point_3i pos() const { return base + p; }
 
   walk_3() {}
   walk_3(int sx, int sy, int sz) : size(sx, sy, sz) {}
-  explicit walk_3(const cg::point_3i & pt) : size(pt) {}
+  explicit walk_3(const cg::point_3i & p) : size(p) {}
   explicit walk_3(int n) : size(n, n, n) {}
+  walk_3(const cg::point_3i & p1, const cg::point_3i & p2) : base(p1), size(p2-p1) {}
+  walk_3(const range_3i & range) : base(range.p1), size(range.size()) {}
   
   bool done() const { return p.z >= size.z || p.y >= size.y || p.x >= size.x; }
-
-  walk_3 & operator++() { _next(); return *this; }
-  const walk_3 operator++(int) { walk_3 ret = *this; ++(*this); return ret; }
-
-  void _next()
+  void next()
   {
     if (++p.x >= size.x)
     {
