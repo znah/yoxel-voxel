@@ -13,6 +13,10 @@
 #include <cassert>
 #include <ctime>
 
+#define BOOST_TEST_MODULE NTreeTest
+#include <boost/test/unit_test.hpp>
+
+
 #include "geometry/primitives/point.h"
 using cg::point_3i;
 using cg::point_3f;
