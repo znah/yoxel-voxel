@@ -181,6 +181,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\ntree_test.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\offset_test.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration
@@ -194,6 +202,10 @@
 			</File>
 			<File
 				RelativePath=".\stdafx.h"
+				>
+			</File>
+			<File
+				RelativePath=".\VoxelScene_test.cpp"
 				>
 			</File>
 		</Filter>
@@ -210,6 +222,22 @@
 			</File>
 			<File
 				RelativePath=".\ntree_view.h"
+				>
+			</File>
+			<File
+				RelativePath=".\VoxelScene.h"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="offest"
+			>
+			<File
+				RelativePath=".\offset_func.h"
+				>
+			</File>
+			<File
+				RelativePath=".\offset_geom.h"
 				>
 			</File>
 		</Filter>

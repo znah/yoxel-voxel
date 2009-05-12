@@ -10,6 +10,17 @@ struct TreeStat
   int constCount;
 };
 
+inline bool operator == (const ntree::TreeStat & a, const ntree::TreeStat & b)
+{
+  return a.gridCount == b.gridCount && a.brickCount == b.brickCount && a.constCount == b.constCount;
+}
+
+inline std::ostream & operator << (std::ostream & os, const ntree::TreeStat & stat)
+{
+  os << "( g: " << stat.gridCount << ", b: " << stat.brickCount << ", c: " << stat.constCount << " )";
+  return os;
+}
+
 template <class Traits>
 class NTree
 {
