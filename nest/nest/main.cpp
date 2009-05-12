@@ -10,6 +10,21 @@ struct AlphaTraits
 };
 typedef ntree::NTree<AlphaTraits> AlphaTree;
 
+namespace ntree
+{
+  inline bool operator == (const ntree::TreeStat & a, const ntree::TreeStat & b)
+  {
+    return a.gridCount == b.gridCount && a.brickCount == b.brickCount && a.constCount == b.constCount;
+  }
+
+  inline std::ostream & operator << (std::ostream & os, const ntree::TreeStat & stat)
+  {
+    os << "( g: " << stat.gridCount << ", b: " << stat.brickCount << ", c: " << stat.constCount << " )";
+    return os;
+  }
+}
+
+
 BOOST_AUTO_TEST_CASE( NTree_depth_test )
 {
   AlphaTree tree;
@@ -55,13 +70,39 @@ BOOST_AUTO_TEST_CASE( NTree_view_edit_test )
 
   point_3i p(17, 17, 17);
   point_3i p1 = p - view1.range().p1;
-  point_3i p2 = p - view1.range().p2;
+  point_3i p2 = p - view2.range().p1;
   BOOST_CHECK_EQUAL(view1.data()[p1], AlphaTraits::DefValue());
   BOOST_CHECK_EQUAL(view2.data()[p2], AlphaTraits::DefValue());
   view1.data()[p1] = 123;
   view1.Commit();
   view2.Update();
   BOOST_CHECK_EQUAL(view2.data()[p2], 123);
+}
+
+BOOST_AUTO_TEST_CASE( NTree_shrink_test)
+{
+  const ntree::TreeStat empty = {0, 0, 1};
+  
+  AlphaTree tree;
+  AlphaTree::View view;
+  view.Attach(tree, range_3i( point_3i(100, 150, 200), point_3i(120, 160, 230) ));
+  BOOST_CHECK_EQUAL(tree.GatherStat(), empty);
+  view.data()[point_3i(5, 7, 8)] = 100;
+  view.Commit();
+  BOOST_CHECK_EQUAL(tree.GatherStat().brickCount, 1);
+  view.data()[point_3i(0, 0, 0)] = 45;
+  view.Commit();
+  BOOST_CHECK_EQUAL(tree.GatherStat().brickCount, 2);
+  view.data()[point_3i(0, 0, 1)] = 12;
+  view.Commit();
+  BOOST_CHECK_EQUAL(tree.GatherStat().brickCount, 2);
+  BOOST_TEST_MESSAGE("TreeStat: " << tree.GatherStat());
+
+  view.data()[point_3i(5, 7, 8)] = 0;
+  view.data()[point_3i(0, 0, 0)] = 0;
+  view.data()[point_3i(0, 0, 1)] = 0;
+  view.Commit();
+  BOOST_CHECK_EQUAL(tree.GatherStat(), empty);
 }
 
 /*void MakeShpere(int size, array_3d<uint8> & dst)
