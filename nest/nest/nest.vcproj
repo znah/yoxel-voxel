@@ -233,10 +233,6 @@
 			Name="offest"
 			>
 			<File
-				RelativePath=".\offset_func.h"
-				>
-			</File>
-			<File
 				RelativePath=".\offset_geom.h"
 				>
 			</File>

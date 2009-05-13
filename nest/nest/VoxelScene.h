@@ -7,6 +7,11 @@ public:
   VoxelScene() {}
   ~VoxelScene() {}
 
+
+
+  template <class Func>
+  void AddSurface(Func & func);
+
 private:
   struct AlphaTraits
   {
@@ -17,6 +22,5 @@ private:
   };
   typedef ntree::NTree<AlphaTraits> AlphaTree;
 
-
-
+  AlphaTree m_alphaTree;
 };
