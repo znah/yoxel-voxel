@@ -106,7 +106,7 @@ struct NTree<Traits>::View::TreeProc
   void exitGrid(Node & node, const range_3i & range) 
   { 
     if (ToTree)
-      ShrinkGrid(node); 
+      node.Shrink();
   }
   void enterBrick(Node & node, const range_3i & range)
   {
@@ -115,7 +115,7 @@ struct NTree<Traits>::View::TreeProc
     Assert(range.size() == point_3i(BrickSize, BrickSize, BrickSize));
     view->CopyBrick<ToTree>(node.brick, range.p1 - view->m_range.p1);
     if (ToTree)
-      ShrinkBrick(node);
+      node.Shrink();
   }
 
   void enterConst(Node & node, const range_3i & range)
@@ -132,30 +132,6 @@ struct NTree<Traits>::View::TreeProc
       dstRange &= arrayRange;
       fill(view->m_data, dstRange, node.constVal);
     }
-  }
-
-  void ShrinkGrid(Node & node)
-  {
-    Assert(node.GetType() == Node::Grid);
-    bool allEq = (node.grid[0].GetType() == Node::Const);
-    for (int i = 1; i < GridSize3 && allEq; ++i)
-    {
-      allEq = node.grid[i].GetType() == Node::Const;
-      if (allEq)
-        allEq = (node.grid[i].constVal == node.grid[0].constVal);
-    }
-    if (allEq)
-      node.MakeConst(node.grid[0].constVal);
-  }
-
-  void ShrinkBrick(Node & node)
-  {
-    Assert(node.GetType() == Node::Brick);
-    bool allEq = true;
-    for (int i = 1; i < BrickSize3 && allEq; ++i)
-      allEq = (node.brick[i] == node.brick[0]);
-    if (allEq)
-      node.MakeConst(node.brick[0]);
   }
 };
 

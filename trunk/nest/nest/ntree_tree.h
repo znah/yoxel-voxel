@@ -105,6 +105,33 @@ struct NTree<Traits>::Node : public noncopyable
     brick = new ValueType[BrickSize3];
     std::fill(brick, brick + BrickSize3, constVal);
   }
+
+  void Shrink()
+  {
+    if (GetType() == Const)
+      return;
+
+    if (GetType() == Brick)
+    {
+      bool allEq = true;
+      for (int i = 1; i < BrickSize3 && allEq; ++i)
+        allEq = (brick[i] == brick[0]);
+      if (allEq)
+        MakeConst(brick[0]);
+    }
+    else
+    {
+      bool allEq = (grid[0].GetType() == Const);
+      for (int i = 1; i < GridSize3 && allEq; ++i)
+      {
+        allEq = grid[i].GetType() == Const;
+        if (allEq)
+          allEq = (grid[i].constVal == grid[0].constVal);
+      }
+      if (allEq)
+        MakeConst(grid[0].constVal);
+    }
+  }
 };
 
 template <class Traits>
