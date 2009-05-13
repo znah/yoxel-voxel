@@ -25,7 +25,14 @@ template <class Traits>
 class NTree
 {
 public:
+  typedef typename Traits::ValueType ValueType;
+  static const int GridSize = Traits::GridSize;
+  static const int GridSize3 = GridSize*GridSize*GridSize;
+  static const int BrickSize = Traits::BrickSize;
+  static const int BrickSize3 = BrickSize*BrickSize*BrickSize;
+
   class View;
+  struct Node;
   
   NTree() { AdjustDepth(1024); }
   ~NTree() {}
@@ -36,24 +43,25 @@ public:
   int GetExtent() const { return m_extent; }
 
   TreeStat GatherStat() const;
+
+  template <class Proc>
+  void WalkTree(Proc & proc)
+  {
+    WalkNode(m_root, point_3i(), m_extent, proc);
+  }
 private:
-  struct Node;
   int m_depth;
   int m_extent;
   Node m_root;
 
   void AccumStat(const Node & node, TreeStat & res) const;
+  template <class Proc>
+  void WalkNode(Node & node, point_3i pos, int sz, Proc & proc);
 };
 
 template <class Traits>
-struct NTree<Traits>::Node
+struct NTree<Traits>::Node : public noncopyable
 {
-  typedef typename Traits::ValueType ValueType;
-  static const int GridSize = Traits::GridSize;
-  static const int GridSize3 = GridSize*GridSize*GridSize;
-  static const int BrickSize = Traits::BrickSize;
-  static const int BrickSize3 = BrickSize*BrickSize*BrickSize;
-
   ValueType constVal;
   Node * grid;
   ValueType * brick;
@@ -131,8 +139,39 @@ void NTree<Traits>::AccumStat(const Node & node, TreeStat & res) const
     ++res.constCount;
 
   if (type == Node::Grid)
-    for (int i = 0; i < Node::GridSize3; ++i)
+    for (int i = 0; i < GridSize3; ++i)
       AccumStat(node.grid[i], res);
 }
 
+template <class Traits>
+template <class Proc>
+void NTree<Traits>::WalkNode(Node & node, point_3i pos, int sz, Proc & proc)
+{
+  Assert(sz >= BrickSize);
+  range_3i nodeRange(pos, sz);
+
+  Node::Type type = node.GetType();
+  if (type == Node::Grid)
+  {
+    Assert(sz > BrickSize);
+    if (!proc.enterGrid(node, nodeRange))
+      return;
+    int sz2 = sz / GridSize;
+    for (walk_3 i(GridSize); !i.done(); i.next())
+      WalkNode(node.grid[i.flat()], pos + i.pos()*sz2, sz2, proc);
+    proc.exitGrid(node, nodeRange);
+  }
+  else if (type == Node::Const)
+  {
+    proc.enterConst(node, nodeRange);
+    if (node.GetType() != Node::Const)
+      WalkNode(node, pos, sz, proc);
+  }
+  else // brick
+  {
+    Assert(sz == BrickSize);
+    proc.enterBrick(node, nodeRange);
+  }
 }
+
+} // namespace ntree

@@ -12,3 +12,14 @@ struct Traits
   static ValueType DefValue() { return ...; }
 };
 */
+
+/*
+struct TreeProc
+{
+  bool enterGrid(Node & node, const range_3i & range);
+  void exitGrid(Node & node, const range_3i & range);
+  void enterBrick(Node & node, const range_3i & range);
+  void enterConst(Node & node, const range_3i & range);
+};
+
+*/

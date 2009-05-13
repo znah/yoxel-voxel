@@ -15,6 +15,20 @@ struct Sphere
   };
 };
 
+struct Rect
+{
+  point_3f halfSize;
+
+  explicit Rect(const point_3f & size_ = point_3f(1, 1, 1)) : halfSize(0.5f * size_) {}
+
+  float operator()(const point_3f & p) const
+  {
+    return 0; // TODO
+     
+  }
+
+};
+
 template <class Base>
 struct Translate
 {
