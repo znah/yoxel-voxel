@@ -45,13 +45,37 @@ def pad_bricks(a, bricksize):
     return b
 
 
-def mark_bricks(a, bricksize):
+def reduce_bricks(a, bricksize, func, init):
     bs = int(bricksize)
     sz = array(a.shape) / bs
-    lo = a[::bs, ::bs, ::bs].copy()
-    hi = lo.copy()
+    res = array(sz, a.dtype)
+    res[:] = init
+
+    idx = [(i, j, k) for i in xrange(bs) for j in xrange(bs) for k in xrange(bs)]
+    for (i, j, k) in idx:
+        res = func(res, a[i::bs, j::bs, k::bs])
+    return res
+
+def make_bits(a):
+    bs = 4
+    sz = array(a.shape) / bs
+    bits = zeros(sz, uint64)
+    idx = [(i, j, k) for i in xrange(bs) for j in xrange(bs) for k in xrange(bs)]
+    for (bit, (i, j, k)) in enumerate(idx):
+        sub_a = a[i::bs, j::bs, k::bs].astype(uint64)
+        bits |= (sub_a & 1) << bit
+    return bits
+
+def build_hinttree(a, gridsize = 4):
+    a = pad_bricks(a, 4)
+    bits = make_bits(a)
+    bits = pad_bricks(gridsize)
 
     
+
+
+
+
 
 
 if __name__ == '__main__':
