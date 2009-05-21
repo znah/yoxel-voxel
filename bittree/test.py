@@ -60,21 +60,22 @@ def make_bits(a):
     bs = 4
     sz = array(a.shape) / bs
     bits = zeros(sz, uint64)
-    idx = [(i, j, k) for i in xrange(bs) for j in xrange(bs) for k in xrange(bs)]
+    #idx = [(i, j, k) for i in xrange(bs) for j in xrange(bs) for k in xrange(bs)]
+    idx = indices((bs, bs, bs)).reshape(3, -1).T
     for (bit, (i, j, k)) in enumerate(idx):
         sub_a = a[i::bs, j::bs, k::bs].astype(uint64)
         bits |= (sub_a & 1) << bit
     return bits
 
-def build_hinttree(a, gridsize = 4):
+def build_bittree(a, gridsize = 4):
     a = pad_bricks(a, 4)
-    bits = make_bits(a)
-    bits = pad_bricks(gridsize)
+    bricks = make_bits(a)
+    bricks = pad_bricks(bricks, gridsize)
 
-    
-
-
-
+    brick_flags = bricks != 0
+    packed_bricks = bricks[brick_flags].copy()
+    brick_refs = brick_flags.astype(int32).cumsum()-1
+    return (brick_refs, packed_bricks)
 
 
 
@@ -83,8 +84,9 @@ if __name__ == '__main__':
     a.shape = (256, 256, 256)
 
     (b, h) = process(a, 32)
-    h = pad_bricks(h, 4)
-    #b.tofile("../data/bonsai32.raw")
+    (bit_grids, bit_bricks) = build_bittree(a, 4)
+    bit_grids.tofile("bit_grids.dat")
+    bit_bricks.tofile("bit_bricks.dat")
 
 
 
