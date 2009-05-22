@@ -61,7 +61,8 @@ def make_bits(a):
     sz = array(a.shape) / bs
     bits = zeros(sz, uint64)
     #idx = [(i, j, k) for i in xrange(bs) for j in xrange(bs) for k in xrange(bs)]
-    idx = indices((bs, bs, bs)).reshape(3, -1).T
+    #idx = indices((bs, bs, bs)).reshape(3, -1).T
+    idx = ndindex(bs, bs, bs)
     for (bit, (i, j, k)) in enumerate(idx):
         sub_a = a[i::bs, j::bs, k::bs].astype(uint64)
         bits |= (sub_a & 1) << bit
