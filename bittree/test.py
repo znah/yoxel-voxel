@@ -123,7 +123,8 @@ if __name__ == '__main__':
     print "marking voxels"
     (b, h) = process(a, 32)
     print "building tree"
-    (grids, bit_bricks) = build_bittree(a, 8)
+    (grids, bit_bricks) = build_bittree(h, 4)
+    print "grid num: %d  brick num: %d" % (len(grids), len(bit_bricks))
 
     print "saving result"
     grids.tofile("grids.dat")
