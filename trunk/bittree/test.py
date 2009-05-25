@@ -44,49 +44,89 @@ def pad_bricks(a, bricksize):
     b[:sza[0], :sza[1], :sza[2]] = a
     return b
 
-
-def reduce_bricks(a, bricksize, func, init):
-    bs = int(bricksize)
-    sz = array(a.shape) / bs
-    res = array(sz, a.dtype)
-    res[:] = init
-
-    idx = [(i, j, k) for i in xrange(bs) for j in xrange(bs) for k in xrange(bs)]
-    for (i, j, k) in idx:
-        res = func(res, a[i::bs, j::bs, k::bs])
-    return res
-
 def make_bits(a):
     bs = 4
     sz = array(a.shape) / bs
     bits = zeros(sz, uint64)
-    #idx = [(i, j, k) for i in xrange(bs) for j in xrange(bs) for k in xrange(bs)]
-    #idx = indices((bs, bs, bs)).reshape(3, -1).T
     idx = ndindex(bs, bs, bs)
     for (bit, (i, j, k)) in enumerate(idx):
         sub_a = a[i::bs, j::bs, k::bs].astype(uint64)
         bits |= (sub_a & 1) << bit
     return bits
 
+
+# 31 bit 
+# - grid(0)
+# - brick(1)
+# special:
+# 0xFF FF FF F0 - all zero
+# 0xFF FF FF F1 - all one
+ZeroBlock    = uint32(0xFFFFFFF0)
+FullBlock    = uint32(0xFFFFFFF1)
+BrickRefMask = uint32(0x80000000)
+
+def build_level(prevLevel, gridsize, base_ofs):
+    gs = gridsize
+    gs3 = gs ** 3
+    prevLevel = pad_bricks(prevLevel, gs)
+    newLevelSize = array(prevLevel.shape) / gs
+    grids = zeros(tuple(newLevelSize) + (gs3,), uint32)
+    for (ofs, (i, j, k)) in enumerate(ndindex(gs, gs, gs)):
+        grids[:,:,:,ofs] = prevLevel[i::gs, j::gs, k::gs]
+
+    zero_refs = grids == ZeroBlock
+    full_refs = grids == FullBlock
+    zero_grids = zero_refs.all(3)
+    full_grids = full_refs.all(3)
+    grid_flags = ~(zero_grids | full_grids)
+    
+    packed_level = grids[grid_flags].copy()
+    nextLevel = grid_flags.astype(int32).cumsum()-1 + base_ofs
+    nextLevel.shape = grid_flags.shape
+    nextLevel[zero_grids] = ZeroBlock
+    nextLevel[full_grids] = FullBlock
+    return (packed_level, nextLevel)
+
 def build_bittree(a, gridsize = 4):
     a = pad_bricks(a, 4)
-    bricks = make_bits(a)
-    bricks = pad_bricks(bricks, gridsize)
+    bits = make_bits(a)
+    bits = pad_bricks(bits, gridsize)
 
-    brick_flags = bricks != 0
-    packed_bricks = bricks[brick_flags].copy()
-    brick_refs = brick_flags.astype(int32).cumsum()-1
-    return (brick_refs, packed_bricks)
+    zero_flags = bits == 0
+    full_flags = bits == ~uint64(0)
+    brick_flags = ~(zero_flags | full_flags)
+    packed_bricks = bits[brick_flags].copy()
+
+    refs = brick_flags.astype(int32).cumsum()-1
+    refs.shape = bits.shape
+    refs |= BrickRefMask
+    refs[zero_flags] = ZeroBlock
+    refs[full_flags] = FullBlock
+
+    levels = []
+    base_ofs = 0
+    while refs.size > 1:
+        print refs.shape
+        (packed_level, refs) = build_level(refs, gridsize, base_ofs)
+        base_ofs += len(packed_level)
+        levels.append(packed_level)
+    packed_grids = vstack(levels)
+    return (packed_grids, packed_bricks)
 
 
 
 if __name__ == '__main__':
+    print "loading data"
     a = fromfile("../data/bonsai.raw", uint8)
     a.shape = (256, 256, 256)
 
+    print "marking voxels"
     (b, h) = process(a, 32)
-    (bit_grids, bit_bricks) = build_bittree(a, 4)
-    bit_grids.tofile("bit_grids.dat")
+    print "building tree"
+    (grids, bit_bricks) = build_bittree(a, 8)
+
+    print "saving result"
+    grids.tofile("grids.dat")
     bit_bricks.tofile("bit_bricks.dat")
 
 
