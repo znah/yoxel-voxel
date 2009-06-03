@@ -1,8 +1,5 @@
 #pragma once
 
-#define BOOST_TEST_MODULE BitTreeTest
-#include <boost/test/unit_test.hpp>
-
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
