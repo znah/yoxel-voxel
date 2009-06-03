@@ -1,6 +1,8 @@
 from numpy import *
 from pylab import *
 
+from htree import *
+
 def process(a, level):
     '''
     Returns (b, h), where 'h' marks voxels on isosurface and 'b' 
@@ -54,16 +56,6 @@ def make_bits(a):
         bits |= (sub_a & 1) << bit
     return bits
 
-
-# 31 bit 
-# - grid(0)
-# - brick(1)
-# special:
-# 0xFF FF FF F0 - all zero
-# 0xFF FF FF F1 - all one
-ZeroBlock    = uint32(0xFFFFFFF0)
-FullBlock    = uint32(0xFFFFFFF1)
-BrickRefMask = uint32(0x80000000)
 
 def build_level(prevLevel, gridsize, base_ofs):
     gs = gridsize
