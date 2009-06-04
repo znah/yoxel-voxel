@@ -9,7 +9,7 @@ const int GridSize  = 4;
 const int GridSize3 = GridSize * GridSize * GridSize;
 
 struct Brick { uint32 lo, hi; };
-typedef uint32 Grid[GridSize3];
+struct Grid { uint32 child[GridSize3]; };
 
 inline float maxCoord(const point_3f & p) { return cg::max(p.x, cg::max(p.y, p.z)); }
 inline float minCoord(const point_3f & p) { return cg::min(p.x, cg::min(p.y, p.z)); }
@@ -42,13 +42,17 @@ struct RayTracer
     invDir = point_3f(1.0f, 1.0f, 1.0f) / dir;
     eye = eye_;
 
-    traceGrid(m_root, point_3i(0, 0, 0), 1.0f);
+    hit = traceNode(m_root, point_3i(0, 0, 0), 1.0f);
+    if (hit)
+      printf("hit\n");
   }
 
-  void traceGrid(uint32 gridId, point_3i gridPos, float gridWldSize)
+  bool traceNode(uint32 nodeId, point_3i nodePos, float nodeWldSize)
   {
-    point_3f lo = gridPos * gridWldSize; 
-    point_3f hi = lo + point_3f(gridWldSize, gridWldSize, gridWldSize);
+    if (nodeId == ZeroBlock)
+      return false;
+    point_3f lo = nodePos * nodeWldSize; 
+    point_3f hi = lo + point_3f(nodeWldSize, nodeWldSize, nodeWldSize);
     
     point_3f t1 = (lo - eye) & invDir;
     point_3f t2 = (hi - eye) & invDir;
@@ -59,9 +63,28 @@ struct RayTracer
     float texit  = minCoord(t2);
 
     if (tenter > texit || texit < 0)
-      return;
-    hit = true;
+      return false;
+    if ((nodeId & BrickRefMask) != 0)
+      return true;
 
+    printf("%d, %d, %d  %f\n", nodePos.x, nodePos.y, nodePos.z, nodeWldSize);
+    //if (nodeWldSize < 0.3)
+    //  return true;
+
+    point_3i subNodePos = nodePos * GridSize;
+    float subNodeSize = nodeWldSize / GridSize;
+    for (int z = 0; z < GridSize; ++z)
+    for (int y = 0; y < GridSize; ++y)
+    for (int x = 0; x < GridSize; ++x)
+    {
+      int nx = (invDir.x >= 0) ? x : GridSize - x;
+      int ny = (invDir.y >= 0) ? y : GridSize - y;
+      int nz = (invDir.z >= 0) ? z : GridSize - z;
+      int ch = (nz * GridSize + ny) * GridSize + nx;
+      if ( traceNode(m_grids[nodeId].child[ch], subNodePos + point_3i(nx, ny, nz), subNodeSize) )
+        return true;
+    }
+    return false;
   }
 
 
