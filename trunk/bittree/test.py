@@ -119,8 +119,8 @@ if __name__ == '__main__':
     print "grid num: %d  brick num: %d" % (len(grids), len(bit_bricks))
 
     print "saving result"
-    grids.tofile("grids.dat")
-    bit_bricks.tofile("bit_bricks.dat")
+    grids.tofile("hint_grids.dat")
+    bit_bricks.tofile("hint_bricks.dat")
 
 
 
