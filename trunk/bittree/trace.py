@@ -25,6 +25,7 @@ if __name__ == "__main__":
     d_hint_bricks = cuda.to_device(hint_bricks)
     d_hint_grids = cuda.to_device(hint_grids)
 
+    print "compiling kernel ..."
     src = file("trace.cu").read()
     mod = SourceModule(src, no_extern_c = True, include_dirs = [os.getcwd()]) 
     func = mod.get_function("TestFetch")
@@ -45,8 +46,19 @@ if __name__ == "__main__":
     render_params["viewSize"][1] = 256
     cuda.memcpy_htod(mod.get_global("rp")[0], render_params)
 
-    d_dst = ga.empty((256, 256), np.uint32)
-    func(np.float32(0.3), d_dst, block = (8, 8, 1), grid=(32, 32, 1))
+    hint_grid_tex = mod.get_texref("hint_grid_tex")
+    hint_brick_tex = mod.get_texref("hint_brick_tex")
+    hint_grid_tex.set_address(d_hint_grids, len(hint_grids.data))
+    hint_brick_tex.set_address(d_hint_bricks, len(hint_bricks.data))
+    hint_brick_tex.set_format(cuda.array_format.UNSIGNED_INT32, 2)
+
+
+    
+    
+    dst = np.zeros((256, 256), np.uint32)
+    dst2 = np.zeros((256, 256), np.float32)
+    print "running kernel"
+    func(np.float32(0.33), cuda.Out(dst), cuda.Out(dst2), block = (8, 8, 1), grid=(32, 32), texrefs = [hint_grid_tex, hint_brick_tex])
 
 
 
