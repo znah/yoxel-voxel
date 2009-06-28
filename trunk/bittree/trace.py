@@ -78,7 +78,7 @@ if __name__ == "__main__":
     render_params["viewSize"][:] = (512, 512)
     render_params["fovCoef"] = np.tan(np.radians( 45.0 / 2 ))
 
-    eyePos = np.array([2.0, 1.5, 1.3])
+    eyePos = np.array([2.5, 0.8, 0.9])
     targetPos = np.array([0.5, 0.5, 0.5])
     v2wMtx = makeViewToWldMtx(eyePos, targetPos, np.array([0, 0, 1]))
     w2vMtx = np.linalg.inv(v2wMtx)
