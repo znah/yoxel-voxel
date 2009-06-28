@@ -102,7 +102,50 @@ __device__ bool hitBox(float3 dir, float3 orig, float3 boxMin, float3 boxMax, fl
   return (texit > 0.0f) && (tenter < texit);
 }
 
+__device__ float avoidZero(float x)
+{
+  const float eps = 1e-6f;
+  return ( abs(x) < eps ) ? copysign(eps, x) : x;
+}
 
+struct GridTracer
+{
+  int3 gridPos;
+  int3 dirBits;
+  float dzx, dyx, dzy;
+  float ezx, eyx, ezy;
+
+  __device__ bool init(float3 start, float3 dir)
+  {
+    dir.x = avoidZero(dir.x);
+    dir.y = avoidZero(dir.y);
+    dir.z = avoidZero(dir.z);
+    float3 t1, t2;
+    if (!hitBox(dir, start, make_float3(0.0f), make_float3(1.0f), t1, t2))
+      return false;
+
+    dzx = abs(dir.z / dir.x);
+    dyx = abs(dir.y / dir.x);
+    dzy = abs(dir.z / dir.y);
+    ezx = t2.x * dir.z + rp.eyePos.z;
+    eyx = t2.x * dir.y + rp.eyePos.y;
+    ezy = t2.y * dir.z + rp.eyePos.z;
+
+    int3 dirBits = make_int3( signbit(dir.x), signbit(dir.y), signbit(dir.z) );
+    if (dirBits.z) 
+    {
+      ezx = 1.0f - ezx;
+      ezy = 1.0f - ezy;
+    }
+    if (dirBits.y) eyx = 1.0f - eyx;
+
+    return true;
+  }
+
+   
+
+
+};
 
 
 
@@ -128,29 +171,15 @@ __global__ void Trace(float * dst)
 {
   INIT_THREAD;
   float3 dir = CalcRayWorldDir(xi, yi);
-  int3 dirBits = make_int3( signbit(dir.x), signbit(dir.y), signbit(dir.z) );
-  float3 t1, t2;
-  if (!hitBox(dir, rp.eyePos, make_float3(0.0f), make_float3(1.0f), t1, t2))
+
+  GridTracer tracer;
+  if (!tracer.init(rp.eyePos, dir))
   {
     dst[tid] = 0.0f;
     return;
   }
-
-
-
-
-
-
-  float dzx = abs(dir.z / dir.x);
-  float dyx = abs(dir.y / dir.x);
-  float dzy = abs(dir.z / dir.y);
-  float ezx = t2.x * abs(dir.z) + rp.eyePos.z;
-  float eyx = t2.x * abs(dir.y) + rp.eyePos.y;
-  float ezy = t2.y * abs(dir.z) + rp.eyePos.z;
                      
-
-  dst[tid] = ezx;
-  
+  dst[tid] = tracer.ezx;
 }
  
 }
