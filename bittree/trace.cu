@@ -84,10 +84,29 @@ __device__ float3 CalcRayWorldDir(int xi, int yi)
   dir = mul(rp.viewToWldMtx, dir);
   return dir;
 }
+
 __device__ int sign(float v)
 {
   return v > 0 ? 1 : (v < 0 ? -1 : 0);
 }
+
+__device__ int argmin(const float3 & p) 
+{
+  if (p.x > p.y)
+    return (p.y < p.z) ? 1 : 2;
+  else
+    return (p.x < p.z) ? 0 : 2;
+}
+
+__device__ int argmax(const float3 & p) 
+{
+  if (p.x < p.y)
+    return (p.y > p.z) ? 1 : 2;
+  else
+    return (p.x > p.z) ? 0 : 2;
+}
+
+
 
 __device__ bool hitBox(float3 dir, float3 orig, float3 boxMin, float3 boxMax, float3 & t1, float3 & t2)
 {
@@ -111,9 +130,10 @@ __device__ float avoidZero(float x)
 struct GridTracer
 {
   int3 gridPos;
-  int3 sign;
+  int3 dirSign;
   float dzx, dyx, dzy;
   float ezx, eyx, ezy;
+  int enterPlane;
 
   __device__ bool init(float3 start, float3 dir)
   {
@@ -124,6 +144,8 @@ struct GridTracer
     if (!hitBox(dir, start, make_float3(0.0f), make_float3(1.0f), t1, t2))
       return false;
 
+    enterPlane = argmax(t1);
+
     dzx = abs(dir.z / dir.x);
     dyx = abs(dir.y / dir.x);
     dzy = abs(dir.z / dir.y);
@@ -131,13 +153,13 @@ struct GridTracer
     eyx = t2.x * dir.y + rp.eyePos.y;
     ezy = t2.y * dir.z + rp.eyePos.z;
 
-    int3 sign = make_int3( sign(dir.x), sign(dir.y), sign(dir.z) );
-    if (sign.z < 0) 
+    int3 dirSign = make_int3( sign(dir.x), sign(dir.y), sign(dir.z) );
+    if (dirSign.z < 0) 
     {
       ezx = 1.0f - ezx;
       ezy = 1.0f - ezy;
     }
-    if (sign.y < 0) eyx = 1.0f - eyx;
+    if (dirSign.y < 0) eyx = 1.0f - eyx;
 
     gridPos = make_int3(0, 0, 0);
 
@@ -150,40 +172,60 @@ struct GridTracer
     {
       if (eyx < 1.0f)
       {
-        gridPos.x += sign.x;
+        gridPos.x += dirSign.x;
         ezx += dzx;
         eyx += dyx;
-        return 0;
+        enterPlane = 0;
       }
       else
       {
-        gridPos.y += sign.y;
+        gridPos.y += dirSign.y;
         ezy += dzy;
         eyx -= 1.0f;
-        return 1;
+        enterPlane = 1;
       }
     }
     else
     {
       if (ezy < 1.0f)
       {
-        gridPos.y += sign.y;
+        gridPos.y += dirSign.y;
         ezy += dzy;
         eyx -= 1.0f;
-        return 1;
+        enterPlane = 1;
       }
       else
       {
-        gridPos += sign.z;
+        gridPos.z += dirSign.z;
         ezy -= 1.0f;
         ezx -= 1.0f;
-        return 2;
+        enterPlane = 2;
       }
     }
+    return enterPlane;
   }
 
-  __device__ void down()
+  __device__ void down(int n)
   {
+    gridPos *= n;
+    ezx *= n;
+    eyx *= n;
+    ezy *= n;
+
+    if (enterPlane == 0)
+    {
+      if (dirSign.x < 0)
+        gridPos.x += n-1;
+      int by = floor(eyx);
+
+
+
+      
+      
+
+    }
+    
+
     
 
 
@@ -218,11 +260,11 @@ __global__ void Trace(float * dst)
   GridTracer tracer;
   if (!tracer.init(rp.eyePos, dir))
   {
-    dst[tid] = 0.0f;
+    dst[tid] = -1.0f;
     return;
   }
-                     
-  dst[tid] = tracer.ezx;
+  tracer.next();
+  dst[tid] = tracer.enterPlane;
 }
  
 }
