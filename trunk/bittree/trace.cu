@@ -111,7 +111,7 @@ __device__ float avoidZero(float x)
 struct GridTracer
 {
   int3 gridPos;
-  int3 dirBits;
+  int3 sign;
   float dzx, dyx, dzy;
   float ezx, eyx, ezy;
 
@@ -131,20 +131,63 @@ struct GridTracer
     eyx = t2.x * dir.y + rp.eyePos.y;
     ezy = t2.y * dir.z + rp.eyePos.z;
 
-    int3 dirBits = make_int3( signbit(dir.x), signbit(dir.y), signbit(dir.z) );
-    if (dirBits.z) 
+    int3 sign = make_int3( sign(dir.x), sign(dir.y), sign(dir.z) );
+    if (sign.z < 0) 
     {
       ezx = 1.0f - ezx;
       ezy = 1.0f - ezy;
     }
-    if (dirBits.y) eyx = 1.0f - eyx;
+    if (sign.y < 0) eyx = 1.0f - eyx;
+
+    gridPos = make_int3(0, 0, 0);
 
     return true;
   }
 
-   
+  __device__ int next()
+  {
+    if (ezx < 1.0f)
+    {
+      if (eyx < 1.0f)
+      {
+        gridPos.x += sign.x;
+        ezx += dzx;
+        eyx += dyx;
+        return 0;
+      }
+      else
+      {
+        gridPos.y += sign.y;
+        ezy += dzy;
+        eyx -= 1.0f;
+        return 1;
+      }
+    }
+    else
+    {
+      if (ezy < 1.0f)
+      {
+        gridPos.y += sign.y;
+        ezy += dzy;
+        eyx -= 1.0f;
+        return 1;
+      }
+      else
+      {
+        gridPos += sign.z;
+        ezy -= 1.0f;
+        ezx -= 1.0f;
+        return 2;
+      }
+    }
+  }
+
+  __device__ void down()
+  {
+    
 
 
+  }
 };
 
 
