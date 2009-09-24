@@ -1,0 +1,349 @@
+from __future__ import with_statement
+import sys
+from OpenGL.GL import *
+from OpenGL.GLU import *
+from OpenGL.GL.EXT.framebuffer_object import *
+from numpy import *
+
+# freeglut hack
+platform.GLUT = ctypes.windll.LoadLibrary("freeglut")
+from OpenGL.GLUT import *
+special._base_glutInit = OpenGL.raw.GLUT.glutInit
+glutCreateWindow = OpenGL.raw.GLUT.glutCreateWindow
+glutCreateMenu = OpenGL.raw.GLUT.glutCreateMenu
+
+from ctypes import cdll, c_int, c_uint, c_float, c_char_p
+cg = cdll.LoadLibrary("cg.dll")
+cggl = cdll.LoadLibrary("cggl.dll")
+
+cgGetError = cg.cgGetError
+cgGetErrorString = cg.cgGetErrorString
+cgGetErrorString.restype = c_char_p
+cgGetLastListing = cg.cgGetLastListing
+cgGetLastListing.restype = c_char_p
+
+cgGLEnableProfile  = cggl.cgGLEnableProfile
+cgGLDisableProfile = cggl.cgGLDisableProfile
+cgGLBindProgram    = cggl.cgGLBindProgram
+cgGLUnbindProgram  = cggl.cgGLUnbindProgram
+
+cgGetNamedParameter = cg.cgGetNamedParameter
+cgGetNamedParameter.argtypes = [c_int, c_char_p]
+
+cgGetParameterType = cg.cgGetParameterType
+
+cgGLSetParameter1f = cggl.cgGLSetParameter1f
+cgGLSetParameter1f.argtypes = [c_int, c_float]
+
+cgGLSetParameter2f = cggl.cgGLSetParameter2f
+cgGLSetParameter2f.argtypes = [c_int, c_float, c_float]
+
+cgGLSetParameter3f = cggl.cgGLSetParameter3f
+cgGLSetParameter3f.argtypes = [c_int, c_float, c_float, c_float]
+
+cgGLSetParameter4f = cggl.cgGLSetParameter4f
+cgGLSetParameter4f.argtypes = [c_int, c_float, c_float, c_float, c_float]
+
+cgGLSetTextureParameter = cggl.cgGLSetTextureParameter
+cgGLSetTextureParameter.argtypes = [c_int, c_uint]
+
+def setTex(p, v):
+    cgGLSetTextureParameter(p, v)
+
+
+cgProfiles = {"fp40"  : 6151, 
+              "vp40"  : 7001, 
+              "gp4fp" : 7010,
+              "gp4vp" : 7011,
+              "gp4gp" : 7012}
+
+cgParamSetters = {
+  cg.cgGetType("float")     : lambda p, v : cgGLSetParameter1f(p, v),
+  cg.cgGetType("float2")    : lambda p, v : cgGLSetParameter2f(p, v[0], v[1]),
+  cg.cgGetType("float3")    : lambda p, v : cgGLSetParameter3f(p, v[0], v[1], v[2]),
+  cg.cgGetType("float4")    : lambda p, v : cgGLSetParameter4f(p, v[0], v[1], v[2], v[3]),
+  cg.cgGetType("sampler2D") : lambda p, v : setTex(p, v)
+}
+
+
+def InitCG():
+    global cgContext
+    cgContext = cg.cgCreateContext()
+    cggl.cgGLSetManageTextureParameters(cgContext, 1)
+    
+    def InitProfile(name):
+        if cggl.cgGLIsProfileSupported(cgProfiles[name]) != 0:
+            cggl.cgGLSetOptimalOptions(cgProfiles[name])
+        else:
+            print "profile", name, "not supported"
+    for profile in cgProfiles:
+        InitProfile(profile)
+
+def checkCGerror():
+    err = cgGetError()
+    if err == 0:
+        return
+    msg = cgGetErrorString(err)
+    listing = cgGetLastListing(cgContext)
+    raise Exception(msg, listing)
+
+def V(*args):
+    return asarray(args, float32)
+                            
+class CGShader:
+    def __init__(self, profileName, code):
+        CG_SOURCE = 4112
+        self._profile = cgProfiles[profileName]
+        self._prog = cg.cgCreateProgram(cgContext, CG_SOURCE, code, self._profile, None, None)
+        checkCGerror()
+        cggl.cgGLLoadProgram(self._prog)
+        checkCGerror()
+
+    def __enter__(self):
+        cgGLEnableProfile(self._profile)
+        cgGLBindProgram(self._prog)
+
+    def __exit__(self, *args):
+        cgGLUnbindProgram(self._profile)
+        cgGLDisableProfile(self._profile)
+
+    def __setattr__(self, name, value):
+        if name.startswith("_"):
+            self.__dict__[name] = value
+            return
+        param = cgGetNamedParameter(self._prog, name)
+        if param == 0:
+            raise Exception("unknown shader param", name)
+        type_ = cgGetParameterType(param)
+        cgParamSetters[type_](param, value)
+
+class Texture2D:
+    ChNum2Format = {1:GL_LUMINANCE, 3:GL_RGB, 4:GL_RGBA}
+    
+    Nearest = [(GL_TEXTURE_MIN_FILTER, GL_NEAREST), (GL_TEXTURE_MAG_FILTER, GL_NEAREST)]
+    Linear  = [(GL_TEXTURE_MIN_FILTER, GL_LINEAR), (GL_TEXTURE_MAG_FILTER, GL_LINEAR)]
+    MipmapLinear  = [(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR), (GL_TEXTURE_MAG_FILTER, GL_LINEAR)]
+    Repeat  = [(GL_TEXTURE_WRAP_S, GL_REPEAT), (GL_TEXTURE_WRAP_S, GL_REPEAT)]
+
+    def __init__(self, img = None, shape = None, format = GL_RGBA8):
+        self._as_parameter_ = glGenTextures(1)
+        self.setParams( *(self.Nearest + self.Repeat) )
+        if img != None:
+            with self:
+                img = atleast_3d(ascontiguousarray(img))
+                srcFormat = self.ChNum2Format[img.shape[2]]
+                srcType = arrays.ArrayDatatype.getHandler(img).arrayToGLType(img)
+                glPixelStorei(GL_PACK_ALIGNMENT, 1);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+                glTexImage2D(GL_TEXTURE_2D, 0, format, img.shape[1], img.shape[0], 0, srcFormat, srcType, img)
+                self.shape = img.shape[:2]
+            return
+        elif shape != None:
+            with self:
+                glTexImage2D(GL_TEXTURE_2D, 0, format, shape[1], shape[0], 0, GL_RGBA, GL_FLOAT, None)
+                self.shape = shape
+
+    def setParams(self, *args):
+        with self:
+            for pname, val in args:
+                glTexParameteri(GL_TEXTURE_2D, pname, val)
+
+    def genMipmaps(self):
+        with self:
+            glGenerateMipmapEXT(GL_TEXTURE_2D)
+    
+    def __enter__(self):
+        glBindTexture(GL_TEXTURE_2D, self)
+
+    def __exit__(self, *args):
+        glBindTexture(GL_TEXTURE_2D, 0)
+
+
+class RenderTexture:
+    def __init__(self, **args):
+        self.fbo = glGenFramebuffersEXT(1)
+        self.tex = Texture2D(**args)
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
+        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.tex, 0)
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+        self.shape = self.tex.shape
+
+    def __enter__(self):
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
+        glViewport(0, 0, self.tex.shape[1], self.tex.shape[0])
+
+    def __exit__(self, *args):
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+
+    def texparams(self, *args):
+        self.tex.setParams(*args)
+
+class ctx:
+    def __init__(self, *items):
+        self.items = items
+    def __enter__(self):
+        self.exitlist = []
+        try:
+            for item in self.items:
+                item.__enter__()
+                self.exitlist.append(item)
+        except:
+            for item in reversed(self.exitlist):
+                item.__exit__(*sys.exc_info())
+            raise
+    def __exit__(self, *args):
+        for item in reversed(self.exitlist):
+            item.__exit__(*args)
+        del self.exitlist
+
+class Ortho:
+    def __init__(self, rect = (0, 0, 1, 1)):
+        self.rect = rect
+    def __enter__(self):
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        (x1, y1, x2, y2) = self.rect
+        gluOrtho2D(x1, x2, y1, y2)
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+    def __exit__(self, *args):
+        pass
+
+ortho = Ortho()
+
+class PingPong:
+    def __init__(self, **args):
+        (self.src, self.dst) = [RenderTexture(**args) for i in (1, 2)]
+        self.shape = self.src.shape
+        self.sx, self.sy = self.shape[1], self.shape[0]
+    def flip(self):
+        (self.src, self.dst) = (self.dst, self.src)
+    def texparams(self, *args):
+        self.src.texparams(*args)
+        self.dst.texparams(*args)
+
+_quad = [(0, 0), (1, 0), (1, 1), (0, 1)]
+def drawQuad():
+    glBegin(GL_QUADS)
+    def vert(p):
+        glTexCoord2f(p[0], p[1])
+        glVertex2f(p[0], p[1])
+    [vert(p) for p in _quad]
+    glEnd()
+
+def drawVerts(primitive, pos, texCoord = None):
+    glBegin(primitive)
+    for i in xrange(len(pos)):
+        if texCoord is not None: 
+            glTexCoord(*texCoord[i])
+        glVertex(*pos[i])
+    glEnd()
+    
+
+
+def glutSetCallbacks(app):
+    if hasattr(app, "display"):
+        glutDisplayFunc(app.display)
+    if hasattr(app, "resize"):
+        glutReshapeFunc(app.resize)
+    if hasattr(app, "idle"):
+        glutIdleFunc(app.idle)
+    if hasattr(app, "keyDown"):
+        glutKeyboardFunc(app.keyDown)
+    if hasattr(app, "keyUp"):
+        glutKeyboardUpFunc(app.keyUp)
+    if hasattr(app, "mouseMove"):
+        glutMotionFunc(app.mouseMove)
+    if hasattr(app, "mouseButton"):
+        glutMouseFunc(app.mouseButton)
+    if hasattr(app, "close"):
+        glutCloseFunc(app.close)
+
+class FlyCamera:
+    def __init__(self):
+        self.eye = (0.0, 0.0, 0.0)
+        self.course = 0
+        self.pitch = 0
+        self.fovy = 40
+        self.viewSize = (1, 1)
+        self.zNear = 1.0
+        self.zFar  = 1000.0
+        
+        self.mButtons = zeros((3,), bool)
+        self.mPos = (0, 0)
+        self.keyModifiers = 0
+        
+        self.vel = [0, 0]
+        self.sensitivity = 0.3
+        self.speed = 1.0
+
+    def __setattr__(self, name, val):
+        if name == "eye":
+            val = V(*val)
+        self.__dict__[name] = val
+
+    def resize(self, x, y):
+        self.viewSize = (x, max(y, 1))
+
+    key2vel = {'w': (0, 1), 's': (0, -1), 'd': (1, 1), 'a': (1, -1) }
+
+    def keyDown(self, key, x, y):
+        self.keyModifiers = glutGetModifiers()
+        k = key.lower()
+        if self.key2vel.has_key(k):
+            a, d = self.key2vel[k]
+            self.vel[a] = d
+
+    def keyUp(self, key, x, y):
+        self.keyModifiers = glutGetModifiers()
+        k = key.lower()
+        if self.key2vel.has_key(k):
+            a, d = self.key2vel[k]
+            self.vel[a] = 0
+
+    def mouseMove(self, x, y):
+        dx = x - self.mPos[0]
+        dy = y - self.mPos[1]
+        if self.mButtons[GLUT_LEFT_BUTTON]:
+            self.course -= dx * self.sensitivity
+            self.pitch = clip(self.pitch - dy * self.sensitivity, -89.9, 89.9)
+        self.mPos = (x, y)
+        self.keyModifiers = glutGetModifiers()
+
+    def mouseButton(self, btn, up, x, y):
+        if btn < 3:
+            self.mButtons[btn] = not up
+        self.mPos = (x, y)
+        self.keyModifiers = glutGetModifiers()
+
+    def __enter__(self):
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        aspect = float(self.viewSize[0]) / self.viewSize[1]
+        gluPerspective(self.fovy, aspect, self.zNear, self.zFar)
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        args = []
+        args.extend(self.eye)
+        args.extend(self.eye + self.forwardVec())
+        args.extend([0, 0, 1])  # up
+        gluLookAt(*args)
+    def __exit__(self, *args):
+        pass
+        
+    def forwardVec(self):
+        (c, p) = radians((self.course, self.pitch))
+        s = cos(p)
+        return array( [s*cos(c), s*sin(c), sin(p)] )
+    def rightVec(self):
+        fwd = self.forwardVec()
+        up = array([0, 0, 1])
+        right = cross(fwd, up)
+        right /= linalg.norm(right)
+        return right
+    
+    def updatePos(self, dt):
+        v = self.vel[0] * self.forwardVec() + self.vel[1] * self.rightVec()
+        if self.keyModifiers & GLUT_ACTIVE_SHIFT != 0:
+            v *= 10
+        self.eye += v*self.speed*dt
