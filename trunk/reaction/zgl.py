@@ -87,8 +87,26 @@ def checkCGerror():
     listing = cgGetLastListing(cgContext)
     raise Exception(msg, listing)
 
+
+'''
+class Vec2:
+    def __init__(self, x = 0, y = 0):
+        self.x = x
+        self.y = y
+    def __add__(self, other)
+        return Vec2(self.x + other.x, self.y + other.y)
+
+def XY(v):
+    return Vec2(v[0], v[1])
+def YX(v):
+    return Vec2(v[1], v[0])
+'''
+
 def V(*args):
-    return asarray(args, float32)
+    if len(args) == 1:
+        return array(args[0], float32)
+    else:
+        return array(args, float32)
                             
 class CGShader:
     def __init__(self, profileName, code):

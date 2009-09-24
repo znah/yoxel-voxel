@@ -5,12 +5,16 @@ from PIL import Image
 import time
 
 class TileProvider:
-    def __init__(self, fn):
+    def __init__(self, fn, tileSize, indexSize, tileBorder = 1):
+        self.tileSize = tileSize
+        self.indexSize = indexSize
+        self.tileBorder = tileBorder
+        self.vtexSize = tileSize * indexSize
+        self.padTileSize = tileSize + tileBorder*2
+        
         self.tex = Texture2D(Image.open(fn))
         self.tex.genMipmaps()
         self.tex.setParams( *Texture2D.MipmapLinear )
-        #self.tex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 16))
-
         self.texFrag = CGShader("fp40", '''
           uniform sampler2D tex;
           float4 main(float2 texCoord: TEXCOORD0, float4 col : COLOR0) : COLOR
@@ -20,29 +24,33 @@ class TileProvider:
         ''')
         self.texFrag.tex = self.tex
 
-    def render(self, rect, scale):
-        with self.texFrag:
+    def render(self, lod, tileIdx):
+        scale = 2.0**lod
+        tileTexSize = self.tileSize * scale / self.vtexSize
+        borderTexSize = self.tileBorder * scale / self.vtexSize
+        lo = V(tileIdx) * tileTexSize - borderTexSize
+        hi = (V(tileIdx)+1) * tileTexSize + borderTexSize
+        
+        with ctx( Ortho((lo[0], lo[1], hi[0], hi[1])), self.texFrag ):
             col = (1, 1, 1)
-            #col = random.rand(3)*0.5 + 0.5
+            col = random.rand(3)*0.5 + 0.5
             glColor(*col)
             drawQuad()
 
 class VirtualTexture:
-    def __init__(self, provider, tileSize, indexSize, cacheSize, border = 1):
+    def __init__(self, provider, cacheSize):
         self.provider = provider
-        self.tileSize = tileSize
-        self.indexSize = indexSize
+        self.padTileSize = provider.padTileSize
+        self.indexSize = provider.indexSize
         self.cacheSize = cacheSize
-        self.border = border
-        self.padTileSize = tileSize + border * 2
 
         self.cacheTex = Texture2D(shape = V(cacheSize, cacheSize)*self.padTileSize)
         self.cacheTex.setParams(*Texture2D.Linear)
         self.cacheTex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 16))
         self.tileBuf = RenderTexture(shape = (self.padTileSize, self.padTileSize))
 
-        self.lodNum = int(log2(indexSize)) + 1
-        lodSizes = [indexSize / 2**lod for lod in xrange(self.lodNum)]
+        self.lodNum = int(log2(self.indexSize)) + 1
+        lodSizes = [self.indexSize / 2**lod for lod in xrange(self.lodNum)]
         self.index = [zeros((sz, sz, 3), float32) for sz in lodSizes]
 
         self.loadTile(self.lodNum-1, (0, 0), (0, 0))
@@ -52,31 +60,26 @@ class VirtualTexture:
         self.loadTile(0, (8, 8), (4, 3))
         self.loadTile(0, (8, 9), (4, 1))
 
-        self.indexTex = Texture2D(self.index[0], format = GL_RGBA_FLOAT16_ATI)
+        self.indexTex = Texture2D(shape = (self.indexSize, self.indexSize), format = GL_RGBA_FLOAT16_ATI)
         with self.indexTex:
-            for lod in xrange(1, self.lodNum):
+            for lod in xrange(0, self.lodNum):
                 src = self.index[lod]
                 glTexImage2D(GL_TEXTURE_2D, lod, GL_RGBA_FLOAT16_ATI, src.shape[1], src.shape[0], 0, GL_RGB, GL_FLOAT, src)
         self.indexTex.setParams((GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST))
         
         
     def loadTile(self, lod, lodTileIdx, cachePos):
-        tileRect = V(lodTileIdx[0], lodTileIdx[1], lodTileIdx[0]+1, lodTileIdx[1]+1)
         scale = 2**lod
-        idxRect = tileRect*scale
-        texRect = idxRect / self.indexSize
-        texBorder = scale * float(self.border)/ (self.tileSize * self.indexSize)
-        padTexRect = texRect.copy()
-        padTexRect[:2] -= texBorder
-        padTexRect[-2:] += texBorder
+        lo = V(lodTileIdx) * scale
+        hi = lo + scale
+        for i in xrange(lod+1):
+            self.index[i][ lo[1]:hi[1], lo[0]:hi[0] ] = (cachePos[0], cachePos[1], scale)
+            lo /= 2
+            hi /= 2
 
-        for i in xrange(lod + 1):
-            self.index[i][idxRect[1]:idxRect[3], idxRect[0]:idxRect[2]] = (cachePos[0], cachePos[1], scale)
-            idxRect /= 2
-
-        with ctx(self.tileBuf, Ortho(padTexRect)):
+        with ctx(self.tileBuf):
             glClear(GL_COLOR_BUFFER_BIT)
-            self.provider.render(padTexRect, scale)
+            self.provider.render(lod, lodTileIdx)
             with self.cacheTex:
                 cp = V(*cachePos) * self.padTileSize
                 glCopyTexSubImage2D(GL_TEXTURE_2D, 0, cp[0], cp[1], 0, 0, self.padTileSize, self.padTileSize)
@@ -84,12 +87,12 @@ class VirtualTexture:
     def setupShader(self, shader):
         shader.indexTex = self.indexTex
         shader.cacheTex = self.cacheTex
-        shader.tileSize = self.tileSize
+        shader.tileSize = self.provider.tileSize
         shader.indexSize = self.indexSize
         shader.cacheSize = self.cacheSize
-        shader.vtexSize = self.indexSize * self.tileSize
+        shader.vtexSize = self.provider.vtexSize
         shader.maxLod = self.lodNum - 1
-        shader.border = self.border
+        shader.border = self.provider.tileBorder
 
 
 
@@ -99,8 +102,8 @@ class App:
         self.viewControl.speed = 50
         self.viewControl.eye = (0, 0, 10)
 
-        self.tileProvider = TileProvider("bluemarble-east-4096.png")
-        self.virtualTex = VirtualTexture(self.tileProvider, 256, 16, 8, border = 4)
+        self.tileProvider = TileProvider("chess.jpg", 256, 16, 1)
+        self.virtualTex = VirtualTexture(self.tileProvider, 8)
         
         self.texFrag = CGShader("fp40", '''
           uniform sampler2D tex;
