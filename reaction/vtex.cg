@@ -1,0 +1,7 @@
+//
+#include "vtex.cgh"
+
+float4 main(float2 texCoord: TEXCOORD0) : COLOR
+{
+  return vtexFetch(texCoord, ddx(texCoord), ddy(texCoord));
+}
