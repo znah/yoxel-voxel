@@ -126,7 +126,21 @@ class App:
         self.virtualTex.setupShader(self.vtexFrag)
         self.virtualTex.setupShader(self.vtexFeedbackFrag)
 
-        #self.terrainVerta = 
+        terrainExtent = 1000.0
+        terrainHeightScale = 0.5
+        Z = asarray(Image.open("img/heightmap.png"))
+        sy, sx = Z.shape
+        self.terrainVerts = zeros((sy, sx, 3), float32)
+        Y, X = mgrid[0:sy, 0:sx].astype(float32)
+        self.terrainVerts[...,0] = X / (sx-1)
+        self.terrainVerts[...,1] = Y / (sy-1)
+        self.terrainVerts[...,2] = Z / 255.0 * terrainHeightScale
+        self.terrainVerts *= terrainExtent
+
+        #self.terrainIdxs = zeros(())
+        
+
+
 
         self.t = time.clock()
 
@@ -136,7 +150,8 @@ class App:
     def idle(self):
         glutPostRedisplay()
     
-    def renderGeom(self):
+    def renderTerrain(self):
+        
 
 
 
@@ -157,7 +172,7 @@ class App:
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             
             with self.vtexFrag:
-                self.renderGeom()
+                self.renderTerrain()
             with self.texFrag:
                 glTranslate(-110, 0, 0)
                 glScale(100, 100, 1)
