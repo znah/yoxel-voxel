@@ -1,0 +1,10 @@
+//
+#include "vtex.cgh"
+
+float4 main(float2 texCoord: TEXCOORD0) : COLOR
+{
+  float lod = ceil(calcLod(ddx(texCoord), ddy(texCoord)));
+  float scale = exp2(lod);
+  float2 tileIdx = floor(texCoord * indexSize / scale);
+  return float4(tileIdx, lod, 0)*0.2;
+}

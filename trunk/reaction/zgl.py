@@ -109,10 +109,13 @@ def V(*args):
         return array(args, float32)
                             
 class CGShader:
-    def __init__(self, profileName, code):
+    def __init__(self, profileName, code = None, fileName = None):
         CG_SOURCE = 4112
         self._profile = cgProfiles[profileName]
-        self._prog = cg.cgCreateProgram(cgContext, CG_SOURCE, code, self._profile, None, None)
+        if code is not None:
+            self._prog = cg.cgCreateProgram(cgContext, CG_SOURCE, code, self._profile, None, None)
+        else:
+            self._prog = cg.cgCreateProgramFromFile(cgContext, CG_SOURCE, fileName, self._profile, None, None)
         checkCGerror()
         cggl.cgGLLoadProgram(self._prog)
         checkCGerror()

@@ -19,7 +19,7 @@ class TileProvider:
           uniform sampler2D tex;
           float4 main(float2 texCoord: TEXCOORD0, float4 col : COLOR0) : COLOR
           {
-            return tex2D(tex, texCoord) * col;
+            return tex2D(tex, texCoord);// * col;
           }
         ''')
         self.texFrag.tex = self.tex
@@ -58,7 +58,7 @@ class VirtualTexture:
         for lod in xrange(0, self.lodNum):
             lodTileNum = self.indexSize / 2**lod
             for i in xrange(lodTileNum):
-                self.loadTile(lod, (i, lodTileNum/2), idx)
+                self.loadTile(lod, (i, i/2), idx)
                 idx += 1
 
         self.indexTex = Texture2D(shape = (self.indexSize, self.indexSize), format = GL_RGBA_FLOAT16_ATI)
@@ -107,7 +107,7 @@ class App:
         self.viewControl.speed = 50
         self.viewControl.eye = (0, 0, 10)
 
-        self.tileProvider = TileProvider("Venus_globe.jpg", 256, 16, 1)
+        self.tileProvider = TileProvider("img/track_1_2.jpg", 256, 16, 8)
         self.virtualTex = VirtualTexture(self.tileProvider, 8)
         
         self.texFrag = CGShader("fp40", '''
@@ -120,72 +120,10 @@ class App:
         ''')
         self.texFrag.tex = self.virtualTex.cacheTex
 
-        self.vtexFrag = CGShader("fp40", '''
-          uniform sampler2D indexTex;
-          uniform sampler2D cacheTex;
-          uniform float tileSize;
-          uniform float indexSize;
-          uniform float cacheTexSize;
-          uniform float vtexSize;
-          uniform float maxLod;
-          uniform float border;
-          uniform float padTileSize;
-
-          const float eps = 0.00001;
-
-          uniform sampler2D lodColorTex;
-          float3 lodCol(float lod) 
-          { 
-            return tex2D(lodColorTex, float2(lod / 8.0, 0));
-          }
-
-          float calcLod(float2 dx, float2 dy)
-          {
-            float2 d = sqrt(dx*dx + dy*dy);
-            float lo = min(d.x, d.y);
-            float hi = max(d.x, d.y);
-            float md = 0.5 * (lo + hi);
-            float lod = log2(md*vtexSize);
-            return clamp(lod, 0, maxLod-eps);
-          }
-          
-          float4 vtexFetch(float2 texCoord, float lod, float2 dx, float2 dy)
-          {
-            float3 tileData = tex2Dlod(indexTex, float4(texCoord, 0, lod)).xyz;
-            float2 tileIdx = tileData.xy;
-            float2 tileScale = tileData.z;
-            float2 posInTile = frac(texCoord * indexSize / tileScale);
-
-            float2 posInCache = (tileIdx * padTileSize + border + posInTile*tileSize) / cacheTexSize;
-
-            float dcoef = vtexSize / cacheTexSize / tileScale;
-            return tex2D(cacheTex, posInCache, dx*dcoef, dy*dcoef);
-          }
-
-          float4 main(float2 texCoord: TEXCOORD0) : COLOR
-          {
-            float2 dx = ddx(texCoord);
-            float2 dy = ddy(texCoord);
-            float lod = calcLod(ddx(texCoord), ddy(texCoord));
-            float lodBlend = frac(lod);
-            float hiLod = lod - lodBlend;
-            float loLod = hiLod + 1;
-
-            float4 c1 = vtexFetch(texCoord, hiLod, dx, dy);
-            float4 c2 = vtexFetch(texCoord, loLod, dx, dy);
-            float4 c = lerp(c1, c2, lodBlend);
-            //c.xyz *= lodCol(lod);
-            return c;
-          }
-                  
-        ''')
-
-        lodColors = (1.0 - 0.5 * array([i for i in ndindex(2, 2, 2)])).astype(float32)[newaxis]
-        self.lodColorTex = Texture2D(lodColors)
-        self.lodColorTex.setParams(*Texture2D.Linear)
-        self.vtexFrag.lodColorTex = self.lodColorTex
-        
+        self.vtexFrag = CGShader("fp40", fileName = 'vtex.cg')
+        self.vtexFeedbackFrag = CGShader("fp40", fileName = 'vtexFeedback.cg')
         self.virtualTex.setupShader(self.vtexFrag)
+        self.virtualTex.setupShader(self.vtexFeedbackFrag)
 
         self.t = time.clock()
 
@@ -195,6 +133,12 @@ class App:
     def idle(self):
         glutPostRedisplay()
     
+    def renderGeom(self):
+        v  = [(0, 0, 0), (100, 0, 0), (100, 100, 0), (0, 100, 0)]
+        tc = [(0, 0), (1, 0), (1, 1), (0, 1)]
+        with self.viewControl:
+            drawVerts(GL_QUADS, v, tc)
+
     def display(self):
         t = time.clock()
         dt = t - self.t;
@@ -202,27 +146,28 @@ class App:
         self.viewControl.updatePos(dt)
         
         glViewport(0, 0, self.viewControl.viewSize[0], self.viewControl.viewSize[1])
-
         with self.viewControl:
             glClearColor(0, 0, 0, 0)
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             
-            v  = [(0, 0, 0), (100, 0, 0), (100, 100, 0), (0, 100, 0)]
-            tc = [(0, 0), (1, 0), (1, 1), (0, 1)]
             with self.vtexFrag:
-                drawVerts(GL_QUADS, v, tc)
+                self.renderGeom()
             with self.texFrag:
                 glTranslate(110, 0, 0)
-                drawVerts(GL_QUADS, v, tc)
-            
-
+                glScale(100, 100, 1)
+                drawQuad()
         glutSwapBuffers()
+
+    def fetchFeedback(self): 
+        pass
 
     def keyDown(self, key, x, y):
         if ord(key) == 27:
             glutLeaveMainLoop()
-
-        self.viewControl.keyDown(key, x, y)
+        elif key == '1':
+            self.fetchFeedback()
+        else:
+            self.viewControl.keyDown(key, x, y)
                
     def keyUp(self, key, x, y):
         self.viewControl.keyUp(key, x, y)
