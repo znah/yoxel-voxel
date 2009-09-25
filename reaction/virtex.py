@@ -106,6 +106,7 @@ class App:
         self.viewControl = FlyCamera()
         self.viewControl.speed = 50
         self.viewControl.eye = (0, 0, 10)
+        self.viewControl.zFar = 10000
 
         self.tileProvider = TileProvider("img/track_1_2.jpg", 256, 16, 8)
         self.virtualTex = VirtualTexture(self.tileProvider, 8)
@@ -125,6 +126,8 @@ class App:
         self.virtualTex.setupShader(self.vtexFrag)
         self.virtualTex.setupShader(self.vtexFeedbackFrag)
 
+        #self.terrainVerta = 
+
         self.t = time.clock()
 
     def resize(self, x, y):
@@ -134,7 +137,10 @@ class App:
         glutPostRedisplay()
     
     def renderGeom(self):
-        v  = [(0, 0, 0), (100, 0, 0), (100, 100, 0), (0, 100, 0)]
+
+
+
+        v  = [(0, 0, 0), (1000, 0, 0), (1000, 1000, 0), (0, 1000, 0)]
         tc = [(0, 0), (1, 0), (1, 1), (0, 1)]
         with self.viewControl:
             drawVerts(GL_QUADS, v, tc)
@@ -153,7 +159,7 @@ class App:
             with self.vtexFrag:
                 self.renderGeom()
             with self.texFrag:
-                glTranslate(110, 0, 0)
+                glTranslate(-110, 0, 0)
                 glScale(100, 100, 1)
                 drawQuad()
         glutSwapBuffers()
