@@ -45,10 +45,10 @@ class VirtualTexture:
         self.cacheSize = cacheSize
         self.cacheTexSize = cacheSize * self.padTileSize
 
-        self.cacheTex = Texture2D(shape = (self.cacheTexSize, self.cacheTexSize))
+        self.cacheTex = Texture2D(size = (self.cacheTexSize, self.cacheTexSize))
         self.cacheTex.setParams(*Texture2D.Linear)
         self.cacheTex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 16))
-        self.tileBuf = RenderTexture(shape = (self.padTileSize, self.padTileSize))
+        self.tileBuf = RenderTexture(size = (self.padTileSize, self.padTileSize))
 
         self.lodNum = int(log2(self.indexSize)) + 1
         lodSizes = [self.indexSize / 2**lod for lod in xrange(self.lodNum)]
@@ -61,7 +61,7 @@ class VirtualTexture:
                 self.loadTile(lod, (i, i/2), idx)
                 idx += 1
 
-        self.indexTex = Texture2D(shape = (self.indexSize, self.indexSize), format = GL_RGBA_FLOAT16_ATI)
+        self.indexTex = Texture2D(size = (self.indexSize, self.indexSize), format = GL_RGBA_FLOAT16_ATI)
         with self.indexTex:
             for lod in xrange(0, self.lodNum):
                 src = self.index[lod]
@@ -133,6 +133,8 @@ class App:
 
         self.initTerrain()
 
+        #self.feedbackBuf = 
+
         self.t = time.clock()
 
     def initTerrain(self):
@@ -176,8 +178,8 @@ class App:
         self.terrainVertProg.heightScale = 50.0
         self.terrainVertProg.texStep = 1.0 / sx
         
-    def renderTerrain(self, fragProg):
-        with ctx(self.terrainVertProg, fragProg):
+    def renderTerrain(self):
+        with self.terrainVertProg:
             glEnableClientState(GL_VERTEX_ARRAY)
             glVertexPointer(2, GL_FLOAT, 0, self.terrainVerts)
             glDrawElements(GL_QUADS, len(self.terrainIdxs), GL_UNSIGNED_INT, self.terrainIdxs)
@@ -202,7 +204,8 @@ class App:
             glClearColor(0, 0, 0, 0)
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             
-            self.renderTerrain(self.vtexFrag)
+            with self.vtexFrag:
+                self.renderTerrain()
             with self.texFrag:
                 glTranslate(-110, 0, 0)
                 glScale(100, 100, 1)

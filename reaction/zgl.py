@@ -107,6 +107,12 @@ def V(*args):
         return array(args[0], float32)
     else:
         return array(args, float32)
+
+def YX(*args):
+    if len(args) == 1:
+        return array((args[0][1], args[0][0]), float32)
+    else:
+        return array((args[1], args[0]), float32)
                             
 class CGShader:
     def __init__(self, profileName, code = None, fileName = None):
@@ -146,7 +152,7 @@ class Texture2D:
     MipmapLinear  = [(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR), (GL_TEXTURE_MAG_FILTER, GL_LINEAR)]
     Repeat  = [(GL_TEXTURE_WRAP_S, GL_REPEAT), (GL_TEXTURE_WRAP_S, GL_REPEAT)]
 
-    def __init__(self, img = None, shape = None, format = GL_RGBA8):
+    def __init__(self, img = None, size = None, format = GL_RGBA8):
         self._as_parameter_ = glGenTextures(1)
         self.setParams( *(self.Nearest + self.Repeat) )
         if img != None:
@@ -157,12 +163,12 @@ class Texture2D:
                 glPixelStorei(GL_PACK_ALIGNMENT, 1);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
                 glTexImage2D(GL_TEXTURE_2D, 0, format, img.shape[1], img.shape[0], 0, srcFormat, srcType, img)
-                self.shape = img.shape[:2]
+                self.size = YX(img.shape[:2])
             return
         elif shape != None:
             with self:
-                glTexImage2D(GL_TEXTURE_2D, 0, format, shape[1], shape[0], 0, GL_RGBA, GL_FLOAT, None)
-                self.shape = shape
+                glTexImage2D(GL_TEXTURE_2D, 0, format, size[0], size[1], 0, GL_RGBA, GL_FLOAT, None)
+                self.size = size
 
     def setParams(self, *args):
         with self:
@@ -187,11 +193,13 @@ class RenderTexture:
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
         glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.tex, 0)
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
-        self.shape = self.tex.shape
+
+    def size(self):
+        return self.tex.size
 
     def __enter__(self):
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
-        glViewport(0, 0, self.tex.shape[1], self.tex.shape[0])
+        glViewport(0, 0, self.size()[0], self.size()[1])
 
     def __exit__(self, *args):
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
@@ -235,8 +243,8 @@ ortho = Ortho()
 class PingPong:
     def __init__(self, **args):
         (self.src, self.dst) = [RenderTexture(**args) for i in (1, 2)]
-        self.shape = self.src.shape
-        self.sx, self.sy = self.shape[1], self.shape[0]
+    def size(self):
+        return self.src.size()
     def flip(self):
         (self.src, self.dst) = (self.dst, self.src)
     def texparams(self, *args):

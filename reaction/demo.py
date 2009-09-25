@@ -77,12 +77,12 @@ def init():
     """)
 
     global pp;
-    a = zeros((512, 1280, 4), float32)
+    a = zeros((512, 512, 4), float32)
     a[...,0] = 1
     a[...,1] = 0
     pp = PingPong(img = a, format = GL_RGBA_FLOAT32_ATI)
     pp.texparams((GL_TEXTURE_MAG_FILTER, GL_LINEAR))
-    reactFrag.dpos = (1.0 / pp.sx, 1.0 / pp.sy)
+    reactFrag.dpos = (1.0 / pp.size()[0], 1.0 / pp.size()[1])
 
     glEnable(GL_POINT_SMOOTH)
 
