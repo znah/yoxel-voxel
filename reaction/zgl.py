@@ -345,7 +345,7 @@ class FlyCamera:
         if btn == 3 and self.fovy > 5 :
             self.sensitivity /= 1.1
             self.fovy /= 1.1
-        if btn == 4 and self.fovy < 120:
+        if btn == 4 and self.fovy < 90:
             self.sensitivity *= 1.1
             self.fovy *= 1.1
         self.mPos = (x, y)

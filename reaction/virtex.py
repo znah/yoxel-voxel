@@ -140,50 +140,31 @@ class App:
     def initTerrain(self):
         heightmap = asarray(Image.open("img/heightmap.png"))
         sy, sx = heightmap.shape
-        self.heightmapTex = Texture2D(heightmap)
-        self.terrainVerts = makegrid(sx, sy)
-        grid = arange(sx*sy).reshape(sy, sx)
+        wldStep = 1000.0 / (sx-1)
+        texStep = 1.0 / (sx-1)
+        grid = makegrid(sx, sy)
+        self.terrainVerts = zeros((sy, sx, 3), float32)
+        self.terrainVerts[:,:,:2] = grid * wldStep
+        self.terrainVerts[:,:,2] = heightmap / 255.0 * 50.0
+        self.terrainTexCoords = grid * texStep
+        
+        idxgrid = arange(sx*sy).reshape(sy, sx)
         self.terrainIdxs = zeros((sy-1, sx-1, 4), uint32)
-        self.terrainIdxs[...,0] = grid[ :-1, :-1 ]
-        self.terrainIdxs[...,1] = grid[ :-1,1:   ]  
-        self.terrainIdxs[...,2] = grid[1:  ,1:   ]
-        self.terrainIdxs[...,3] = grid[1:  , :-1 ]
+        self.terrainIdxs[...,0] = idxgrid[ :-1, :-1 ]
+        self.terrainIdxs[...,1] = idxgrid[ :-1,1:   ]  
+        self.terrainIdxs[...,2] = idxgrid[1:  ,1:   ]
+        self.terrainIdxs[...,3] = idxgrid[1:  , :-1 ]
         self.terrainIdxs = self.terrainIdxs.flatten()
 
-        self.terrainVertProg = CGShader('vp40', '''
-          uniform float4x4 mvpMtx : state.matrix.mvp;
-          uniform sampler2D heightTex : TEXUNIT8;
-          uniform float wldStep;
-          uniform float texStep;
-          uniform float heightScale;
-          struct Vout 
-          { 
-            float4 pos : POSITION; 
-            float2 texCoord : TEXCOORD0; 
-            float4 color : COLOR0;
-          };
-          Vout main( float2 pos : POSITION )
-          {
-            Vout v;
-            float2 tc = pos * texStep;
-            float z = tex2D(heightTex, tc).x * heightScale;
-            v.pos = mul(mvpMtx, float4(pos * wldStep, z, 1));
-            v.texCoord = tc;
-            v.color = float4(tc, 0, 1);
-            return v;
-          }
-        ''')
-        self.terrainVertProg.heightTex = self.heightmapTex
-        self.terrainVertProg.wldStep = 1000.0 / sx
-        self.terrainVertProg.heightScale = 50.0
-        self.terrainVertProg.texStep = 1.0 / sx
-        
     def renderTerrain(self):
-        with self.terrainVertProg:
-            glEnableClientState(GL_VERTEX_ARRAY)
-            glVertexPointer(2, GL_FLOAT, 0, self.terrainVerts)
-            glDrawElements(GL_QUADS, len(self.terrainIdxs), GL_UNSIGNED_INT, self.terrainIdxs)
-            glDisableClientState(GL_VERTEX_ARRAY)
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glVertexPointer(3, GL_FLOAT, 0, self.terrainVerts)
+        glClientActiveTexture(GL_TEXTURE0)
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY)
+        glTexCoordPointer(2, GL_FLOAT, 0, self.terrainTexCoords)
+        glDrawElements(GL_QUADS, len(self.terrainIdxs), GL_UNSIGNED_INT, self.terrainIdxs)
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY)
+        glDisableClientState(GL_VERTEX_ARRAY)
 
     def resize(self, x, y):
         self.viewControl.resize(x, y)
