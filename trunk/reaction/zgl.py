@@ -186,23 +186,41 @@ class Texture2D:
         glBindTexture(GL_TEXTURE_2D, 0)
 
 
+class Framebuffer:
+    def __init__(self):
+        self.fbo = glGenFramebuffersEXT(1)
+        self.attached = {}
+        self.size = V(0, 0)
+    def attachTex2D(self, slot, tex, level):
+        with self:
+            glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, slot, GL_TEXTURE_2D, tex, level)
+        with tex:
+            self.size[0] = glGetTexLevelParameteri(GL_TEXTURE_2D, level, GL_TEXTURE_WIDTH)
+            self.size[1] = glGetTexLevelParameteri(GL_TEXTURE_2D, level, GL_TEXTURE_HEIGHT)
+        self.attached[slot] = tex
+
+    def __enter__(self):
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
+        if (self.size[0] != 0) and (self.size[1] != 0):
+            glViewport(0, 0, self.size[0], self.size[1])
+    def __exit__(self, *args):
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+
+
 class RenderTexture:
     def __init__(self, **args):
-        self.fbo = glGenFramebuffersEXT(1)
+        self.fbo = Framebuffer()
         self.tex = Texture2D(**args)
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
-        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.tex, 0)
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+        self.fbo.attachTex2D(GL_COLOR_ATTACHMENT0_EXT, self.tex, 0)
 
     def size(self):
         return self.tex.size
 
     def __enter__(self):
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
-        glViewport(0, 0, self.size()[0], self.size()[1])
+        self.fbo.__enter__()
 
     def __exit__(self, *args):
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+        self.fbo.__exit__(*args)
 
     def texparams(self, *args):
         self.tex.setParams(*args)

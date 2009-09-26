@@ -102,7 +102,7 @@ class VirtualTexture:
 
 def makegrid(x, y):
     a = zeros((y, x, 2), float32)
-    a[...,1], a[...,0] = mgrid[0:y, 0:x]
+    a[...,1], a[...,0] = indices((y, x))
     return a
 
 
