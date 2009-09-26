@@ -57,7 +57,7 @@ class VirtualTexture:
         idx = 0
         for lod in xrange(0, self.lodNum):
             lodTileNum = self.indexSize / 2**lod
-            for i in xrange(lodTileNum):
+            for i in xrange( min(lodTileNum, 8) ):
                 self.loadTile(lod, (i, i/2), idx)
                 idx += 1
 
@@ -99,6 +99,9 @@ class VirtualTexture:
         shader.padTileSize = self.padTileSize
         shader.cacheTexSize = self.cacheTexSize
 
+    def updateCache(self, tiles):
+        pass
+
 
 def makegrid(x, y):
     a = zeros((y, x, 2), float32)
@@ -107,13 +110,13 @@ def makegrid(x, y):
 
 
 class App:
-    def __init__(self):
+    def __init__(self, viewSize):
         self.viewControl = FlyCamera()
         self.viewControl.speed = 50
         self.viewControl.eye = (0, 0, 10)
         self.viewControl.zFar = 10000
 
-        self.tileProvider = TileProvider("img/track_1_2.jpg", 256, 16, 8)
+        self.tileProvider = TileProvider("img/track_1_2.jpg", 256, 256, 8)
         self.virtualTex = VirtualTexture(self.tileProvider, 8)
         
         self.texFrag = CGShader("fp40", '''
@@ -133,7 +136,7 @@ class App:
 
         self.initTerrain()
 
-        #self.feedbackBuf = 
+        self.feedbackBuf = RenderTexture(size = V(viewSize)/2, format = GL_RGBA_FLOAT16_ATI, depth = True)
 
         self.t = time.clock()
 
@@ -179,11 +182,11 @@ class App:
         self.viewControl.updatePos(dt)
         
         glEnable(GL_DEPTH_TEST)
+        glClearColor(0, 0, 0, 0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
         glViewport(0, 0, self.viewControl.viewSize[0], self.viewControl.viewSize[1])
         with self.viewControl:
-            glClearColor(0, 0, 0, 0)
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             
             with self.vtexFrag:
                 self.renderTerrain()
@@ -193,14 +196,40 @@ class App:
                 drawQuad()
         glutSwapBuffers()
 
-    def fetchFeedback(self): 
-        pass
+    def fetchFeedback(self):
+        glFinish()
+        t1 = time.clock()
+        self.vtexFeedbackFrag.dcoef = V(self.feedbackBuf.size()) / V(self.viewControl.viewSize)
+        with ctx(self.feedbackBuf, self.viewControl, self.vtexFeedbackFrag):
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+            self.renderTerrain()
+            a = glReadPixels(0, 0, self.feedbackBuf.size()[0], self.feedbackBuf.size()[1], GL_RGBA, GL_FLOAT).astype(int32)
+
+        a = a[a[...,3] > 0]
+        a = a[:,0] + (a[:,1]<<8)  + (a[:,2]<<16)
+        a = unique(a)
+        tiles = [(x>>16, x & 0xff, (x>>8) & 0xff) for x in a]
+        
+        def parent(t):
+            return (t[0]+1, t[1]/2, t[2]/2)
+        def parents(ts, maxLod):
+            return [ parent(t) for t in ts if t[0] != maxLod ]
+        result = set([])
+        while len(tiles) > 0:
+            result.update(tiles)
+            tiles = parents(tiles, self.virtualTex.lodNum-1)
+
+        dt = time.clock() - t1
+        print "feedback: %d ms, %d tiles" % (dt*1000,len(result))
+        
+
 
     def keyDown(self, key, x, y):
         if ord(key) == 27:
             glutLeaveMainLoop()
         elif key == '1':
-            self.fetchFeedback()
+            tiles = self.fetchFeedback()
+            self.virtualTex.updateCache(tiles)
         else:
             self.viewControl.keyDown(key, x, y)
                
@@ -217,13 +246,14 @@ class App:
 
 
 if __name__ == "__main__":
+  viewSize = (800, 600)
   glutInit([])
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
-  glutInitWindowSize(800, 600)
+  glutInitWindowSize(*viewSize)
   glutCreateWindow("hello")
   InitCG()
 
-  app = App()
+  app = App(viewSize)
   glutSetCallbacks(app)
 
   #wglSwapIntervalEXT(0)
