@@ -2,7 +2,7 @@ from __future__ import with_statement
 from numpy import *
 from zgl import *
 from PIL import Image
-import time
+from time import clock
 
 class TileProvider:
     def __init__(self, fn, tileSize, indexSize, tileBorder = 1):
@@ -12,17 +12,43 @@ class TileProvider:
         self.vtexSize = tileSize * indexSize
         self.padTileSize = tileSize + tileBorder*2
         
+        self.noiseTex = Texture2D(random.rand(512, 512, 4).astype(float32))
+        self.noiseTex.genMipmaps()
+        self.noiseTex.setParams( *Texture2D.MipmapLinear )
+
         self.tex = Texture2D(Image.open(fn))
         self.tex.genMipmaps()
         self.tex.setParams( *Texture2D.MipmapLinear )
+
         self.texFrag = CGShader("fp40", '''
           uniform sampler2D tex;
+          uniform sampler2D noiseTex;
+          uniform float noiseScale;
+
+          float perlin(float2 pos)
+          {
+            float v = 0;
+            float amp = 1.0;
+            for (int i = 0; i < 9; ++i)
+            {
+              v += amp * abs(tex2D(noiseTex, pos).r * 2 - 1);
+              amp /= 1.3;
+              pos *= 2;
+            }
+            return v;
+          }
+
           float4 main(float2 texCoord: TEXCOORD0, float4 col : COLOR0) : COLOR
           {
-            return tex2D(tex, texCoord);// * col;
+            float4 c = tex2D(tex, texCoord);
+            float v = perlin(texCoord*noiseScale / 128);
+            c.rgb *= 0.5 + 0.5 * v;
+            return c;
           }
         ''')
         self.texFrag.tex = self.tex
+        self.texFrag.noiseTex = self.noiseTex
+        self.texFrag.noiseScale = self.vtexSize / 512
 
     def render(self, lod, tileIdx):
         scale = 2.0**lod
@@ -32,10 +58,24 @@ class TileProvider:
         (x2, y2) = (V(tileIdx)+1) * tileTexSize + borderTexSize
         
         with Ortho((x1, y1, x2, y2)):
-            col = random.rand(3)*0.5 + 0.5
+            col = (1, 1, 1)
+            #col = random.rand(3)*0.5 + 0.5
             glColor(*col)
             with self.texFrag:
                 drawQuad()
+        with Ortho((0, 0, self.padTileSize, self.padTileSize)):
+            glWindowPos2i(10, 15)
+            glutBitmapString(GLUT_BITMAP_9_BY_15, "(%d, %d) %d" % (tileIdx + (lod,)))
+            glBegin(GL_LINE_LOOP)
+            a = self.tileBorder + 1
+            b = self.tileBorder + self.tileSize
+            glVertex(a, a)
+            glVertex(a, b)
+            glVertex(b, b)
+            glVertex(b, a)
+            glEnd()
+            
+
 
 class VirtualTexture:
     def __init__(self, provider, cacheSize):
@@ -53,6 +93,8 @@ class VirtualTexture:
         self.lodNum = int(log2(self.indexSize)) + 1
         lodSizes = [self.indexSize / 2**lod for lod in xrange(self.lodNum)]
         self.index = [zeros((sz, sz, 3), float32) for sz in lodSizes]
+
+        self.cachedTiles = set()
 
         self.loadTile(self.lodNum -1, (0, 0), 0)
         self.indexTex = Texture2D(size = (self.indexSize, self.indexSize), format = GL_RGBA_FLOAT16_ATI)
@@ -102,6 +144,9 @@ class VirtualTexture:
             self.loadTile(lod, (x, y), idx)
         self.uploadIndex()
 
+        print "to update:", len(tiles) - len(self.cachedTiles & tiles)
+        self.cachedTiles = tiles.copy()
+
 
 def makegrid(x, y):
     a = zeros((y, x, 2), float32)
@@ -116,7 +161,7 @@ class App:
         self.viewControl.eye = (0, 0, 10)
         self.viewControl.zFar = 10000
 
-        self.tileProvider = TileProvider("img/track_1_2.jpg", 256, 256, 8)
+        self.tileProvider = TileProvider("img/sand.jpg", 256, 512, 8)
         self.virtualTex = VirtualTexture(self.tileProvider, 8)
         
         self.texFrag = CGShader("fp40", '''
@@ -136,9 +181,9 @@ class App:
 
         self.initTerrain()
 
-        self.feedbackBuf = RenderTexture(size = V(viewSize)/2, format = GL_RGBA_FLOAT16_ATI, depth = True)
+        self.feedbackBuf = RenderTexture(size = (400, 300), format = GL_RGBA_FLOAT16_ATI, depth = True)
 
-        self.t = time.clock()
+        self.t = clock()
 
     def initTerrain(self):
         heightmap = asarray(Image.open("img/heightmap.png"))
@@ -176,7 +221,7 @@ class App:
         glutPostRedisplay()
     
     def display(self):
-        t = time.clock()
+        t = clock()
         dt = t - self.t;
         self.t = t
         self.viewControl.updatePos(dt)
@@ -218,12 +263,22 @@ class App:
             tiles = parents(tiles, self.virtualTex.lodNum-1)
         return result        
 
+    def updateVTex(self):
+        glFinish()
+        t0 = clock()
+        tiles = self.fetchFeedback()
+        glFinish()
+        t1 = clock()
+        self.virtualTex.updateCache(tiles)
+        glFinish()
+        t2 = clock()
+        print "tileNum: %d,  feedback: %d ms, udate: %d ms" % (len(tiles), (t1-t0)*1000, (t2-t1)*1000)
+
     def keyDown(self, key, x, y):
         if ord(key) == 27:
             glutLeaveMainLoop()
         elif key == '1':
-            tiles = self.fetchFeedback()
-            self.virtualTex.updateCache(tiles)
+            self.updateVTex()
         else:
             self.viewControl.keyDown(key, x, y)
                
