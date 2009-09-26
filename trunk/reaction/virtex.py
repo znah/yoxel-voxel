@@ -54,20 +54,16 @@ class VirtualTexture:
         lodSizes = [self.indexSize / 2**lod for lod in xrange(self.lodNum)]
         self.index = [zeros((sz, sz, 3), float32) for sz in lodSizes]
 
-        idx = 0
-        for lod in xrange(0, self.lodNum):
-            lodTileNum = self.indexSize / 2**lod
-            for i in xrange( min(lodTileNum, 8) ):
-                self.loadTile(lod, (i, i/2), idx)
-                idx += 1
-
+        self.loadTile(self.lodNum -1, (0, 0), 0)
         self.indexTex = Texture2D(size = (self.indexSize, self.indexSize), format = GL_RGBA_FLOAT16_ATI)
+        self.uploadIndex()
+        self.indexTex.setParams((GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST))
+
+    def uploadIndex(self):
         with self.indexTex:
             for lod in xrange(0, self.lodNum):
                 src = self.index[lod]
                 glTexImage2D(GL_TEXTURE_2D, lod, GL_RGBA_FLOAT16_ATI, src.shape[1], src.shape[0], 0, GL_RGB, GL_FLOAT, src)
-        self.indexTex.setParams((GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST))
-        
         
     def loadTile(self, lod, lodTileIdx, cacheIdx):
         cachePos = unravel_index(cacheIdx, (self.cacheSize, self.cacheSize))
@@ -76,8 +72,7 @@ class VirtualTexture:
         hi = lo + scale
         for i in xrange(lod+1):
             rng = self.index[i][ lo[1]:hi[1], lo[0]:hi[0] ]
-            mark = (rng[:,:,2] > scale) | (rng[:,:,2] == 0)
-            rng[mark] = (cachePos[0], cachePos[1], scale)
+            rng[...] = (cachePos[0], cachePos[1], scale)
             lo /= 2
             hi /= 2
 
@@ -100,7 +95,12 @@ class VirtualTexture:
         shader.cacheTexSize = self.cacheTexSize
 
     def updateCache(self, tiles):
-        pass
+        ts = list(tiles)
+        ts.sort(reverse=True)
+        ts = ts[:self.cacheSize ** 2]
+        for idx, (lod, x, y) in enumerate(ts):
+            self.loadTile(lod, (x, y), idx)
+        self.uploadIndex()
 
 
 def makegrid(x, y):
@@ -197,8 +197,6 @@ class App:
         glutSwapBuffers()
 
     def fetchFeedback(self):
-        glFinish()
-        t1 = time.clock()
         self.vtexFeedbackFrag.dcoef = V(self.feedbackBuf.size()) / V(self.viewControl.viewSize)
         with ctx(self.feedbackBuf, self.viewControl, self.vtexFeedbackFrag):
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -218,11 +216,7 @@ class App:
         while len(tiles) > 0:
             result.update(tiles)
             tiles = parents(tiles, self.virtualTex.lodNum-1)
-
-        dt = time.clock() - t1
-        print "feedback: %d ms, %d tiles" % (dt*1000,len(result))
-        
-
+        return result        
 
     def keyDown(self, key, x, y):
         if ord(key) == 27:
