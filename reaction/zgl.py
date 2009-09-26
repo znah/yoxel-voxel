@@ -186,44 +186,33 @@ class Texture2D:
         glBindTexture(GL_TEXTURE_2D, 0)
 
 
-class Framebuffer:
-    def __init__(self):
-        self.fbo = glGenFramebuffersEXT(1)
-        self.attached = {}
-        self.size = V(0, 0)
-    def attachTex2D(self, slot, tex, level):
-        with self:
-            glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, slot, GL_TEXTURE_2D, tex, level)
-        with tex:
-            self.size[0] = glGetTexLevelParameteri(GL_TEXTURE_2D, level, GL_TEXTURE_WIDTH)
-            self.size[1] = glGetTexLevelParameteri(GL_TEXTURE_2D, level, GL_TEXTURE_HEIGHT)
-        self.attached[slot] = tex
-
-    def __enter__(self):
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
-        if (self.size[0] != 0) and (self.size[1] != 0):
-            glViewport(0, 0, self.size[0], self.size[1])
-    def __exit__(self, *args):
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
-
-
 class RenderTexture:
-    def __init__(self, **args):
-        self.fbo = Framebuffer()
+    def __init__(self, depth = False, **args):
+        self.fbo = glGenFramebuffersEXT(1)
         self.tex = Texture2D(**args)
-        self.fbo.attachTex2D(GL_COLOR_ATTACHMENT0_EXT, self.tex, 0)
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
+        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.tex, 0)
+        if depth:
+            self.depthRB = glGenRenderbuffersEXT(1)
+            glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, self.depthRB)
+            glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, self.size()[0], self.size()[1])
+            glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, self.depthRB)
+            glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0)
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
 
     def size(self):
         return self.tex.size
 
     def __enter__(self):
-        self.fbo.__enter__()
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
+        glViewport(0, 0, self.size()[0], self.size()[1])
 
     def __exit__(self, *args):
-        self.fbo.__exit__(*args)
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
 
     def texparams(self, *args):
         self.tex.setParams(*args)
+
 
 class ctx:
     def __init__(self, *items):
@@ -360,7 +349,7 @@ class FlyCamera:
     def mouseButton(self, btn, up, x, y):
         if btn < 3:
             self.mButtons[btn] = not up
-        if btn == 3 and self.fovy > 5 :
+        if btn == 3 and self.fovy > 2 :
             self.sensitivity /= 1.1
             self.fovy /= 1.1
         if btn == 4 and self.fovy < 90:
