@@ -41,8 +41,8 @@ class TileProvider:
           float4 main(float2 texCoord: TEXCOORD0, float4 col : COLOR0) : COLOR
           {
             float4 c = tex2D(tex, texCoord);
-            float v = perlin(texCoord*noiseScale / 128);
-            c.rgb *= 0.5 + 0.5 * v;
+            float v = perlin(texCoord*noiseScale / 128)*0.5;
+            c.rgb = 0.7*c.rgb + float3(0.3 * v);
             return c;
           }
         ''')
@@ -92,7 +92,7 @@ class VirtualTexture:
 
         self.lodNum = int(log2(self.indexSize)) + 1
         lodSizes = [self.indexSize / 2**lod for lod in xrange(self.lodNum)]
-        self.index = [zeros((sz, sz, 3), float32) for sz in lodSizes]
+        self.index = [zeros((sz, sz, 3), float32)-1 for sz in lodSizes]
 
         self.cachedTiles = dict() # tile to cacheIdx
 
@@ -111,6 +111,8 @@ class VirtualTexture:
         (lod, x, y) = tile
         cachePos = unravel_index(cacheIdx, (self.cacheSize, self.cacheSize))
         scale = 2**lod
+        self.index[lod][y, x] = cachePos + (scale,)
+        '''
         lo = V(x, y) * scale
         hi = lo + scale
         for i in xrange(lod+1):
@@ -118,16 +120,17 @@ class VirtualTexture:
             rng[...] = (cachePos[0], cachePos[1], scale)
             lo /= 2
             hi /= 2
-
+        '''
         with ctx(self.tileBuf):
             glClear(GL_COLOR_BUFFER_BIT)
             self.provider.render(lod, (x, y))
             with self.cacheTex:
                 cp = V(*cachePos) * self.padTileSize
                 glCopyTexSubImage2D(GL_TEXTURE_2D, 0, cp[0], cp[1], 0, 0, self.padTileSize, self.padTileSize)
-
+        
         #self.cachedTiles[tile] = cacheIdx
     
+    '''
     def unloadTile(self, tile):
         self.cachedTiles.pop(tile)
         (lod, x, y) = tile
@@ -144,7 +147,8 @@ class VirtualTexture:
             rng[mark] = parentData
             lo /= 2
             hi /= 2
-    
+    '''
+
     def setupShader(self, shader):
         shader.indexTex = self.indexTex
         shader.cacheTex = self.cacheTex
@@ -178,6 +182,10 @@ class VirtualTexture:
         self.uploadIndex()
         print len(toInsert)
         '''
+
+        for a in self.index:
+          a[...] = -1
+
         for idx, tile in enumerate(ts):
             self.loadTile(tile, idx)
         self.uploadIndex()
