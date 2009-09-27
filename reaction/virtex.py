@@ -67,8 +67,8 @@ class TileProvider:
             glWindowPos2i(10, 15)
             glutBitmapString(GLUT_BITMAP_9_BY_15, "(%d, %d) %d" % (tileIdx + (lod,)))
             glBegin(GL_LINE_LOOP)
-            a = self.tileBorder + 1
-            b = self.tileBorder + self.tileSize
+            a = self.tileBorder + 0.5
+            b = self.tileBorder + self.tileSize - 0.5
             glVertex(a, a)
             glVertex(a, b)
             glVertex(b, b)
@@ -161,7 +161,7 @@ class App:
         self.viewControl.eye = (0, 0, 10)
         self.viewControl.zFar = 10000
 
-        self.tileProvider = TileProvider("img/sand.jpg", 256, 512, 8)
+        self.tileProvider = TileProvider("img/sand4k.jpg", 256, 512, 8)
         self.virtualTex = VirtualTexture(self.tileProvider, 8)
         
         self.texFrag = CGShader("fp40", '''
