@@ -94,9 +94,9 @@ class VirtualTexture:
         lodSizes = [self.indexSize / 2**lod for lod in xrange(self.lodNum)]
         self.index = [zeros((sz, sz, 3), float32) for sz in lodSizes]
 
-        self.cachedTiles = set()
+        self.cachedTiles = dict() # tile to cacheIdx
 
-        self.loadTile(self.lodNum -1, (0, 0), 0)
+        self.loadTile((self.lodNum-1, 0, 0), 0)
         self.indexTex = Texture2D(size = (self.indexSize, self.indexSize), format = GL_RGBA_FLOAT16_ATI)
         self.uploadIndex()
         self.indexTex.setParams((GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST))
@@ -107,10 +107,11 @@ class VirtualTexture:
                 src = self.index[lod]
                 glTexImage2D(GL_TEXTURE_2D, lod, GL_RGBA_FLOAT16_ATI, src.shape[1], src.shape[0], 0, GL_RGB, GL_FLOAT, src)
         
-    def loadTile(self, lod, lodTileIdx, cacheIdx):
+    def loadTile(self, tile, cacheIdx):
+        (lod, x, y) = tile
         cachePos = unravel_index(cacheIdx, (self.cacheSize, self.cacheSize))
         scale = 2**lod
-        lo = V(lodTileIdx) * scale
+        lo = V(x, y) * scale
         hi = lo + scale
         for i in xrange(lod+1):
             rng = self.index[i][ lo[1]:hi[1], lo[0]:hi[0] ]
@@ -120,10 +121,29 @@ class VirtualTexture:
 
         with ctx(self.tileBuf):
             glClear(GL_COLOR_BUFFER_BIT)
-            self.provider.render(lod, lodTileIdx)
+            self.provider.render(lod, (x, y))
             with self.cacheTex:
                 cp = V(*cachePos) * self.padTileSize
                 glCopyTexSubImage2D(GL_TEXTURE_2D, 0, cp[0], cp[1], 0, 0, self.padTileSize, self.padTileSize)
+
+        #self.cachedTiles[tile] = cacheIdx
+    
+    def unloadTile(self, tile):
+        self.cachedTiles.pop(tile)
+        (lod, x, y) = tile
+        if lod == self.lodNum-1:
+            return  # nothing can replace the root tile
+        scale = 2**lod
+        lo = V(x, y) * scale
+        hi = lo + scale
+        parentData = self.index[lod+1][y/2, x/2]
+        tileData = array(tile, float32)
+        for i in xrange(lod+1):
+            rng = self.index[i][ lo[1]:hi[1], lo[0]:hi[0] ]
+            mark = (rng == tileData).all(-1)
+            rng[mark] = parentData
+            lo /= 2
+            hi /= 2
     
     def setupShader(self, shader):
         shader.indexTex = self.indexTex
@@ -140,12 +160,30 @@ class VirtualTexture:
         ts = list(tiles)
         ts.sort(reverse=True)
         ts = ts[:self.cacheSize ** 2]
-        for idx, (lod, x, y) in enumerate(ts):
-            self.loadTile(lod, (x, y), idx)
+        '''
+        visible = set(ts)
+        cached = set(self.cachedTiles.keys())
+        disposable = cached - visible
+        toInsert = visible - cached
+
+        cacheCapacity = self.cacheSize**2
+        for tile in toInsert:
+            if len(self.cachedTiles) < cacheCapacity:
+               self.loadTile(tile, len(self.cachedTiles))
+            else:
+               toRemove = disposable.pop()
+               idx = self.cachedTiles[toRemove]
+               self.unloadTile(toRemove)
+               self.loadTile(tile, idx)
+        self.uploadIndex()
+        print len(toInsert)
+        '''
+        for idx, tile in enumerate(ts):
+            self.loadTile(tile, idx)
         self.uploadIndex()
 
-        print "to update:", len(tiles) - len(self.cachedTiles & tiles)
-        self.cachedTiles = tiles.copy()
+        #print "to update:", len(tiles) - len(self.cachedTiles & tiles)
+        #self.cachedTiles = tiles.copy()
 
 
 def makegrid(x, y):
