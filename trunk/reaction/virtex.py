@@ -161,8 +161,8 @@ class App:
         self.viewControl.eye = (0, 0, 10)
         self.viewControl.zFar = 10000
 
-        self.tileProvider = TileProvider("img/sand4k.jpg", 256, 512, 8)
-        self.virtualTex = VirtualTexture(self.tileProvider, 8)
+        self.tileProvider = TileProvider("img/sand4k.jpg", 512, 512, 8)
+        self.virtualTex = VirtualTexture(self.tileProvider, 7)
         
         self.texFrag = CGShader("fp40", '''
           uniform sampler2D tex;
@@ -195,6 +195,11 @@ class App:
         self.terrainVerts[:,:,:2] = grid * wldStep
         self.terrainVerts[:,:,2] = heightmap / 255.0 * 50.0
         self.terrainTexCoords = grid * texStep
+
+        #newX = cos(self.terrainTexCoords[:,:,0]*2*pi) * (200.0 - self.terrainVerts[:,:,2])
+        #newZ = sin(self.terrainTexCoords[:,:,0]*2*pi) * (200.0 - self.terrainVerts[:,:,2])
+        #self.terrainVerts[:,:,0] = newX
+        #self.terrainVerts[:,:,2] = newZ
         
         idxgrid = arange(sx*sy).reshape(sy, sx)
         self.terrainIdxs = zeros((sy-1, sx-1, 4), uint32)
@@ -232,13 +237,14 @@ class App:
         
         glViewport(0, 0, self.viewControl.viewSize[0], self.viewControl.viewSize[1])
         with self.viewControl:
-            
             with self.vtexFrag:
                 self.renderTerrain()
             with self.texFrag:
                 glTranslate(-110, 0, 0)
                 glScale(100, 100, 1)
                 drawQuad()
+
+
         glutSwapBuffers()
 
     def fetchFeedback(self):
@@ -249,9 +255,11 @@ class App:
             a = glReadPixels(0, 0, self.feedbackBuf.size()[0], self.feedbackBuf.size()[1], GL_RGBA, GL_FLOAT).astype(int32)
 
         a = a[a[...,3] > 0]
-        a = a[:,0] + (a[:,1]<<8)  + (a[:,2]<<16)
-        a = unique(a)
-        tiles = [(x>>16, x & 0xff, (x>>8) & 0xff) for x in a]
+        bits  = (a[:,0] & 0xfff)
+        bits += (a[:,1] & 0xfff) << 12
+        bits += (a[:,2] & 0xff ) << 24
+        bits = unique(bits)
+        tiles = [(x>>24, x & 0xfff, (x>>12) & 0xfff) for x in bits]
         
         def parent(t):
             return (t[0]+1, t[1]/2, t[2]/2)
