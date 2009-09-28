@@ -349,7 +349,7 @@ class FlyCamera:
     def mouseButton(self, btn, up, x, y):
         if btn < 3:
             self.mButtons[btn] = not up
-        if btn == 3 and self.fovy > 2 :
+        if btn == 3 and self.fovy > 0.5 :
             self.sensitivity /= 1.1
             self.fovy /= 1.1
         if btn == 4 and self.fovy < 90:

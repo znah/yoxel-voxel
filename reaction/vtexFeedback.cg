@@ -7,6 +7,6 @@ float4 main(float2 texCoord: TEXCOORD0) : COLOR
 {
   float lod = floor(calcLod(ddx(texCoord)*dcoef.x, ddy(texCoord)*dcoef.y));
   float scale = exp2(lod);
-  float2 tileIdx = floor(texCoord * indexSize / scale);
+  float2 tileIdx = floor(frac(texCoord) * indexSize / scale);
   return float4(tileIdx, lod, 1);
 }

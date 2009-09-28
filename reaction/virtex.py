@@ -3,6 +3,7 @@ from numpy import *
 from zgl import *
 from PIL import Image
 from time import clock
+from scipy import weave
 
 class TileProvider:
     def __init__(self, fn, tileSize, indexSize, tileBorder = 1):
@@ -66,6 +67,7 @@ class TileProvider:
         with Ortho((0, 0, self.padTileSize, self.padTileSize)):
             glWindowPos2i(10, 15)
             glutBitmapString(GLUT_BITMAP_9_BY_15, "(%d, %d) %d" % (tileIdx + (lod,)))
+            '''
             glBegin(GL_LINE_LOOP)
             a = self.tileBorder + 0.5
             b = self.tileBorder + self.tileSize - 0.5
@@ -74,7 +76,7 @@ class TileProvider:
             glVertex(b, b)
             glVertex(b, a)
             glEnd()
-            
+            '''
 
 
 class VirtualTexture:
@@ -126,6 +128,9 @@ class VirtualTexture:
 
     def updateCache(self, tiles):
         cacheCapacity = self.cacheSize**2
+        if len(tiles) > cacheCapacity:
+            print "non enough cache!", len(tiles), cacheCapacity
+
         tiles = list(tiles)
         tiles.sort(reverse=True)
         tiles = tiles[:cacheCapacity]
@@ -147,6 +152,10 @@ class VirtualTexture:
                    (lod, x, y) = oldTile
                    glTexSubImage2D(GL_TEXTURE_2D, lod, x, y, 1, 1, GL_RGB, GL_FLOAT, [0, 0, 0])
                 (lod, x, y) = tile
+                lodSize = self.indexSize / 2**lod
+                if (x >= lodSize or y >= lodSize ):
+                  print "out!!!"
+                  continue
                 scale = 2**lod
                 glTexSubImage2D(GL_TEXTURE_2D, lod, x, y, 1, 1, GL_RGB, GL_FLOAT, [cacheIdx[0], cacheIdx[1], scale])
                 self.cachedTiles[tile] = cacheIdx
@@ -155,7 +164,7 @@ class VirtualTexture:
         for (tile, cacheIdx) in toRender:
             self.renderTile(tile, cacheIdx)
 
-        print "updated:", len(toInsert)
+        #print "updated:", len(toInsert)
 
 def makegrid(x, y):
     a = zeros((y, x, 2), float32)
@@ -170,7 +179,7 @@ class App:
         self.viewControl.eye = (0, 0, 10)
         self.viewControl.zFar = 10000
 
-        self.tileProvider = TileProvider("img/sand4k.jpg", 512, 512, 8)
+        self.tileProvider = TileProvider("img/track_1_2.jpg", 512, 512, 8)
         self.virtualTex = VirtualTexture(self.tileProvider, 7)
         
         self.texFrag = CGShader("fp40", '''
@@ -191,6 +200,9 @@ class App:
         self.initTerrain()
 
         self.feedbackBuf = RenderTexture(size = (400, 300), format = GL_RGBA_FLOAT16_ATI, depth = True)
+
+        self.vtexUpdateTime = clock()
+        self.moved = True
 
         self.t = clock()
 
@@ -239,6 +251,10 @@ class App:
         dt = t - self.t;
         self.t = t
         self.viewControl.updatePos(dt)
+
+        if self.moved:
+            self.updateVTex()
+            self.moved = False
         
         glEnable(GL_DEPTH_TEST)
         glClearColor(0, 0, 0, 0)
@@ -261,9 +277,11 @@ class App:
         with ctx(self.feedbackBuf, self.viewControl, self.vtexFeedbackFrag):
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             self.renderTerrain()
-            a = glReadPixels(0, 0, self.feedbackBuf.size()[0], self.feedbackBuf.size()[1], GL_RGBA, GL_FLOAT).astype(int32)
-
-        a = a[a[...,3] > 0]
+            a = glReadPixels(0, 0, self.feedbackBuf.size()[0], self.feedbackBuf.size()[1], GL_RGBA, GL_FLOAT)
+        a.shape = (-1, 4)
+        a = compress(a[:,3] > 0, a, axis=0)
+        a = a.astype(int32)
+        
         bits  = (a[:,0] & 0xfff)
         bits += (a[:,1] & 0xfff) << 12
         bits += (a[:,2] & 0xff ) << 24
@@ -294,20 +312,23 @@ class App:
     def keyDown(self, key, x, y):
         if ord(key) == 27:
             glutLeaveMainLoop()
-        elif key == '1':
+        elif key == ' ':
             self.updateVTex()
         else:
             self.viewControl.keyDown(key, x, y)
-               
+            self.moved = True
+                
     def keyUp(self, key, x, y):
         self.viewControl.keyUp(key, x, y)
+        self.moved = True
 
     def mouseMove(self, x, y):
         self.viewControl.mouseMove(x, y)
+        self.moved = True
 
     def mouseButton(self, btn, up, x, y):
         self.viewControl.mouseButton(btn, up, x, y)
-
+        self.moved = True
 
 
 
