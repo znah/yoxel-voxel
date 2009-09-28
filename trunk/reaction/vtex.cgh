@@ -18,19 +18,17 @@ float calcLod(float2 dx, float2 dy)
   float lo = min(d.x, d.y);
   float hi = max(d.x, d.y);
   float md = 0.5 * (lo + hi);
-  float lod = log2(md*vtexSize) + 0.5; // lod bias
+  float lod = log2(md*vtexSize) + 0.7; // lod bias
   return clamp(lod, 0, maxLod-eps);
 }
 
 float4 vtexFetchLod(float2 texCoord, float lod, float2 dx, float2 dy)
 {
   float3 tileData = tex2Dlod(indexTex, float4(texCoord, 0, lod)).xyz;
-  while (tileData.x < 0)
+  while (tileData.z == 0)
     tileData = tex2Dlod(indexTex, float4(texCoord, 0, ++lod)).xyz;
   float2 tileIdx = tileData.xy;
   float tileScale = tileData.z;
-  if (tileScale != exp2(lod))
-    return float4(1, 1, 1, 1);
   float2 posInTile = frac(texCoord * indexSize / tileScale);
 
   float2 posInCache = (tileIdx * padTileSize + border + posInTile*tileSize) / cacheTexSize;
