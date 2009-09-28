@@ -90,65 +90,29 @@ class VirtualTexture:
         self.cacheTex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 16))
         self.tileBuf = RenderTexture(size = (self.padTileSize, self.padTileSize))
 
+        self.createIndex()
+        self.cachedTiles = dict() # tile to cacheIdx
+        self.updateCache( [(self.lodNum-1, 0, 0)] )
+    
+    def createIndex(self):
         self.lodNum = int(log2(self.indexSize)) + 1
         lodSizes = [self.indexSize / 2**lod for lod in xrange(self.lodNum)]
-        self.index = [zeros((sz, sz, 3), float32)-1 for sz in lodSizes]
-
-        self.cachedTiles = dict() # tile to cacheIdx
-
-        self.loadTile((self.lodNum-1, 0, 0), 0)
         self.indexTex = Texture2D(size = (self.indexSize, self.indexSize), format = GL_RGBA_FLOAT16_ATI)
-        self.uploadIndex()
+        zeroBuf = zeros((self.indexSize**2,3), float32)
+        with self.indexTex:
+            for lod, size in enumerate(lodSizes):
+                glTexImage2D(GL_TEXTURE_2D, lod, GL_RGBA_FLOAT16_ATI, size, size, 0, GL_RGB, GL_FLOAT, zeroBuf)
         self.indexTex.setParams((GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST))
 
-    def uploadIndex(self):
-        with self.indexTex:
-            for lod in xrange(0, self.lodNum):
-                src = self.index[lod]
-                glTexImage2D(GL_TEXTURE_2D, lod, GL_RGBA_FLOAT16_ATI, src.shape[1], src.shape[0], 0, GL_RGB, GL_FLOAT, src)
-        
-    def loadTile(self, tile, cacheIdx):
+    def renderTile(self, tile, cacheIdx):
         (lod, x, y) = tile
-        cachePos = unravel_index(cacheIdx, (self.cacheSize, self.cacheSize))
-        scale = 2**lod
-        self.index[lod][y, x] = cachePos + (scale,)
-        '''
-        lo = V(x, y) * scale
-        hi = lo + scale
-        for i in xrange(lod+1):
-            rng = self.index[i][ lo[1]:hi[1], lo[0]:hi[0] ]
-            rng[...] = (cachePos[0], cachePos[1], scale)
-            lo /= 2
-            hi /= 2
-        '''
         with ctx(self.tileBuf):
             glClear(GL_COLOR_BUFFER_BIT)
             self.provider.render(lod, (x, y))
             with self.cacheTex:
-                cp = V(*cachePos) * self.padTileSize
+                cp = V(cacheIdx) * self.padTileSize
                 glCopyTexSubImage2D(GL_TEXTURE_2D, 0, cp[0], cp[1], 0, 0, self.padTileSize, self.padTileSize)
         
-        #self.cachedTiles[tile] = cacheIdx
-    
-    '''
-    def unloadTile(self, tile):
-        self.cachedTiles.pop(tile)
-        (lod, x, y) = tile
-        if lod == self.lodNum-1:
-            return  # nothing can replace the root tile
-        scale = 2**lod
-        lo = V(x, y) * scale
-        hi = lo + scale
-        parentData = self.index[lod+1][y/2, x/2]
-        tileData = array(tile, float32)
-        for i in xrange(lod+1):
-            rng = self.index[i][ lo[1]:hi[1], lo[0]:hi[0] ]
-            mark = (rng == tileData).all(-1)
-            rng[mark] = parentData
-            lo /= 2
-            hi /= 2
-    '''
-
     def setupShader(self, shader):
         shader.indexTex = self.indexTex
         shader.cacheTex = self.cacheTex
@@ -161,38 +125,37 @@ class VirtualTexture:
         shader.cacheTexSize = self.cacheTexSize
 
     def updateCache(self, tiles):
-        ts = list(tiles)
-        ts.sort(reverse=True)
-        ts = ts[:self.cacheSize ** 2]
-        '''
-        visible = set(ts)
+        cacheCapacity = self.cacheSize**2
+        tiles = list(tiles)
+        tiles.sort(reverse=True)
+        tiles = tiles[:cacheCapacity]
+        
+        visible = set(tiles)
         cached = set(self.cachedTiles.keys())
         disposable = cached - visible
         toInsert = visible - cached
 
-        cacheCapacity = self.cacheSize**2
-        for tile in toInsert:
-            if len(self.cachedTiles) < cacheCapacity:
-               self.loadTile(tile, len(self.cachedTiles))
-            else:
-               toRemove = disposable.pop()
-               idx = self.cachedTiles[toRemove]
-               self.unloadTile(toRemove)
-               self.loadTile(tile, idx)
-        self.uploadIndex()
-        print len(toInsert)
-        '''
+        toRender = []
+        with self.indexTex:
+            for tile in toInsert:
+                if len(self.cachedTiles) < cacheCapacity:
+                   cacheIdx = unravel_index(len(self.cachedTiles), (self.cacheSize, self.cacheSize))
+                else:
+                   oldTile = disposable.pop()
+                   cacheIdx = self.cachedTiles[oldTile]
+                   self.cachedTiles.pop(oldTile)
+                   (lod, x, y) = oldTile
+                   glTexSubImage2D(GL_TEXTURE_2D, lod, x, y, 1, 1, GL_RGB, GL_FLOAT, [0, 0, 0])
+                (lod, x, y) = tile
+                scale = 2**lod
+                glTexSubImage2D(GL_TEXTURE_2D, lod, x, y, 1, 1, GL_RGB, GL_FLOAT, [cacheIdx[0], cacheIdx[1], scale])
+                self.cachedTiles[tile] = cacheIdx
+                toRender.append( (tile, cacheIdx) )
 
-        for a in self.index:
-          a[...] = -1
+        for (tile, cacheIdx) in toRender:
+            self.renderTile(tile, cacheIdx)
 
-        for idx, tile in enumerate(ts):
-            self.loadTile(tile, idx)
-        self.uploadIndex()
-
-        #print "to update:", len(tiles) - len(self.cachedTiles & tiles)
-        #self.cachedTiles = tiles.copy()
-
+        print "updated:", len(toInsert)
 
 def makegrid(x, y):
     a = zeros((y, x, 2), float32)
