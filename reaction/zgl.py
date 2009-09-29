@@ -3,6 +3,7 @@ import sys
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GL.EXT.framebuffer_object import *
+from OpenGL.GL.EXT.texture_integer import *
 from numpy import *
 
 # freeglut hack
@@ -115,13 +116,13 @@ def YX(*args):
         return array((args[1], args[0]), float32)
                             
 class CGShader:
-    def __init__(self, profileName, code = None, fileName = None):
+    def __init__(self, profileName, code = None, fileName = None, entry = "main"):
         CG_SOURCE = 4112
         self._profile = cgProfiles[profileName]
         if code is not None:
-            self._prog = cg.cgCreateProgram(cgContext, CG_SOURCE, code, self._profile, None, None)
+            self._prog = cg.cgCreateProgram(cgContext, CG_SOURCE, code, self._profile, entry, None)
         else:
-            self._prog = cg.cgCreateProgramFromFile(cgContext, CG_SOURCE, fileName, self._profile, None, None)
+            self._prog = cg.cgCreateProgramFromFile(cgContext, CG_SOURCE, fileName, self._profile, entry, None)
         checkCGerror()
         cggl.cgGLLoadProgram(self._prog)
         checkCGerror()
@@ -152,7 +153,7 @@ class Texture2D:
     MipmapLinear  = [(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR), (GL_TEXTURE_MAG_FILTER, GL_LINEAR)]
     Repeat  = [(GL_TEXTURE_WRAP_S, GL_REPEAT), (GL_TEXTURE_WRAP_S, GL_REPEAT)]
 
-    def __init__(self, img = None, size = None, format = GL_RGBA8):
+    def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = GL_RGBA, srcType = GL_FLOAT):
         self._as_parameter_ = glGenTextures(1)
         self.setParams( *(self.Nearest + self.Repeat) )
         if img != None:
@@ -167,7 +168,7 @@ class Texture2D:
             return
         elif shape != None:
             with self:
-                glTexImage2D(GL_TEXTURE_2D, 0, format, size[0], size[1], 0, GL_RGBA, GL_FLOAT, None)
+                glTexImage2D(GL_TEXTURE_2D, 0, format, size[0], size[1], 0, srcFormat, srcType, None)
                 self.size = size
 
     def setParams(self, *args):
@@ -389,3 +390,11 @@ class FlyCamera:
         if self.keyModifiers & GLUT_ACTIVE_SHIFT != 0:
             v *= 10
         self.eye += v*self.speed*dt
+
+def zglInit(viewSize, title):
+    glutInit([])
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
+    glutInitWindowSize(*viewSize)
+    glutCreateWindow(title)
+    InitCG()
+
