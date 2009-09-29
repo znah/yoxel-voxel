@@ -249,11 +249,7 @@ class App:
 
 if __name__ == "__main__":
   viewSize = (800, 600)
-  glutInit([])
-  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
-  glutInitWindowSize(*viewSize)
-  glutCreateWindow("hello")
-  InitCG()
+  zglInit(viewSize, "hello")
 
   app = App(viewSize)
   glutSetCallbacks(app)
