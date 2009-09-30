@@ -1,33 +1,63 @@
 from __future__ import with_statement
 from zgl import *
+from PIL import Image
+import pylab
+from time import clock
 
 
 class DXT1Compressor:
     def __init__(self, size):
         assert (size[0] % 4 == 0) and (size[1] % 4 == 0)
         self.size = size
-        self.dxtBuf= RenderTexture(
-          size = size, 
+        self.dxtSize = V(size)/4
+        self.dxtBuf = RenderTexture(
+          size = self.dxtSize, 
           format = GL_LUMINANCE_ALPHA32UI_EXT, 
           srcFormat = GL_LUMINANCE_ALPHA_INTEGER_EXT,
           srcType = GL_INT)
 
-        self.pbo = glGenBuffers(1)
-        glBindBuffer(GL_PIXEL_PACK_BUFFER, self.pbo)
-        tmpBuf = zeros( (size[1], size[0], 8), uint8 )
-        glBufferData(GL_PIXEL_PACK_BUFFER, tmpBuf, GL_STREAM_COPY)
+        self.resultSize = int(prod(self.dxtSize) * 8)
+        self.resultPBO = glGenBuffers(1)
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, self.resultPBO)
+        glBufferData(GL_PIXEL_PACK_BUFFER, zeros((self.resultSize,), uint8), GL_STREAM_COPY)
         glBindBuffer(GL_PIXEL_PACK_BUFFER, 0)
 
         self.dxt1Frag = CGShader("gp4fp", fileName = "compress_YCoCgDXT.cg", entry = "compress_DXT1_fp")
 
     def compress(self, srcTexture):
-        pass
+        self.dxt1Frag.image = srcTexture
+        self.dxt1Frag.imageSize = self.size
+        with ctx(self.dxtBuf, ortho, self.dxt1Frag):
+            drawQuad()
+            glBindBuffer(GL_PIXEL_PACK_BUFFER, self.resultPBO)
+            OpenGL.raw.GL.glReadPixels(0, 0, self.dxtSize[0], self.dxtSize[1], GL_LUMINANCE_ALPHA_INTEGER_EXT, GL_UNSIGNED_INT, None)
+            glBindBuffer(GL_PIXEL_PACK_BUFFER, 0)
+
 
 if __name__ == '__main__':
     zglInit((100, 100), "dxt_test")
 
-    compessor = DXT1Compressor((512, 512))
+    srcImg = asarray(Image.open("texture.png"))
+    src = Texture2D(srcImg)
+    print src.size
+    compressor = DXT1Compressor(src.size)
+    dst = Texture2D(size = src.size, format = GL_COMPRESSED_RGB_S3TC_DXT1_EXT)
+    
+    
+    compressor.compress(src)   # warm up
 
+    glFinish()
+    t = clock()
+    compressor.compress(src)
+    glFinish()
+    dt = clock() - t
+    print dt * 1000
 
+    with dst:
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, compressor.resultPBO)
+        glCompressedTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, src.size[0], src.size[1], GL_COMPRESSED_RGB_S3TC_DXT1_EXT, compressor.resultSize, None)
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0)
+        unpackedImg = glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, 'array')
 
-
+    Image.fromarray(unpackedImg).save("result.bmp")
+    
