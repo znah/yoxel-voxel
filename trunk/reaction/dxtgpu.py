@@ -1,12 +1,10 @@
 from __future__ import with_statement
 from zgl import *
-from PIL import Image
-import pylab
-from time import clock
 
 class DXT1Compressor:
     def __init__(self, size):
         assert (size[0] % 4 == 0) and (size[1] % 4 == 0)
+        self.textureFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT 
         self.size = size
         self.dxtSize = V(size)/4
         self.dxtBuf = RenderTexture(
@@ -31,13 +29,17 @@ class DXT1Compressor:
 
 
 if __name__ == '__main__':
+    from PIL import Image
+    import pylab
+    from time import clock
+
     zglInit((100, 100), "dxt_test")
 
     srcImg = asarray(Image.open("texture.png"))
     src = Texture2D(srcImg)
     print src.size
     compressor = DXT1Compressor(src.size)
-    dst = Texture2D(size = src.size, format = GL_COMPRESSED_RGB_S3TC_DXT1_EXT)
+    dst = Texture2D(size = src.size, format = compressor.textureFormat)
     
     
     compressor.compress(src)   # warm up
@@ -51,7 +53,7 @@ if __name__ == '__main__':
     print dt * 1000
 
     with ctx(dst, compressor.resultPBO.pixelUnpack):
-        glCompressedTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, src.size[0], src.size[1], GL_COMPRESSED_RGB_S3TC_DXT1_EXT, compressor.resultSize, None)
+        glCompressedTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, src.size[0], src.size[1], compressor.textureFormat, compressor.resultSize, None)
         unpackedImg = glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, 'array')
 
     Image.fromarray(unpackedImg).save("result.bmp")

@@ -1,8 +1,8 @@
 from __future__ import with_statement
 from numpy import *
 from zgl import *
-from PIL import Image
-from time import clock
+import dxtgpu
+
 
 class VirtualTexture:
     def __init__(self, provider, cacheSize):
@@ -12,7 +12,9 @@ class VirtualTexture:
         self.cacheSize = cacheSize
         self.cacheTexSize = cacheSize * self.padTileSize
 
-        self.cacheTex = Texture2D(size = (self.cacheTexSize, self.cacheTexSize))
+        self.tileCompressor = dxtgpu.DXT1Compressor((self.padTileSize, self.padTileSize))
+
+        self.cacheTex = Texture2D(size = (self.cacheTexSize, self.cacheTexSize), format = self.tileCompressor.textureFormat)
         self.cacheTex.setParams(*Texture2D.Linear)
         self.cacheTex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 16))
         self.tileBuf = RenderTexture(size = (self.padTileSize, self.padTileSize))
@@ -36,9 +38,12 @@ class VirtualTexture:
         with ctx(self.tileBuf):
             glClear(GL_COLOR_BUFFER_BIT)
             self.provider.render(lod, (x, y))
-            with self.cacheTex:
-                cp = V(cacheIdx) * self.padTileSize
-                glCopyTexSubImage2D(GL_TEXTURE_2D, 0, cp[0], cp[1], 0, 0, self.padTileSize, self.padTileSize)
+        self.tileCompressor.compress(self.tileBuf.tex)
+        with ctx(self.cacheTex, self.tileCompressor.resultPBO.pixelUnpack):
+            cp = V(cacheIdx) * self.padTileSize
+            glCompressedTexSubImage2D(GL_TEXTURE_2D, 0, cp[0], cp[1], 
+              self.padTileSize, self.padTileSize, 
+              self.tileCompressor.textureFormat, self.tileCompressor.resultSize, None)
         
     def setupShader(self, shader):
         shader.indexTex = self.indexTex
@@ -88,5 +93,5 @@ class VirtualTexture:
 
         for (tile, cacheIdx) in toRender:
             self.renderTile(tile, cacheIdx)
-
-        #print "updated:", len(toInsert)
+        
+        return toRender
