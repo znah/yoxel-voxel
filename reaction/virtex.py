@@ -94,8 +94,8 @@ class App:
         self.viewControl.eye = (0, 0, 10)
         self.viewControl.zFar = 10000
 
-        self.tileProvider = TileProvider("img/track_1_2.jpg", 512, 512, 8)
-        self.virtualTex = vtex.VirtualTexture(self.tileProvider, 15)
+        self.tileProvider = TileProvider("img/bluemarble-east-4096.png", 512, 512, 8)
+        self.virtualTex = vtex.VirtualTexture(self.tileProvider, 10)
         
         self.texFrag = CGShader("fp40", '''
           uniform sampler2D tex;
@@ -219,10 +219,10 @@ class App:
         tiles = self.fetchFeedback()
         glFinish()
         t1 = clock()
-        self.virtualTex.updateCache(tiles)
+        updated = self.virtualTex.updateCache(tiles)
         glFinish()
         t2 = clock()
-        print "tileNum: %d,  feedback: %d ms, udate: %d ms" % (len(tiles), (t1-t0)*1000, (t2-t1)*1000)
+        print "tileNum: %d,  feedback: %d ms, udate: %d ms,  %d tiles upd" % (len(tiles), (t1-t0)*1000, (t2-t1)*1000, len(updated))
 
     def keyDown(self, key, x, y):
         if ord(key) == 27:
