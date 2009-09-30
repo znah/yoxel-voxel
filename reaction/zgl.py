@@ -398,3 +398,18 @@ def zglInit(viewSize, title):
     glutCreateWindow(title)
     InitCG()
 
+class BufferObject:
+    def __init__(self):
+        self._as_parameter_ = glGenBuffers(1)
+        class Binder:
+            def __init__(self, parent, target):
+                self.parent = parent
+                self.target = target
+            def __enter__(self):
+                glBindBuffer(self.target, self.parent)
+            def __exit__(self, *args):
+                glBindBuffer(self.target, 0)
+        self.pixelPack    = Binder(self, GL_PIXEL_PACK_BUFFER)
+        self.pixelUnpack  = Binder(self, GL_PIXEL_UNPACK_BUFFER)
+        self.array        = Binder(self, GL_ARRAY_BUFFER)
+        self.elementArray = Binder(self, GL_ELEMENT_ARRAY_BUFFER)
