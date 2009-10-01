@@ -26,11 +26,11 @@ class VirtualTexture:
     def createIndex(self):
         self.lodNum = int(log2(self.indexSize)) + 1
         lodSizes = [self.indexSize / 2**lod for lod in xrange(self.lodNum)]
-        self.indexTex = Texture2D(size = (self.indexSize, self.indexSize), format = GL_RGBA_FLOAT16_ATI)
-        zeroBuf = zeros((self.indexSize**2,3), float32)
+        self.indexTex = Texture2D(size = (self.indexSize, self.indexSize), format = GL_RGBA8)
+        zeroBuf = zeros((self.indexSize**2,4), uint8)
         with self.indexTex:
             for lod, size in enumerate(lodSizes):
-                glTexImage2D(GL_TEXTURE_2D, lod, GL_RGBA_FLOAT16_ATI, size, size, 0, GL_RGB, GL_FLOAT, zeroBuf)
+                glTexImage2D(GL_TEXTURE_2D, lod, GL_RGBA8, size, size, 0, GL_RGBA, GL_UNSIGNED_BYTE, zeroBuf)
         self.indexTex.setParams((GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST))
 
     def renderTile(self, tile, cacheIdx):
@@ -80,14 +80,13 @@ class VirtualTexture:
                    cacheIdx = self.cachedTiles[oldTile]
                    self.cachedTiles.pop(oldTile)
                    (lod, x, y) = oldTile
-                   glTexSubImage2D(GL_TEXTURE_2D, lod, x, y, 1, 1, GL_RGB, GL_FLOAT, [0, 0, 0])
+                   glTexSubImage2D(GL_TEXTURE_2D, lod, x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, [0, 0, 0, 0])
                 (lod, x, y) = tile
                 lodSize = self.indexSize / 2**lod
                 if (x >= lodSize or y >= lodSize ):
                   print "out!!!"
                   continue
-                scale = 2**lod
-                glTexSubImage2D(GL_TEXTURE_2D, lod, x, y, 1, 1, GL_RGB, GL_FLOAT, [cacheIdx[0], cacheIdx[1], scale])
+                glTexSubImage2D(GL_TEXTURE_2D, lod, x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, [cacheIdx[0], cacheIdx[1], lod, 1])
                 self.cachedTiles[tile] = cacheIdx
                 toRender.append( (tile, cacheIdx) )
 
