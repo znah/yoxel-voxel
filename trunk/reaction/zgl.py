@@ -392,6 +392,7 @@ def zglInit(viewSize, title):
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
     glutInitWindowSize(*viewSize)
     glutCreateWindow(title)
+    glutSetOption ( GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION )
     InitCG()
 
 class BufferObject:
@@ -409,3 +410,106 @@ class BufferObject:
         self.pixelUnpack  = Binder(self, GL_PIXEL_UNPACK_BUFFER)
         self.array        = Binder(self, GL_ARRAY_BUFFER)
         self.elementArray = Binder(self, GL_ELEMENT_ARRAY_BUFFER)
+
+
+class OrthoCamera:
+    def __init__(self, viewSize = (1, 1)):
+        self.viewSize = V(viewSize)
+        self.center = V(0.5, 0.5)
+        self.scaley = 1.0
+
+        self.mButtons = zeros((3,), bool)
+        self.mPos = (0, 0)
+        self.keyModifiers = 0
+   
+    def extent(self):
+        aspect = float(self.viewSize[0]) / self.viewSize[1]
+        return V(aspect * self.scaley, self.scaley)
+
+    def rect(self):
+        halfExt = 0.5 * self.extent()
+        lo = self.center - halfExt
+        hi = self.center + halfExt
+        return (lo[0], lo[1], hi[0], hi[1])
+
+    def resize(self, x, y):
+        self.viewSize = V(max(x, 1), max(y, 1))
+
+    def mouseMove(self, x, y):
+        dx = x - self.mPos[0]
+        dy = y - self.mPos[1]
+        if self.mButtons[GLUT_LEFT_BUTTON]:
+            self.center += V(-dx, dy) / self.viewSize * self.extent()
+        self.mPos = (x, y)
+        self.keyModifiers = glutGetModifiers()
+
+    def scale(self, coef):
+        self.scaley *= coef
+
+    def mouseButton(self, btn, up, x, y):
+        self.mPos = (x, y)
+        self.keyModifiers = glutGetModifiers()
+        if btn < 3:
+            self.mButtons[btn] = not up
+        if btn == 3:
+            self.scale(1.0/1.1)
+        if btn == 4:
+            self.scale(1.1)
+
+    def __enter__(self):
+        self.proj = Ortho(self.rect())
+        self.proj.__enter__()
+    def __exit__(self, *args):
+        self.proj.__exit__()
+
+'''
+from __future__ import with_statement
+from zgl import *
+
+
+class App:
+    def __init__(self, viewSize):
+        self.viewControl = OrthoCamera()
+
+    def resize(self, x, y):
+        self.viewControl.resize(x, y)
+
+    def idle(self):
+        glutPostRedisplay()
+    
+    def display(self):
+        
+        glClearColor(0, 0, 0, 0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        
+        glViewport(0, 0, self.viewControl.viewSize[0], self.viewControl.viewSize[1])
+
+        with self.viewControl:
+            drawQuad()
+
+        glutSwapBuffers()
+
+    def keyDown(self, key, x, y):
+        if ord(key) == 27:
+            glutLeaveMainLoop()
+                
+    def keyUp(self, key, x, y):
+        pass
+
+    def mouseMove(self, x, y):
+        self.viewControl.mouseMove(x, y)
+
+    def mouseButton(self, btn, up, x, y):
+        self.viewControl.mouseButton(btn, up, x, y)
+
+
+if __name__ == "__main__":
+  viewSize = (800, 600)
+  zglInit(viewSize, "hello")
+
+  app = App(viewSize)
+  glutSetCallbacks(app)
+
+  #wglSwapIntervalEXT(0)
+  glutMainLoop()
+'''
