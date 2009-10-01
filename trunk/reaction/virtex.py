@@ -94,7 +94,7 @@ class App:
         self.viewControl.eye = (0, 0, 10)
         self.viewControl.zFar = 10000
 
-        self.tileProvider = TileProvider("img/bluemarble-east-4096.png", 512, 512, 8)
+        self.tileProvider = TileProvider("img/sand.jpg", 512, 512, 8)
         self.virtualTex = vtex.VirtualTexture(self.tileProvider, 10)
         
         self.texFrag = CGShader("fp40", '''

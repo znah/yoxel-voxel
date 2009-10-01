@@ -83,7 +83,7 @@ class VirtualTexture:
                    glTexSubImage2D(GL_TEXTURE_2D, lod, x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, [0, 0, 0, 0])
                 (lod, x, y) = tile
                 lodSize = self.indexSize / 2**lod
-                if (x >= lodSize or y >= lodSize ):
+                if (x >= lodSize or y >= lodSize or x < 0 or y < 0):
                   print "out!!!"
                   continue
                 glTexSubImage2D(GL_TEXTURE_2D, lod, x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, [cacheIdx[0], cacheIdx[1], lod, 1])
