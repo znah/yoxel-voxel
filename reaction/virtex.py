@@ -255,6 +255,5 @@ if __name__ == "__main__":
   glutSetCallbacks(app)
 
   #wglSwapIntervalEXT(0)
-  glutSetOption ( GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION )
   glutMainLoop()
   
