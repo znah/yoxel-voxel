@@ -3,10 +3,11 @@
 uniform sampler2D noiseTex;
 uniform float2 noiseSize;
 
-#define RADIUS 0.05
+#define RADIUS 0.02
 #define CELL_SIZE RADIUS
-#define DENSITY 100
+#define DENSITY 2000
 #define CELL_PROB (DENSITY * CELL_SIZE * CELL_SIZE)
+#define PI 3.141593
 
 float4 noise(inout float2 seed)
 {
@@ -29,10 +30,12 @@ float cell(float2 ci, float2 pos)
   float sum = 0;
   for (float i = 0; i < count; i += 1)
   {
-    float2 center = noise(seed).xy;
-    float d = length(center - pos);
+    float3 v = noise(seed).xyz;
+    float2 center = v.xy;
+    float r = v.z;
+    float d = length(center - pos) / r;
     if (d < 1)
-      sum += 0.3;
+      sum += abs(sin(d*PI*3)) * 0.3;
   }
 
   return sum;
@@ -52,6 +55,6 @@ float4 main(float2 pos: TEXCOORD0) : COLOR
     }
       
 
-  return float4(sum, 0, 0, 1);
+  return float4(sum, sum, sum, 1);
 
 }
