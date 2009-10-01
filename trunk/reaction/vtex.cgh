@@ -24,11 +24,11 @@ float calcLod(float2 dx, float2 dy)
 
 float4 vtexFetchLod(float2 texCoord, float lod, float2 dx, float2 dy)
 {
-  float3 tileData = tex2Dlod(indexTex, float4(texCoord, 0, lod)).xyz;
-  while (tileData.z == 0)
-    tileData = tex2Dlod(indexTex, float4(texCoord, 0, ++lod)).xyz;
-  float2 tileIdx = tileData.xy;
-  float tileScale = tileData.z;
+  float4 tileData = tex2Dlod(indexTex, float4(texCoord, 0, lod));
+  while (tileData.w == 0)
+    tileData = tex2Dlod(indexTex, float4(texCoord, 0, ++lod));
+  float2 tileIdx = floor(tileData.xy * 255.0f + 0.5f);
+  float tileScale = exp2(floor(tileData.z * 255.0f + 0.5f));
   float2 posInTile = frac(texCoord * indexSize / tileScale);
 
   float2 posInCache = (tileIdx * padTileSize + border + posInTile*tileSize) / cacheTexSize;

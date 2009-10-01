@@ -48,10 +48,6 @@ cgGLSetParameter4f.argtypes = [c_int, c_float, c_float, c_float, c_float]
 cgGLSetTextureParameter = cggl.cgGLSetTextureParameter
 cgGLSetTextureParameter.argtypes = [c_int, c_uint]
 
-def setTex(p, v):
-    cgGLSetTextureParameter(p, v)
-
-
 cgProfiles = {"fp40"  : 6151, 
               "vp40"  : 7001, 
               "gp4fp" : 7010,
@@ -63,7 +59,7 @@ cgParamSetters = {
   cg.cgGetType("float2")    : lambda p, v : cgGLSetParameter2f(p, v[0], v[1]),
   cg.cgGetType("float3")    : lambda p, v : cgGLSetParameter3f(p, v[0], v[1], v[2]),
   cg.cgGetType("float4")    : lambda p, v : cgGLSetParameter4f(p, v[0], v[1], v[2], v[3]),
-  cg.cgGetType("sampler2D") : lambda p, v : setTex(p, v)
+  cg.cgGetType("sampler2D") : lambda p, v : cgGLSetTextureParameter(p, v)
 }
 
 
