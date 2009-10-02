@@ -2,10 +2,11 @@
 
 uniform sampler2D noiseTex;
 uniform float2 noiseSize;
+uniform float time;
 
 #define RADIUS 0.02
 #define CELL_SIZE RADIUS
-#define DENSITY 2000
+#define DENSITY 3000
 #define CELL_PROB (DENSITY * CELL_SIZE * CELL_SIZE)
 #define PI 3.141593
 
@@ -35,7 +36,7 @@ float cell(float2 ci, float2 pos)
     float r = v.z;
     float d = length(center - pos) / r;
     if (d < 1)
-      sum += abs(sin(d*PI*3)) * 0.3;
+      sum += abs(sin(d*PI*3+time)) * 0.3;
   }
 
   return sum;

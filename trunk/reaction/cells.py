@@ -1,6 +1,6 @@
 from __future__ import with_statement
 from zgl import *
-
+from time import clock
 
 class App:
     def __init__(self, viewSize):
@@ -26,6 +26,7 @@ class App:
         
         glViewport(0, 0, self.viewControl.viewSize[0], self.viewControl.viewSize[1])
 
+        self.cellFrag.time = clock()
         with ctx(self.viewControl, self.cellFrag):
             drawQuad()
 
