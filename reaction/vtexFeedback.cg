@@ -3,10 +3,15 @@
 
 uniform float2 dcoef;
 
-float4 main(float2 texCoord: TEXCOORD0) : COLOR
+typedef unsigned int uint;
+
+uint main(float2 texCoord: TEXCOORD0) : COLOR
 {
-  float lod = floor(calcLod(ddx(texCoord)*dcoef.x, ddy(texCoord)*dcoef.y));
+  uint lod = floor(calcLod(ddx(texCoord)*dcoef.x, ddy(texCoord)*dcoef.y));
   float scale = exp2(lod);
-  float2 tileIdx = floor(frac(texCoord) * indexSize / scale);
-  return float4(tileIdx, lod, 1);
+  int2 tileIdx = floor(frac(texCoord) * indexSize / scale);
+  uint res = ((lod+1) & 0xff) << 24; // 1 means lod 0
+  res += (tileIdx.y & 0xfff) << 12;
+  res += (tileIdx.x & 0xfff);
+  return res;
 }

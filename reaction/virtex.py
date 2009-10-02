@@ -108,13 +108,19 @@ class App:
         self.texFrag.tex = self.virtualTex.cacheTex
 
         self.vtexFrag = CGShader("fp40", fileName = 'vtex.cg')
-        self.vtexFeedbackFrag = CGShader("fp40", fileName = 'vtexFeedback.cg')
+        self.vtexFeedbackFrag = CGShader("gp4fp", fileName = 'vtexFeedback.cg')
         self.virtualTex.setupShader(self.vtexFrag)
         self.virtualTex.setupShader(self.vtexFeedbackFrag)
 
         self.initTerrain()
 
-        self.feedbackBuf = RenderTexture(size = (400, 300), format = GL_RGBA_FLOAT16_ATI, depth = True)
+        fbSize = (400, 300)
+        self.feedbackBuf = RenderTexture(size = fbSize, 
+          format = GL_LUMINANCE32UI_EXT, 
+          srcFormat = GL_LUMINANCE_INTEGER_EXT,
+          srcType = GL_INT,
+          depth = True)
+        self.feedbackArray = zeros((prod(fbSize),), uint32)
 
         self.vtexUpdateTime = clock()
         self.moved = True
@@ -192,16 +198,10 @@ class App:
         with ctx(self.feedbackBuf, self.viewControl, self.vtexFeedbackFrag):
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             self.renderTerrain()
-            a = glReadPixels(0, 0, self.feedbackBuf.size()[0], self.feedbackBuf.size()[1], GL_RGBA, GL_FLOAT)
-        a.shape = (-1, 4)
-        a = compress(a[:,3] > 0, a, axis=0)
-        a = a.astype(int32)
-        
-        bits  = (a[:,0] & 0xfff)
-        bits += (a[:,1] & 0xfff) << 12
-        bits += (a[:,2] & 0xff ) << 24
-        bits = unique(bits)
-        tiles = [(x>>24, x & 0xfff, (x>>12) & 0xfff) for x in bits]
+            (sx, sy) = self.feedbackBuf.size()
+            OpenGL.raw.GL.glReadPixels(0, 0, sx, sy, GL_LUMINANCE_INTEGER_EXT, GL_UNSIGNED_INT, self.feedbackArray.ctypes.data)
+        bits = unique(self.feedbackArray)
+        tiles = [((x>>24) - 1, x & 0xfff, (x>>12) & 0xfff) for x in bits if x != 0]
         
         def parent(t):
             return (t[0]+1, t[1]/2, t[2]/2)
