@@ -50,7 +50,7 @@ class VirtualTexture:
         shader.cacheTex = self.cacheTex
         shader.tileSize = self.provider.tileSize
         shader.indexSize = self.indexSize
-        shader.vtexSize = self.provider.vtexSize
+        shader.virtualSize = self.provider.virtualSize
         shader.maxLod = self.lodNum - 1
         shader.border = self.provider.tileBorder
         shader.padTileSize = self.padTileSize
