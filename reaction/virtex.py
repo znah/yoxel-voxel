@@ -11,7 +11,7 @@ class TileProvider:
         self.tileSize = tileSize
         self.indexSize = indexSize
         self.tileBorder = tileBorder
-        self.vtexSize = tileSize * indexSize
+        self.virtualSize = tileSize * indexSize
         self.padTileSize = tileSize + tileBorder*2
         
         self.noiseTex = Texture2D(random.rand(512, 512, 4).astype(float32))
@@ -50,12 +50,12 @@ class TileProvider:
         ''')
         self.texFrag.tex = self.tex
         self.texFrag.noiseTex = self.noiseTex
-        self.texFrag.noiseScale = self.vtexSize / 512
+        self.texFrag.noiseScale = self.virtualSize / 512
 
     def render(self, lod, tileIdx):
         scale = 2.0**lod
-        tileTexSize = self.tileSize * scale / self.vtexSize
-        borderTexSize = self.tileBorder * scale / self.vtexSize
+        tileTexSize = self.tileSize * scale / self.virtualSize
+        borderTexSize = self.tileBorder * scale / self.virtualSize
         (x1, y1) = V(tileIdx) * tileTexSize - borderTexSize
         (x2, y2) = (V(tileIdx)+1) * tileTexSize + borderTexSize
         

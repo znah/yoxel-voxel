@@ -5,7 +5,7 @@ uniform sampler2D cacheTex;
 uniform float tileSize;
 uniform float indexSize;
 uniform float cacheTexSize;
-uniform float vtexSize;
+uniform float virtualSize;
 uniform float maxLod;
 uniform float border;
 uniform float padTileSize;
@@ -18,7 +18,7 @@ float calcLod(float2 dx, float2 dy)
   float lo = min(d.x, d.y);
   float hi = max(d.x, d.y);
   float md = 0.5 * (lo + hi);
-  float lod = log2(md*vtexSize) + 0.7; // lod bias
+  float lod = log2(md*virtualSize) + 0.7; // lod bias
   return clamp(lod, 0, maxLod-eps);
 }
 
@@ -33,7 +33,7 @@ float4 vtexFetchLod(float2 texCoord, float lod, float2 dx, float2 dy)
 
   float2 posInCache = (tileIdx * padTileSize + border + posInTile*tileSize) / cacheTexSize;
 
-  float dcoef = vtexSize / cacheTexSize / tileScale;
+  float dcoef = virtualSize / cacheTexSize / tileScale;
   return tex2D(cacheTex, posInCache, dx*dcoef, dy*dcoef);
 }
 
