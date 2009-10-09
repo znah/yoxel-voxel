@@ -108,7 +108,7 @@ class App:
         self.texFrag.tex = self.virtualTex.cacheTex
 
         self.vtexFrag = CGShader("fp40", fileName = 'vtex.cg')
-        self.vtexFeedbackFrag = CGShader("gp4fp", fileName = 'vtexFeedback.cg')
+        self.vtexFeedbackFrag = CGShader("gp4fp", fileName = 'vtex.cg', entry = 'feedback')
         self.virtualTex.setupShader(self.vtexFrag)
         self.virtualTex.setupShader(self.vtexFeedbackFrag)
 
