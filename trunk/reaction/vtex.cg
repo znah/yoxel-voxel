@@ -5,3 +5,18 @@ float4 main(float2 texCoord: TEXCOORD0) : COLOR
 {
   return vtexFetch(texCoord, ddx(texCoord), ddy(texCoord));
 }
+
+uniform float2 dcoef;
+
+typedef unsigned int uint;
+
+uint feedback(float2 texCoord: TEXCOORD0) : COLOR
+{
+  uint lod = floor(calcLod(ddx(texCoord)*dcoef.x, ddy(texCoord)*dcoef.y));
+  float scale = exp2(lod);
+  int2 tileIdx = floor(frac(texCoord) * indexSize / scale);
+  uint res = ((lod+1) & 0xff) << 24; // 1 means lod 0
+  res += (tileIdx.y & 0xfff) << 12;
+  res += (tileIdx.x & 0xfff);
+  return res;
+}
