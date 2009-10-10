@@ -414,50 +414,67 @@ class BufferObject:
 
 class OrthoCamera:
     def __init__(self, viewSize = (1, 1)):
-        self.viewSize = V(viewSize)
-        self.center = V(0.5, 0.5)
-        self.scaley = 1.0
+        self.viewSize = V(1, 1)
+        self.rect = (0.0, 0.0, 1.0, 1.0)
+        self.resize(*viewSize)
 
         self.mButtons = zeros((3,), bool)
         self.mPos = (0, 0)
+        self.mPosWld = (0, 0)
         self.keyModifiers = 0
    
-    def extent(self):
-        aspect = float(self.viewSize[0]) / self.viewSize[1]
-        return V(aspect * self.scaley, self.scaley)
+    def viewAspect(self):
+        return self.viewSize[0] / self.viewSize[1]
 
-    def rect(self):
-        halfExt = 0.5 * self.extent()
-        lo = self.center - halfExt
-        hi = self.center + halfExt
-        return (lo[0], lo[1], hi[0], hi[1])
+    def extent(self):
+        (x1, y1, x2, y2) = self.rect
+        return V(x2-x1, y2-y1)
 
     def resize(self, x, y):
         self.viewSize = V(max(x, 1), max(y, 1))
+        (x1, y1, x2, y2) = self.rect
+        hx = 0.5 * (y2 - y1) * self.viewAspect()
+        cx = 0.5 * (x1 + x2)
+        self.rect = (cx-hx, y1, cx+hx, y2)
 
     def mouseMove(self, x, y):
         dx = x - self.mPos[0]
         dy = y - self.mPos[1]
         if self.mButtons[GLUT_LEFT_BUTTON]:
-            self.center += V(-dx, dy) / self.viewSize * self.extent()
+            (sx, sy) = V(-dx, dy) / self.viewSize * self.extent()
+            (x1, y1, x2, y2) = self.rect
+            self.rect = (x1+sx, y1+sy, x2+sx, y2+sy)
         self.mPos = (x, y)
         self.keyModifiers = glutGetModifiers()
 
-    def scale(self, coef):
-        self.scaley *= coef
+    def scr2wld(self, x, y):
+        (x1, y1, x2, y2) = self.rect
+        (sx, sy) = V(x, y) / self.viewSize
+        return V(x1 + (x2-x1)*sx, y1 + (y2-y1)*(1.0-sy))
 
+    def lo(self):
+        return V(self.rect[0:2])
+    def hi(self):
+        return V(self.rect[2:4])
+
+    def scale(self, coef, center):
+        lo = center + (self.lo() - center)*coef
+        hi = center + (self.hi() - center)*coef
+        self.rect = (lo[0], lo[1], hi[0], hi[1])
+                                              
     def mouseButton(self, btn, up, x, y):
         self.mPos = (x, y)
+        self.mPosWld = self.scr2wld(x, y)
         self.keyModifiers = glutGetModifiers()
         if btn < 3:
             self.mButtons[btn] = not up
         if btn == 3:
-            self.scale(1.0/1.1)
+            self.scale(1.0/1.1, self.mPosWld)
         if btn == 4:
-            self.scale(1.1)
+            self.scale(1.1, self.mPosWld)
 
     def __enter__(self):
-        self.proj = Ortho(self.rect())
+        self.proj = Ortho(self.rect)
         self.proj.__enter__()
     def __exit__(self, *args):
         self.proj.__exit__()
