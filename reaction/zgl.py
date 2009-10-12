@@ -443,9 +443,14 @@ class OrthoCamera:
     def resize(self, x, y):
         self.vp.size = V(max(x, 1), max(y, 1))
         (x1, y1, x2, y2) = self.rect
-        hx = 0.5 * (y2 - y1) * self.vp.aspect()
-        cx = 0.5 * (x1 + x2)
-        self.rect = (cx-hx, y1, cx+hx, y2)
+        p1 = V(x1, y1)
+        p2 = V(x2, y2)
+        c  = 0.5 * (p1 + p2)
+        scale = V(x, y) / self.vp.size
+        dp = scale * 0.5 * (p2 - p1)
+        p1 = c - dp
+        p2 = c + dp
+        self.rect = (p1[0], p1[1], p2[0], p2[1])
 
     def mouseMove(self, x, y):
         dx = x - self.mPos[0]
