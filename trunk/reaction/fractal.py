@@ -1,16 +1,23 @@
 from __future__ import with_statement
 from zgl import *
+from PIL import Image
 
 class App(ZglApp):
     def __init__(self):
         ZglApp.__init__(self, OrthoCamera())
 
+        self.srcTex = Texture2D(Image.open("img/fung.png"))
+
         self.fragProg = CGShader('fp40', '''
+          uniform sampler2D tex;
           float4 main( float2 tc: TEXCOORD0 ) : COLOR 
           { 
-            return float4(tc, 0, 1); 
+            float4 c = tex2D(tex, tc);
+            c.rgb *= c.a;
+            return c;
           }
         ''')
+        self.fragProg.tex = self.srcTex
     
     def display(self):
         glClearColor(0, 0, 0, 0)
