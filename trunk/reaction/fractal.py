@@ -1,24 +1,22 @@
 from __future__ import with_statement
 from zgl import *
-from time import clock
 
 class App(ZglApp):
     def __init__(self):
         ZglApp.__init__(self, OrthoCamera())
 
-        self.cellFrag = CGShader("fp40", fileName = "cells.cg")
-
-        self.noiseTex = Texture2D(random.rand(512, 512, 4).astype(float32), format=GL_RGBA_FLOAT32_ATI)
-        self.cellFrag.noiseTex = self.noiseTex
-        self.cellFrag.noiseSize = self.noiseTex.size
+        self.fragProg = CGShader('fp40', '''
+          float4 main( float2 tc: TEXCOORD0 ) : COLOR 
+          { 
+            return float4(tc, 0, 1); 
+          }
+        ''')
     
     def display(self):
-        
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        self.cellFrag.time = clock()
-        with ctx(self.viewControl.with_vp, self.cellFrag):
+        with ctx(self.viewControl.with_vp, self.fragProg):
             drawQuad()
 
         glutSwapBuffers()

@@ -490,55 +490,70 @@ class OrthoCamera:
         self.proj.__exit__()
 
 
-#class ZglApp(object):
-#    def __init__
+def safe_call(obj, method, *l, **d):
+    if hasattr(obj, method):
+        getattr(obj, method)(*l, **d)
 
-'''
-from __future__ import with_statement
-from zgl import *
-
-
-class App:
-    def __init__(self, viewSize):
-        self.viewControl = OrthoCamera()
-
+class ZglApp(object):
+    def __init__(self, viewControl):
+        self.viewControl = viewControl
+    
     def resize(self, x, y):
-        self.viewControl.resize(x, y)
+        safe_call(self.viewControl, 'resize', x, y)
 
     def idle(self):
         glutPostRedisplay()
     
     def display(self):
-        
-        glClearColor(0, 0, 0, 0)
+        glClearColor(0, 0.5, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        
-        with self.viewControl.with_vp:
-            drawQuad()
-
         glutSwapBuffers()
 
     def keyDown(self, key, x, y):
         if ord(key) == 27:
             glutLeaveMainLoop()
+        safe_call(self.viewControl, 'keyDown', key, x, y)
                 
     def keyUp(self, key, x, y):
-        pass
+        safe_call(self.viewControl, 'keyUp', key, x, y)
 
     def mouseMove(self, x, y):
-        self.viewControl.mouseMove(x, y)
+        safe_call(self.viewControl, 'mouseMove', x, y)
 
-    def mouseButton(self, btn, up, x, y):
-        self.viewControl.mouseButton(btn, up, x, y)
+    def mouseButton(self, btn, up, x, y):             
+        safe_call(self.viewControl, 'mouseButton', btn, up, x, y)
 
+
+"""
+from __future__ import with_statement
+from zgl import *
+
+class App(ZglApp):
+    def __init__(self):
+        ZglApp.__init__(self, OrthoCamera())
+
+        self.fragProg = CGShader('fp40', '''
+          float4 main( float2 tc: TEXCOORD0 ) : COLOR 
+          { 
+            return float4(tc, 0, 1); 
+          }
+        ''')
+    
+    def display(self):
+        glClearColor(0, 0, 0, 0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        
+        with ctx(self.viewControl.with_vp, self.fragProg):
+            drawQuad()
+
+        glutSwapBuffers()
 
 if __name__ == "__main__":
   viewSize = (800, 600)
   zglInit(viewSize, "hello")
 
-  app = App(viewSize)
-  glutSetCallbacks(app)
+  glutSetCallbacks(App())
 
   #wglSwapIntervalEXT(0)
   glutMainLoop()
-'''
+"""
