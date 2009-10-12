@@ -24,10 +24,8 @@ class App:
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        glViewport(0, 0, self.viewControl.viewSize[0], self.viewControl.viewSize[1])
-
         self.cellFrag.time = clock()
-        with ctx(self.viewControl, self.cellFrag):
+        with ctx(self.viewControl.with_vp, self.cellFrag):
             drawQuad()
 
         glutSwapBuffers()

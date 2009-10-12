@@ -181,8 +181,7 @@ class App:
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        glViewport(0, 0, self.viewControl.viewSize[0], self.viewControl.viewSize[1])
-        with self.viewControl:
+        with self.viewControl.with_vp:
             with self.vtexFrag:
                 self.renderTerrain()
             with self.texFrag:
@@ -194,7 +193,7 @@ class App:
         glutSwapBuffers()
 
     def fetchFeedback(self):
-        self.vtexFeedbackFrag.dcoef = V(self.feedbackBuf.size()) / V(self.viewControl.viewSize)
+        self.vtexFeedbackFrag.dcoef = V(self.feedbackBuf.size()) / V(self.viewControl.vp.size)
         with ctx(self.feedbackBuf, self.viewControl, self.vtexFeedbackFrag):
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             self.renderTerrain()

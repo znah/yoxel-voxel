@@ -292,13 +292,24 @@ def glutSetCallbacks(app):
     if hasattr(app, "close"):
         glutCloseFunc(app.close)
 
+class Viewport:
+    def __init__(self):
+        self.origin = (0, 0)
+        self.size = (1, 1)
+    def __enter__(self):
+        glViewport(self.origin[0], self.origin[1], self.size[0], self.size[1])
+    def __exit__(self, *args):
+        pass
+    def aspect(self):
+        return float(self.size[0]) / self.size[1]
+
 class FlyCamera:
     def __init__(self):
         self.eye = (0.0, 0.0, 0.0)
         self.course = 0
         self.pitch = 0
         self.fovy = 40
-        self.viewSize = (1, 1)
+        self.vp = Viewport()
         self.zNear = 1.0
         self.zFar  = 1000.0
         
@@ -310,13 +321,15 @@ class FlyCamera:
         self.sensitivity = 0.3
         self.speed = 1.0
 
+        self.with_vp = ctx(self.vp, self)
+
     def __setattr__(self, name, val):
         if name == "eye":
             val = V(*val)
         self.__dict__[name] = val
 
     def resize(self, x, y):
-        self.viewSize = (x, max(y, 1))
+        self.vp.size = (x, max(y, 1))
 
     key2vel = {'w': (0, 1), 's': (0, -1), 'd': (1, 1), 'a': (1, -1) }
 
@@ -358,8 +371,7 @@ class FlyCamera:
     def __enter__(self):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        aspect = float(self.viewSize[0]) / self.viewSize[1]
-        gluPerspective(self.fovy, aspect, self.zNear, self.zFar)
+        gluPerspective(self.fovy, self.vp.aspect(), self.zNear, self.zFar)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         args = []
@@ -414,7 +426,7 @@ class BufferObject:
 
 class OrthoCamera:
     def __init__(self, viewSize = (1, 1)):
-        self.viewSize = V(1, 1)
+        self.vp = Viewport()
         self.rect = (0.0, 0.0, 1.0, 1.0)
         self.resize(*viewSize)
 
@@ -422,18 +434,16 @@ class OrthoCamera:
         self.mPos = (0, 0)
         self.mPosWld = (0, 0)
         self.keyModifiers = 0
+        self.with_vp = ctx(self.vp, self)
    
-    def viewAspect(self):
-        return self.viewSize[0] / self.viewSize[1]
-
     def extent(self):
         (x1, y1, x2, y2) = self.rect
         return V(x2-x1, y2-y1)
 
     def resize(self, x, y):
-        self.viewSize = V(max(x, 1), max(y, 1))
+        self.vp.size = V(max(x, 1), max(y, 1))
         (x1, y1, x2, y2) = self.rect
-        hx = 0.5 * (y2 - y1) * self.viewAspect()
+        hx = 0.5 * (y2 - y1) * self.vp.aspect()
         cx = 0.5 * (x1 + x2)
         self.rect = (cx-hx, y1, cx+hx, y2)
 
@@ -441,7 +451,7 @@ class OrthoCamera:
         dx = x - self.mPos[0]
         dy = y - self.mPos[1]
         if self.mButtons[GLUT_LEFT_BUTTON]:
-            (sx, sy) = V(-dx, dy) / self.viewSize * self.extent()
+            (sx, sy) = V(-dx, dy) / self.vp.size * self.extent()
             (x1, y1, x2, y2) = self.rect
             self.rect = (x1+sx, y1+sy, x2+sx, y2+sy)
         self.mPos = (x, y)
@@ -449,7 +459,7 @@ class OrthoCamera:
 
     def scr2wld(self, x, y):
         (x1, y1, x2, y2) = self.rect
-        (sx, sy) = V(x, y) / self.viewSize
+        (sx, sy) = V(x, y) / self.vp.size
         return V(x1 + (x2-x1)*sx, y1 + (y2-y1)*(1.0-sy))
 
     def lo(self):
@@ -479,6 +489,10 @@ class OrthoCamera:
     def __exit__(self, *args):
         self.proj.__exit__()
 
+
+#class ZglApp(object):
+#    def __init__
+
 '''
 from __future__ import with_statement
 from zgl import *
@@ -499,9 +513,7 @@ class App:
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        glViewport(0, 0, self.viewControl.viewSize[0], self.viewControl.viewSize[1])
-
-        with self.viewControl:
+        with self.viewControl.with_vp:
             drawQuad()
 
         glutSwapBuffers()
