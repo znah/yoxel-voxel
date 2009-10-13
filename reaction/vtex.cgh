@@ -12,13 +12,13 @@ uniform float padTileSize;
 
 const float eps = 0.00001;
 
-float calcLod(float2 dx, float2 dy)
+float calcLod(float2 dx, float2 dy, float bias)
 {
   float2 d = sqrt(dx*dx + dy*dy);
   float lo = min(d.x, d.y);
   float hi = max(d.x, d.y);
   float md = 0.5 * (lo + hi);
-  float lod = log2(md*virtualSize) + 0.7; // lod bias
+  float lod = log2(md*virtualSize) + bias;
   return clamp(lod, 0, maxLod-eps);
 }
 
@@ -39,7 +39,7 @@ float4 vtexFetchLod(float2 texCoord, float lod, float2 dx, float2 dy)
 
 float4 vtexFetch(float2 texCoord, float2 dx, float2 dy)
 {
-  float lod = calcLod(dx, dy);
+  float lod = calcLod(dx, dy, 0);
   float hiLod = floor(lod);
   float loLod = hiLod + 1;
   float4 c1 = vtexFetchLod(texCoord, hiLod, dx, dy);

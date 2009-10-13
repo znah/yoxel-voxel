@@ -95,7 +95,7 @@ class App:
         self.viewControl.zFar = 10000
 
         self.tileProvider = TileProvider("img/sand.jpg", 512, 512, 8)
-        self.virtualTex = vtex.VirtualTexture(self.tileProvider, 10)
+        self.virtualTex = vtex.VirtualTexture(self.tileProvider, 15)
         
         self.texFrag = CGShader("fp40", '''
           uniform sampler2D tex;
