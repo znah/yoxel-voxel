@@ -7,14 +7,17 @@ class App(ZglApp):
         ZglApp.__init__(self, OrthoCamera())
 
         self.srcTex = Texture2D(Image.open("img/fung.png"))
+        self.srcTex.filterLinearMipmap()
+        self.srcTex.genMipmaps()
+        self.srcTex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 16))
 
         self.fragProg = CGShader('fp40', '''
           uniform sampler2D tex;
           float4 main( float2 tc: TEXCOORD0 ) : COLOR 
           { 
             float4 c = tex2D(tex, tc);
-            c.rgb *= c.a;
-            return c;
+            float3 res = lerp( float3(1, 0, 0), c.rgb, c.a );
+            return float4(res, 1.0);
           }
         ''')
         self.fragProg.tex = self.srcTex
