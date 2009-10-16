@@ -149,6 +149,13 @@ class Texture2D:
     MipmapLinear  = [(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR), (GL_TEXTURE_MAG_FILTER, GL_LINEAR)]
     Repeat  = [(GL_TEXTURE_WRAP_S, GL_REPEAT), (GL_TEXTURE_WRAP_S, GL_REPEAT)]
 
+    def filterNearest(self):
+        self.setParams(*self.Nearest)
+    def filterLinear(self):
+        self.setParams(*self.Linear)
+    def filterLinearMipmap(self):
+        self.setParams(*self.MipmapLinear)
+
     def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = GL_RGBA, srcType = GL_FLOAT):
         self._as_parameter_ = glGenTextures(1)
         self.setParams( *(self.Nearest + self.Repeat) )
@@ -441,15 +448,16 @@ class OrthoCamera:
         return V(x2-x1, y2-y1)
 
     def resize(self, x, y):
+        oldSize = self.vp.size
         self.vp.size = V(max(x, 1), max(y, 1))
+        r = self.vp.size / oldSize
         (x1, y1, x2, y2) = self.rect
         p1 = V(x1, y1)
         p2 = V(x2, y2)
         c  = 0.5 * (p1 + p2)
-        scale = V(x, y) / self.vp.size
-        dp = scale * 0.5 * (p2 - p1)
-        p1 = c - dp
-        p2 = c + dp
+        sz = 0.5*(p2-p1)*r
+        p1 = c - sz
+        p2 = c + sz
         self.rect = (p1[0], p1[1], p2[0], p2[1])
 
     def mouseMove(self, x, y):
