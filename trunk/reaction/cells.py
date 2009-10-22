@@ -27,7 +27,7 @@ if __name__ == "__main__":
   viewSize = (800, 600)
   zglInit(viewSize, "hello")
 
-  glutSetCallbacks(App())
+  glutSetCallbacks( App() )
 
   #wglSwapIntervalEXT(0)
   glutMainLoop()
