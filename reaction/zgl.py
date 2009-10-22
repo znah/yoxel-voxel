@@ -432,10 +432,10 @@ class BufferObject:
 
 
 class OrthoCamera:
-    def __init__(self, viewSize = (1, 1)):
+    def __init__(self):
         self.vp = Viewport()
         self.rect = (0.0, 0.0, 1.0, 1.0)
-        self.resize(*viewSize)
+        self.unsized = True
 
         self.mButtons = zeros((3,), bool)
         self.mPos = (0, 0)
@@ -450,6 +450,12 @@ class OrthoCamera:
     def resize(self, x, y):
         oldSize = self.vp.size
         self.vp.size = V(max(x, 1), max(y, 1))
+        if self.unsized:
+            r = self.vp.aspect() / 2.0
+            self.rect = (0.5 - r, 0.0, 0.5 + r, 1.0)
+            self.unsized = False
+            return
+            
         r = self.vp.size / oldSize
         (x1, y1, x2, y2) = self.rect
         p1 = V(x1, y1)
