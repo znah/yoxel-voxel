@@ -262,13 +262,16 @@ class PingPong:
         self.src.texparams(*args)
         self.dst.texparams(*args)
 
-_quad = [(0, 0), (1, 0), (1, 1), (0, 1)]
-def drawQuad():
+def drawQuad(rect = (0, 0, 1, 1)):
     glBegin(GL_QUADS)
-    def vert(p):
-        glTexCoord2f(p[0], p[1])
-        glVertex2f(p[0], p[1])
-    [vert(p) for p in _quad]
+    def vert(x, y):
+        glTexCoord2f(x, y)
+        glVertex2f(x, y)
+    (x1, y1, x2, y2) = rect
+    vert(x1, y1)
+    vert(x2, y1)
+    vert(x2, y2)
+    vert(x1, y2)
     glEnd()
 
 def drawVerts(primitive, pos, texCoord = None):
@@ -451,8 +454,17 @@ class OrthoCamera:
         oldSize = self.vp.size
         self.vp.size = V(max(x, 1), max(y, 1))
         if self.unsized:
-            r = self.vp.aspect() / 2.0
-            self.rect = (0.5 - r, 0.0, 0.5 + r, 1.0)
+            (x1, y1, x2, y2) = self.rect
+            vr = self.vp.aspect()
+            rr = (y2-y1) / (x2-x1)
+            if vr > rr:
+                h = 0.5*(y2-y1)*vr
+                c = 0.5*(x1+x2)
+                self.rect = (c-h, y1, c+h, y2)
+            else:
+                h = 0.5*(x2-x1)/vr
+                c = 0.5*(y1+y2)
+                self.rect = (x1, c-h, x2, c+h)
             self.unsized = False
             return
             
