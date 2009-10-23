@@ -8,10 +8,15 @@ class App(ZglApp):
         ZglApp.__init__(self, OrthoCamera())
 
         self.viewControl.rect = (-2, -1, 1, 1)
+        #self.srcTex = Texture2D(Image.open("img/fung.png"))
+        #a = tile([[0, 1], [1, 0]], (128, 128))
+        #img = zeros((256, 256, 4), uint8)
+        #img
         self.srcTex = Texture2D(Image.open("img/fung.png"))
         self.srcTex.filterLinearMipmap()
         self.srcTex.genMipmaps()
         self.srcTex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 16))
+        self.srcTex.setParams( *Texture2D.ClampToEdge )
 
         self.fragProg = CGShader('fp40', '''
           uniform sampler2D tex;
@@ -27,20 +32,31 @@ class App(ZglApp):
 
           float4 main( float2 tc: TEXCOORD0 ) : COLOR 
           { 
-            float4 col = float4(1);
-            float2 c = tc;
-            float2 z = float2(0, 0);
-            float t = 0.1*time;
-            float2 up = float2(cos(t), sin(t));
-            float2 vp = float2(-up.y, up.x);
-            for (int i = 0; i < 20; ++i)
+            float4 col = float4(0);
+            
+            //float2 c = tc;
+            //float2 z = float2(0, 0);
+            float t = 0.2*time;
+            float s = 1.0 + sin(5*time)*0.05;
+            float2 up = float2(cos(t), sin(t))*s;
+            float2 vp = float2(-up.y, up.x)*s;
+            
+            float2 c = float2(-0.726895347709114071439, 0.188887129043845954792);// + up*0.1;
+            float2 z = tc;
+
+            for (int i = 0; i < 30; ++i)
             {
-              {
-                float4 v = tex2D(tex, up*z.x + vp*z.y);
-                col = col*(1-v.a) + v*v.a;
-              }
               //float2 z2 = cmul(z, z);
               z = cmul(z, z) + c;
+              {
+                float2 p = z;
+                p = up*p.x + vp*p.y;
+                p += float2(0.5, 0.5);
+
+                float4 v = tex2D(tex, p);
+                //float4 v = tex2D(tex, up*z.x + vp*z.y);
+                col = col*(1-v.a) + v*v.a;
+              }
             }
             return float4(col);
           }
