@@ -488,6 +488,7 @@ class OrthoCamera:
             (x1, y1, x2, y2) = self.rect
             self.rect = (x1+sx, y1+sy, x2+sx, y2+sy)
         self.mPos = (x, y)
+        self.mPosWld = self.scr2wld(x, y)
         self.keyModifiers = glutGetModifiers()
 
     def scr2wld(self, x, y):
