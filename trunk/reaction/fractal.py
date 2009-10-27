@@ -8,15 +8,11 @@ class App(ZglApp):
         ZglApp.__init__(self, OrthoCamera())
 
         self.viewControl.rect = (-2, -1, 1, 1)
-        #self.srcTex = Texture2D(Image.open("img/fung.png"))
-        #a = tile([[0, 1], [1, 0]], (128, 128))
-        #img = zeros((256, 256, 4), uint8)
-        #img
-        self.srcTex = Texture2D(Image.open("img/fung.png"))
+        self.srcTex = Texture2D(Image.open("img/lines.png"))
         self.srcTex.filterLinearMipmap()
         self.srcTex.genMipmaps()
         self.srcTex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 16))
-        self.srcTex.setParams( *Texture2D.ClampToEdge )
+        #self.srcTex.setParams( *Texture2D.ClampToEdge )
 
         self.fragProg = CGShader('fp40', '''
           uniform sampler2D tex;
@@ -34,15 +30,15 @@ class App(ZglApp):
           { 
             float4 col = float4(0);
             
-            //float2 c = tc;
-            //float2 z = float2(0, 0);
+            float2 c = tc;
+            float2 z = float2(0, 0);
             float t = 0.2*time;
             float s = 1.0 + sin(5*time)*0.05;
-            float2 up = float2(cos(t), sin(t))*s;
-            float2 vp = float2(-up.y, up.x)*s;
+            float2 up = float2(cos(t), sin(t));//*s;
+            float2 vp = float2(-up.y, up.x);
             
-            float2 c = float2(-0.726895347709114071439, 0.188887129043845954792);// + up*0.1;
-            float2 z = tc;
+            //float2 c = float2(-0.726895347709114071439, 0.188887129043845954792);// + up*0.01;
+            //float2 z = tc;
 
             for (int i = 0; i < 30; ++i)
             {
@@ -51,11 +47,20 @@ class App(ZglApp):
               {
                 float2 p = z;
                 p = up*p.x + vp*p.y;
-                p += float2(0.5, 0.5);
-
-                float4 v = tex2D(tex, p);
-                //float4 v = tex2D(tex, up*z.x + vp*z.y);
-                col = col*(1-v.a) + v*v.a;
+                float fade = min(1, 2/(abs(p.x)+abs(p.y)));
+                if (isnan(fade))
+                  fade = 0;
+                p += float2(0.5, 0.5) + float2(i*0.34, i*0.12);
+                
+                float4 v = tex2D(tex, p) * fade;
+                float2 dx = abs(ddx(p));
+                float2 dy = abs(ddy(p));
+                float d = dx.x+dx.y+dy.x+dy.y;
+                if (isnan(d))
+                  d = 1;
+                float a = v.a * pow(min(1, d*512/8), 2.0);
+                col = col*(1-a) + v*a;
+                
               }
             }
             return float4(col);
