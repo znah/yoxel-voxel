@@ -48,7 +48,10 @@ cgGLSetParameter4f.argtypes = [c_int, c_float, c_float, c_float, c_float]
 cgGLSetTextureParameter = cggl.cgGLSetTextureParameter
 cgGLSetTextureParameter.argtypes = [c_int, c_uint]
 
-cgProfiles = {"fp40"  : 6151, 
+
+cgProfiles = {"fp30"  : 6149, 
+              "vp30"  : 6148,
+              "fp40"  : 6151, 
               "vp40"  : 7001, 
               "gp4fp" : 7010,
               "gp4vp" : 7011,
