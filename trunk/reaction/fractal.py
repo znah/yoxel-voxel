@@ -19,7 +19,7 @@ class App(ZglApp):
         self.tex1 = loadTex("img/fung.png")
         self.tex2 = loadTex("img/lines.png")
         self.tex3 = loadTex("img/bubble.png")
-        self.noiseTex = loadTex("img/noise256g.png")
+        self.noiseTex = loadTex("img/noise256x4g.png")
 
 
         self.fragProg = CGShader('fp40', '''
@@ -56,10 +56,8 @@ class App(ZglApp):
                 float2 p = z;
                 //p = up*p.x + vp*p.y;
 
-                float ox = 2*tex2D(noiseTex, (p+os)*0.11 + 0.3).r-1;
-                float oy = 2*tex2D(noiseTex, (p+os)*0.11 + 0.8).r-1;
-                float2 ofs = float2(ox, oy);
-                p += ofs * 0.03;
+                float2 ofs = 2*tex2D(noiseTex, (p+os)*0.1).rg-1;
+                p += ofs * 0.035;
 
                 float fade = min(1, 2/(abs(p.x)+abs(p.y)));
                 if (isnan(fade))
@@ -124,7 +122,7 @@ class App(ZglApp):
         pixels.shape = (sz[1], sz[0], 3) # !!! bug
         pixels = flipud(pixels)
         img = Image.fromarray(pixels)
-        img.save("shot_%02d.png" % (self.shotn,))
+        img.save("shot_%02d.jpg" % (self.shotn,))
         self.shotn += 1
 
 
