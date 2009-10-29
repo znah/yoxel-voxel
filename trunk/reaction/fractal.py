@@ -48,32 +48,29 @@ class App(ZglApp):
 
             float os = 0.2 * time;
 
+            const float Escape = 10.0;
+
             for (int i = 0; i < 30; ++i)
             {
-              //float2 z2 = cmul(z, z);
               z = cmul(z, z) + c;
+              if ( any( abs(z) > Escape ) )
+                break;
+              
               {
                 float2 p = z;
-                //p = up*p.x + vp*p.y;
 
                 float2 ofs = 2*tex2D(noiseTex, (p+os)*0.1).rg-1;
                 p += ofs * 0.035;
 
                 float fade = min(1, 2/(abs(p.x)+abs(p.y)));
-                if (isnan(fade))
-                  fade = 0;
-
                 p += float2(0.5, 0.5) + float2(i*0.34, i*0.12);
-                
                 float4 v = tex2D(tex, p) * fade;
+                
                 float2 dx = abs(ddx(p));
                 float2 dy = abs(ddy(p));
                 float d = dx.x+dx.y+dy.x+dy.y;
-                if (isnan(d))
-                  d = 1;
                 float a = v.a * pow(min(1, d*512/8), 2.0);
                 col = col*(1-a) + v*a;
-                
               }
             }
             return float4(col);
