@@ -85,6 +85,7 @@ def checkCGerror():
         return
     msg = cgGetErrorString(err)
     listing = cgGetLastListing(cgContext)
+    print listing
     raise Exception(msg, listing)
 
 
@@ -174,7 +175,7 @@ class Texture2D:
                 glTexImage2D(GL_TEXTURE_2D, 0, format, img.shape[1], img.shape[0], 0, srcFormat, srcType, img)
                 self.size = YX(img.shape[:2])
             return
-        elif shape != None:
+        elif size != None:
             with self:
                 glTexImage2D(GL_TEXTURE_2D, 0, format, size[0], size[1], 0, srcFormat, srcType, None)
                 self.size = size
@@ -423,7 +424,7 @@ def zglInit(viewSize, title):
     InitCG()
 
 class BufferObject:
-    def __init__(self):
+    def __init__(self, data = None, use = GL_STATIC_DRAW):
         self._as_parameter_ = glGenBuffers(1)
         class Binder:
             def __init__(self, parent, target):
@@ -437,6 +438,11 @@ class BufferObject:
         self.pixelUnpack  = Binder(self, GL_PIXEL_UNPACK_BUFFER)
         self.array        = Binder(self, GL_ARRAY_BUFFER)
         self.elementArray = Binder(self, GL_ELEMENT_ARRAY_BUFFER)
+
+        if data is not None:
+            with self.array:
+                glBufferData(GL_ARRAY_BUFFER, data, use)
+                
 
 
 class OrthoCamera:
@@ -559,6 +565,15 @@ class ZglApp(object):
 
     def mouseButton(self, btn, up, x, y):             
         safe_call(self.viewControl, 'mouseButton', btn, up, x, y)
+
+
+class vattr:
+    def __init__(self, index):
+        self.index = index
+    def __enter__(self):
+        glEnableVertexAttribArray(self.index)
+    def __exit__(self, *args):
+        glDisableVertexAttribArray(self.index)
 
 
 """
