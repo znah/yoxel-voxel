@@ -5,6 +5,7 @@ from OpenGL.GLU import *
 from OpenGL.GL.EXT.framebuffer_object import *
 from OpenGL.GL.EXT.texture_integer import *
 from numpy import *
+from time import clock
 
 # freeglut hack
 platform.GLUT = ctypes.windll.LoadLibrary("freeglut")
@@ -409,7 +410,7 @@ class FlyCamera:
         right /= linalg.norm(right)
         return right
     
-    def updatePos(self, dt):
+    def update(self, dt):
         v = self.vel[0] * self.forwardVec() + self.vel[1] * self.rightVec()
         if self.keyModifiers & GLUT_ACTIVE_SHIFT != 0:
             v *= 10
@@ -532,6 +533,9 @@ class OrthoCamera:
     def __exit__(self, *args):
         self.proj.__exit__()
 
+    def update(self, dt):
+        pass
+
 
 def safe_call(obj, method, *l, **d):
     if hasattr(obj, method):
@@ -568,12 +572,13 @@ class ZglApp(object):
 
 
 class vattr:
-    def __init__(self, index):
-        self.index = index
+    def __init__(self, *idxs):
+        self.idxs = idxs
     def __enter__(self):
-        glEnableVertexAttribArray(self.index)
+        [glEnableVertexAttribArray(idx)  for idx in self.idxs]
     def __exit__(self, *args):
-        glDisableVertexAttribArray(self.index)
+        [glDisableVertexAttribArray(idx)  for idx in self.idxs]
+
 
 
 """

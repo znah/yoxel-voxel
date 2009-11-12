@@ -171,7 +171,7 @@ class App:
         t = clock()
         dt = t - self.t;
         self.t = t
-        self.viewControl.updatePos(dt)
+        self.viewControl.update(dt)
 
         if self.moved:
             self.updateVTex()
