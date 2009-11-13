@@ -6,9 +6,9 @@ class App(ZglApp):
     def __init__(self):
         ZglApp.__init__(self, OrthoCamera())
 
-        vortexRowN = 4
-        dustRowN = 512
-        w = 256
+        vortexRowN = 32
+        dustRowN = 0
+        w = 32
         self.psize = (w, vortexRowN + dustRowN)
         self.vortexOfs = 0
         self.vortexN = vortexRowN * w
@@ -16,9 +16,8 @@ class App(ZglApp):
         self.dustN = dustRowN * w
 
         pstate = random.rand(self.psize[1], self.psize[0], 4).astype(float32)
-        pstate[..., 2] = pstate[..., 2] ** 5
-        pstate[..., 2] = 0.02 + (pstate[..., 2])*1  # radius
-        pstate[..., 3] = (2 * pstate[..., 3] - 1)*3 # curl
+        pstate[..., 2] = 0.03 + (pstate[..., 2])*0.2  # radius
+        pstate[..., 3] = (2 * pstate[..., 3] - 1)*1.5 # curl
         self.particles = PingPong(img=pstate, format = GL_RGBA_FLOAT32_ATI)
         self.partVBO = BufferObject(pstate, GL_STREAM_COPY)
 
@@ -42,17 +41,17 @@ class App(ZglApp):
             return float4(p, data.z, data.w);
           }
         '''
+
         self.partUpdateProg = CGShader( 'fp40', particleCode, entry = 'main')
 
         self.vortexFrag = CGShader('fp40', '''
           float4 main( float2 tc: TEXCOORD0, float curl : TEXCOORD1 ) : COLOR 
           { 
-            tc.y = 1.0 - tc.y;
             float2 p = tc * 2.0 - 1.0;
-            float2 t = float2(-p.y, p.x) - 0.1*p;
+            float2 t = float2(-p.y, p.x);
             
-            float r = 6*length(p);
-            float v = exp(-r) * curl;
+            float r = 3*length(p);
+            float v = exp(-r*r) * curl;
             t *= v;
 
             return float4(t, r*v, 0); 
@@ -80,12 +79,11 @@ class App(ZglApp):
           float4 main( float2 tc: TEXCOORD0 ) : COLOR
           {
             float4 data = tex2D(flowTex, tc);
-            float vel = length(data.xy)*3;
+            //float vel = length(data.xy)*3;
             float c = data.z;
             float ac = abs(c);
-            c *= 0.2;
-            float3 col = float3(ac+c, ac, ac-c);
-            return float4(0.2*col, 1);
+            c *= 0.5;
+            return float4(ac+c, ac, ac-c, 1);
           }
         ''')
         
@@ -147,8 +145,8 @@ class App(ZglApp):
         
         self.visFrag.flowTex = self.flowTex.tex
         with self.viewControl.with_vp:
-            #with self.visFrag:
-            #    drawQuad()
+            with self.visFrag:
+                drawQuad()
 
             with self.partVBO.array:
                 glVertexAttribPointer(0, 4, GL_FLOAT, False, 0, 0)
