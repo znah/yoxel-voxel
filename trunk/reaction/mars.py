@@ -7,14 +7,15 @@ class App(ZglApp):
         ZglApp.__init__(self, OrthoCamera())
 
         self.psize = (64, 32)
-        self.vortexNum = 2
-        
+
         pstate = random.rand(self.psize[1], self.psize[0], 4).astype(float32)
-        pstate[..., 3] = (2 * pstate[..., 3] - 1)*1
+        pstate[..., 2] = 0.03 + (pstate[..., 2])*0.2  # radius
+        pstate[..., 3] = (2 * pstate[..., 3] - 1)*1.5 # curl
         self.particles = PingPong(img=pstate, format = GL_RGBA_FLOAT32_ATI)
         self.partVBO = BufferObject(pstate, GL_STREAM_COPY)
 
-        self.flowTex = RenderTexture(size = (512, 512), format = GL_RGBA_FLOAT16_ATI)
+        flowBufSize = 256
+        self.flowTex = RenderTexture(size = (flowBufSize, flowBufSize), format = GL_RGBA_FLOAT16_ATI)
         self.flowTex.tex.filterLinear()
 
         self.partUpdateProg = CGShader( 'fp40', '''
@@ -41,13 +42,15 @@ class App(ZglApp):
             float2 t = float2(-p.y, p.x);
             
             float r = 3*length(p);
-            t *= exp(-r*r) * curl;
+            float v = exp(-r*r) * curl;
+            t *= v;
 
-            return float4(t, 0, 1); 
+            return float4(t, r*v, 0); 
           }
         ''')
         
         self.vortexVert = CGShader('vp40', '''
+          uniform float spriteScale;
           void main( 
             float4 data  : ATTR0,
             out float4 oPos  : POSITION,
@@ -55,19 +58,23 @@ class App(ZglApp):
             out float oCurl  : TEXCOORD1 ) 
           { 
             float4 p = float4(data.xy, 0, 1);
-            oPos = mul(glstate.matrix.mvp, p); ;
-            oPSize = 10 + data.z*100;
+            oPos = mul(glstate.matrix.mvp, p);
+            oPSize = spriteScale * data.z;
             oCurl = data.w;
           }
         ''')
+        self.vortexVert.spriteScale = flowBufSize
 
         self.visFrag = CGShader( 'fp40', '''
           uniform sampler2D flowTex;
           float4 main( float2 tc: TEXCOORD0 ) : COLOR
           {
-            float2 v = tex2D(flowTex, tc).xy;
-            float vel = length(v)*3;
-            return float4(float3(vel), 1);
+            float4 data = tex2D(flowTex, tc);
+            //float vel = length(data.xy)*3;
+            float c = data.z;
+            float ac = abs(c);
+            c *= 0.5;
+            return float4(ac+c, ac, ac-c, 1);
           }
         ''')
 
