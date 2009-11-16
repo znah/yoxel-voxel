@@ -16,9 +16,11 @@ class App(ZglApp):
             tex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 16))
             return tex
 
-        self.tex1 = loadTex("img/fung.png")
-        self.tex2 = loadTex("img/lines.png")
-        self.tex3 = loadTex("img/bubble.png")
+        self.tex = {}
+        self.tex['1'] = loadTex("img/fung.png")
+        self.tex['2'] = loadTex("img/lines.png")
+        self.tex['3'] = loadTex("img/bubble.png")
+        self.tex['4'] = loadTex("img/tentacle.png")
         self.noiseTex = loadTex("img/noise256x4g.png")
 
 
@@ -76,7 +78,7 @@ class App(ZglApp):
             return float4(col);
           }
         ''')
-        self.fragProg.tex = self.tex1
+        self.fragProg.tex = self.tex['1']
         self.fragProg.noiseTex = self.noiseTex
 
         self.juliaSeed = V(-0.726895347709114071439, 0.188887129043845954792)
@@ -103,12 +105,8 @@ class App(ZglApp):
         ZglApp.mouseMove(self, x, y)
 
     def keyDown(self, key, x, y):
-        if key == '1':
-            self.fragProg.tex = self.tex1
-        if key == '2':
-            self.fragProg.tex = self.tex2
-        if key == '3':
-            self.fragProg.tex = self.tex3
+        if self.tex.has_key(key):
+            self.fragProg.tex = self.tex[key]           
         if key == 'w':
             self.screenshot()
         ZglApp.keyDown(self, key, x, y)
