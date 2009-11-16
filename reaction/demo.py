@@ -31,11 +31,11 @@ def init():
         float2 l = -4.0 * v;
         l += tex2D(texture, pos + float2( dpos.x, 0)).xy;
         l += tex2D(texture, pos + float2(-dpos.x, 0)).xy;
-        l += tex2D(texture, pos + float2( 0, dpos.y)).xy;
-        l += tex2D(texture, pos + float2( 0,-dpos.y)).xy;
+        l += tex2D(texture, pos + float2( 0, dpos.y)).xy*0.9;
+        l += tex2D(texture, pos + float2( 0,-dpos.y)).xy*(1/0.9);
         l *= 3;
 
-        const float2 diffCoef = float2(0.082, 0.041);
+        const float2 diffCoef = float2(0.082, 0.041*1.8);
 
         const float fs = 0.0;
         const float ks = 0.0;
@@ -43,7 +43,7 @@ def init():
 
         const float f = fc;//lerp(fc, 0.011, d);
         const float k = kc;//lerp(kc, 0.055, d);
-        const float dt = 0.5f;
+        const float dt = 0.3f;
 
         float2 dv = diffCoef * l;
         float rate = v.x * v.y * v.y;
