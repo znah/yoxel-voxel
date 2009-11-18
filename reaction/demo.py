@@ -27,13 +27,18 @@ def init():
       uniform float kc;
       float4 main(float2 pos : TEXCOORD0) : COLOR
       {
+        float cdist = length(pos-float2(0.5, 0.5));
+        float flow = 0.99;//length(pos-float2(0.5, 0.5)) > 0.2 ? 0.8 : 1.0;
+
         float2 v = tex2D(texture, pos).xy;
         float2 l = -4.0 * v;
         l += tex2D(texture, pos + float2( dpos.x, 0)).xy;
         l += tex2D(texture, pos + float2(-dpos.x, 0)).xy;
-        l += tex2D(texture, pos + float2( 0, dpos.y)).xy*0.9;
-        l += tex2D(texture, pos + float2( 0,-dpos.y)).xy*(1/0.9);
-        l *= 3;
+        l += tex2D(texture, pos + float2( 0, dpos.y)).xy*flow;
+        l += tex2D(texture, pos + float2( 0,-dpos.y)).xy*(1/flow);
+        
+        if (cdist < 0.2)
+          l *= 1 + (1-cdist/0.2) * 2;
 
         const float2 diffCoef = float2(0.082, 0.041*1.8);
 
@@ -58,7 +63,7 @@ def init():
     # f= 0.029  k = 0.055     diffCoef = float2(0.082, 0.041*1.8); !!!
 
     global fc, kc
-    fc, kc = 0.029, 0.055
+    fc, kc = 0.027, 0.054
     reactFrag.fc = fc
     reactFrag.kc = kc
     global mouseX, mouseY
