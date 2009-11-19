@@ -7,7 +7,7 @@ class App(ZglApp):
         ZglApp.__init__(self, OrthoCamera())
 
         vortexRowN = 4
-        dustRowN = 512
+        dustRowN = 256
         w = 256
         self.psize = (w, vortexRowN + dustRowN)
         self.vortexOfs = 0
@@ -49,7 +49,7 @@ class App(ZglApp):
           { 
             tc.y = 1.0 - tc.y;
             float2 p = tc * 2.0 - 1.0;
-            float2 t = float2(-p.y, p.x) - 0.1*p;
+            float2 t = float2(-p.y, p.x) - 0.0*p;
             
             float r = 6*length(p);
             float v = exp(-r) * curl;
@@ -77,15 +77,10 @@ class App(ZglApp):
 
         self.visFrag = CGShader( 'fp40', '''
           uniform sampler2D flowTex;
+          uniform sampler2D sandTex;
           float4 main( float2 tc: TEXCOORD0 ) : COLOR
           {
-            float4 data = tex2D(flowTex, tc);
-            float vel = length(data.xy)*3;
-            float c = data.z;
-            float ac = abs(c);
-            c *= 0.2;
-            float3 col = float3(ac+c, ac, ac-c);
-            return float4(0.2*col, 1);
+            return tex2D(sandTex, tc);
           }
         ''')
         
@@ -100,6 +95,23 @@ class App(ZglApp):
             color = float4(1);
           }
         ''')
+
+        a = zeros((512, 512, 4), float32)
+        a[100:200,100:200,0] = 1
+        self.sandTex = PingPong(img=a, format = GL_RGBA_FLOAT16_ATI)
+        self.sandTex.texparams(*Texture2D.Linear)
+        self.sandUpdate = CGShader('fp40', '''
+          uniform sampler2D flowTex;
+          uniform sampler2D sandTex;
+          uniform float dt;
+          float4 main( float2 tc: TEXCOORD0 ) : COLOR
+          {
+            float2 v = tex2D(flowTex, tc).xy;
+            float2 p = tc - v*dt;
+            return tex2D(sandTex, p);
+          }
+        ''')
+        self.sandUpdate.flowTex = self.flowTex.tex
 
         glTexEnvf(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE)
 
@@ -134,10 +146,16 @@ class App(ZglApp):
                 OpenGL.raw.GL.glReadPixels(0, 0, self.psize[0], self.psize[1], GL_RGBA, GL_FLOAT, None)
         self.particles.flip()
 
+        self.sandUpdate.sandTex = self.sandTex.src.tex
+        self.sandUpdate.dt = dt
+        with ctx(self.sandTex.dst, self.sandUpdate, ortho):
+            drawQuad()
+        self.sandTex.flip()
+
     
     def display(self):
         t = clock()
-        dt =  t - self.time
+        dt = t - self.time
         self.time = t
 
         self.updateParticles(dt)
@@ -146,14 +164,15 @@ class App(ZglApp):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
         self.visFrag.flowTex = self.flowTex.tex
+        self.visFrag.sandTex = self.sandTex.src.tex
         with self.viewControl.with_vp:
-            #with self.visFrag:
-            #    drawQuad()
+            with self.visFrag:
+                drawQuad()
 
-            with self.partVBO.array:
-                glVertexAttribPointer(0, 4, GL_FLOAT, False, 0, 0)
-            with ctx(vattr(0), self.dustVert):
-                glDrawArrays(GL_POINTS, self.dustOfs, self.dustN)
+            #with self.partVBO.array:
+            #    glVertexAttribPointer(0, 4, GL_FLOAT, False, 0, 0)
+            #with ctx(vattr(0), self.dustVert):
+            #    glDrawArrays(GL_POINTS, self.dustOfs, self.dustN)
 
         glutSwapBuffers()
 

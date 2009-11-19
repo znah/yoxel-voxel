@@ -82,7 +82,7 @@ def init():
     """)
 
     global pp;
-    a = zeros((512, 512, 4), float32)
+    a = zeros((256, 256, 4), float32)
     a[...,0] = 1
     a[...,1] = 0
     pp = PingPong(img = a, format = GL_RGBA_FLOAT32_ATI)
@@ -105,7 +105,7 @@ def display():
 
     glutSetWindow(window);
 
-    ipf = 100
+    ipf = 10
     glFinish()
     startTime = time.clock()
     for i in xrange(ipf):
