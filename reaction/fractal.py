@@ -21,8 +21,6 @@ class App(ZglApp):
         self.tex['2'] = loadTex("img/lines.png")
         self.tex['3'] = loadTex("img/bubble.png")
         self.tex['4'] = loadTex("img/tentacle.png")
-        self.noiseTex = loadTex("img/noise256x4g.png")
-
 
         self.fragProg = CGShader('fp40', '''
           uniform sampler2D tex;
@@ -79,10 +77,12 @@ class App(ZglApp):
           }
         ''')
         self.fragProg.tex = self.tex['1']
-        self.fragProg.noiseTex = self.noiseTex
+        self.fragProg.noiseTex = loadTex("img/noise256x4g.png")
 
         self.juliaSeed = V(-0.726895347709114071439, 0.188887129043845954792)
         self.fragProg.juliaSeed = self.juliaSeed
+
+        self.largeBuf = RenderTexture(size=(1280, 800))
 
         self.shotn = 0
 
@@ -109,6 +109,8 @@ class App(ZglApp):
             self.fragProg.tex = self.tex[key]           
         if key == 'w':
             self.screenshot()
+        if key == 's':
+            self.renderShot()
         ZglApp.keyDown(self, key, x, y)
 
     def screenshot(self):
@@ -119,11 +121,23 @@ class App(ZglApp):
         img = Image.fromarray(pixels)
         img.save("shot_%02d.jpg" % (self.shotn,))
         self.shotn += 1
-
+    
+    def renderShot(self):
+        sz = self.largeBuf.size()
+        #self.fragProg.time = clock()
+        with ctx(self.largeBuf, self.fragProg, Ortho(self.viewControl.rect)):
+            drawQuad(self.viewControl.rect)
+            pixels = glReadPixels(0, 0, sz[0], sz[1], GL_RGB, GL_UNSIGNED_BYTE, 'array')
+        pixels.shape = (sz[1], sz[0], 3) # !!! bug
+        pixels = flipud(pixels)
+        img = Image.fromarray(pixels)
+        img.save("shot_%02d.jpg" % (self.shotn,))
+        self.shotn += 1
+    
 
 
 if __name__ == "__main__":
-  viewSize = (800, 600)
+  viewSize = (960, 600)
   zglInit(viewSize, "hello")
 
   glutSetCallbacks(App())

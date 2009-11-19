@@ -113,8 +113,10 @@ def V(*args):
 def YX(*args):
     if len(args) == 1:
         return array((args[0][1], args[0][0]), float32)
-    else:
+    elif len(args) == 2:
         return array((args[1], args[0]), float32)
+    else:
+        return array([args[1], args[0]] + list(args[2:]), float32)
                             
 class CGShader:
     def __init__(self, profileName, code = None, fileName = None, entry = "main"):
@@ -145,6 +147,7 @@ class CGShader:
             raise Exception("unknown shader param", name)
         type_ = cgGetParameterType(param)
         cgParamSetters[type_](param, value)
+        self.__dict__[name] = value
 
 class Texture2D:
     ChNum2Format = {1:GL_LUMINANCE, 3:GL_RGB, 4:GL_RGBA}
