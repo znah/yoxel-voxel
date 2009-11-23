@@ -8,7 +8,7 @@ class App(ZglApp):
 
         vortexRowN = 4
         dustRowN = 256
-        w = 256
+        w = 128
         self.psize = (w, vortexRowN + dustRowN)
         self.vortexOfs = 0
         self.vortexN = vortexRowN * w
@@ -17,8 +17,8 @@ class App(ZglApp):
 
         pstate = random.rand(self.psize[1], self.psize[0], 4).astype(float32)
         pstate[..., 2] = pstate[..., 2] ** 5
-        pstate[..., 2] = 0.02 + (pstate[..., 2])*1  # radius
-        pstate[..., 3] = (2 * pstate[..., 3] - 1)*3 # curl
+        pstate[..., 2] = 0.02 + (pstate[..., 2])*2  # radius
+        pstate[..., 3] = (2 * pstate[..., 3] - 1)*2 # curl
         self.particles = PingPong(img=pstate, format = GL_RGBA_FLOAT32_ATI)
         self.partVBO = BufferObject(pstate, GL_STREAM_COPY)
 
@@ -78,11 +78,17 @@ class App(ZglApp):
         self.visFrag = CGShader( 'fp40', '''
           uniform sampler2D flowTex;
           uniform sampler2D sandTex;
+          uniform sampler2D bgTex;
+          uniform float t;
           float4 main( float2 tc: TEXCOORD0 ) : COLOR
           {
-            return tex2D(sandTex, tc);
+            float2 p = tex2D(sandTex, tc).xy;
+            return tex2D(bgTex, p);
           }
         ''')
+        self.bgTex = loadTex("img\\lush.jpg")
+        self.visFrag.bgTex = self.bgTex
+
         
         self.dustVert = CGShader('vp40', '''
           void main( 
@@ -96,8 +102,11 @@ class App(ZglApp):
           }
         ''')
 
-        a = zeros((512, 512, 4), float32)
-        a[100:200,100:200,0] = 1
+        x = linspace(0, 1, 1024)
+        X, Y = meshgrid(x, x)
+        a = zeros((len(x), len(x), 4), float32)
+        a[...,0] = X
+        a[...,1] = Y
         self.sandTex = PingPong(img=a, format = GL_RGBA_FLOAT16_ATI)
         self.sandTex.texparams(*Texture2D.Linear)
         self.sandUpdate = CGShader('fp40', '''
@@ -118,24 +127,17 @@ class App(ZglApp):
         self.time = clock()
 
     def updateParticles(self, dt):
-        glEnable(GL_POINT_SPRITE)
-        glEnable(GL_VERTEX_PROGRAM_POINT_SIZE_ARB)
-
-        glEnable(GL_BLEND)
         glBlendFunc(GL_ONE, GL_ONE);
         glBlendEquation(GL_FUNC_ADD);
 
-        with ctx(self.flowTex, ortho, self.vortexVert, self.vortexFrag):
+        flags = [GL_POINT_SPRITE, GL_VERTEX_PROGRAM_POINT_SIZE_ARB, GL_BLEND]
+        with ctx(self.flowTex, ortho, self.vortexVert, self.vortexFrag, glstate(*flags)):
             glClearColor(0, 0, 0, 0)
             glClear(GL_COLOR_BUFFER_BIT)
             with self.partVBO.array:
                 glVertexAttribPointer(0, 4, GL_FLOAT, False, 0, 0)
             with vattr(0):
                 glDrawArrays(GL_POINTS, self.vortexOfs, self.vortexN)
-        
-        glDisable(GL_BLEND)
-        glDisable(GL_VERTEX_PROGRAM_POINT_SIZE_ARB)
-        glDisable(GL_POINT_SPRITE)
             
         self.partUpdateProg.dt = dt
         self.partUpdateProg.partTex = self.particles.src.tex
@@ -158,13 +160,15 @@ class App(ZglApp):
         dt = t - self.time
         self.time = t
 
-        self.updateParticles(dt)
+        for i in xrange(2):
+            self.updateParticles(0.01)
 
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
         self.visFrag.flowTex = self.flowTex.tex
         self.visFrag.sandTex = self.sandTex.src.tex
+        self.visFrag.t = t
         with self.viewControl.with_vp:
             with self.visFrag:
                 drawQuad()
