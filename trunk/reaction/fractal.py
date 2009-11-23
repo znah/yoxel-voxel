@@ -9,13 +9,6 @@ class App(ZglApp):
 
         self.viewControl.rect = (-2, -1, 2, 1)
 
-        def loadTex(fn):
-            tex = Texture2D(Image.open(fn))
-            tex.filterLinearMipmap()
-            tex.genMipmaps()
-            tex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 16))
-            return tex
-
         self.tex = {}
         self.tex['1'] = loadTex("img/fung.png")
         self.tex['2'] = loadTex("img/lines.png")

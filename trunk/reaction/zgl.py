@@ -6,6 +6,7 @@ from OpenGL.GL.EXT.framebuffer_object import *
 from OpenGL.GL.EXT.texture_integer import *
 from numpy import *
 from time import clock
+from PIL import Image
 
 # freeglut hack
 platform.GLUT = ctypes.windll.LoadLibrary("freeglut")
@@ -582,6 +583,21 @@ class vattr:
     def __exit__(self, *args):
         [glDisableVertexAttribArray(idx)  for idx in self.idxs]
 
+
+class glstate:
+    def __init__(self, *state):
+        self.state = state
+    def __enter__(self):
+        [glEnable(idx)  for idx in self.state]
+    def __exit__(self, *args):
+        [glDisable(idx)  for idx in self.state]
+
+def loadTex(fn):
+    tex = Texture2D(Image.open(fn))
+    tex.filterLinearMipmap()
+    tex.genMipmaps()
+    tex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 8))
+    return tex
 
 
 """
