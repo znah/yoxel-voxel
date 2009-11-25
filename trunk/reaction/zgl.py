@@ -90,21 +90,6 @@ def checkCGerror():
     print listing
     raise Exception(msg, listing)
 
-
-'''
-class Vec2:
-    def __init__(self, x = 0, y = 0):
-        self.x = x
-        self.y = y
-    def __add__(self, other)
-        return Vec2(self.x + other.x, self.y + other.y)
-
-def XY(v):
-    return Vec2(v[0], v[1])
-def YX(v):
-    return Vec2(v[1], v[0])
-'''
-
 def V(*args):
     if len(args) == 1:
         return array(args[0], float32)
@@ -150,15 +135,17 @@ class CGShader:
         cgParamSetters[type_](param, value)
         self.__dict__[name] = value
 
-class Texture2D:
+class TextureBase(object):
+    Target = None  # to be set by subclass
+
     ChNum2Format = {1:GL_LUMINANCE, 3:GL_RGB, 4:GL_RGBA}
     
     Nearest = [(GL_TEXTURE_MIN_FILTER, GL_NEAREST), (GL_TEXTURE_MAG_FILTER, GL_NEAREST)]
     Linear  = [(GL_TEXTURE_MIN_FILTER, GL_LINEAR), (GL_TEXTURE_MAG_FILTER, GL_LINEAR)]
     MipmapLinear  = [(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR), (GL_TEXTURE_MAG_FILTER, GL_LINEAR)]
-    Repeat  = [(GL_TEXTURE_WRAP_S, GL_REPEAT), (GL_TEXTURE_WRAP_T, GL_REPEAT)]
-    Clamp  = [(GL_TEXTURE_WRAP_S, GL_CLAMP), (GL_TEXTURE_WRAP_T, GL_CLAMP)]
-    ClampToEdge  = [(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE), (GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)]
+    Repeat  = [(GL_TEXTURE_WRAP_S, GL_REPEAT), (GL_TEXTURE_WRAP_T, GL_REPEAT), (GL_TEXTURE_WRAP_R, GL_REPEAT)]
+    Clamp  = [(GL_TEXTURE_WRAP_S, GL_CLAMP), (GL_TEXTURE_WRAP_T, GL_CLAMP), (GL_TEXTURE_WRAP_R, GL_CLAMP)]
+    ClampToEdge  = [(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE), (GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE), (GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE)]
 
     def filterNearest(self):
         self.setParams(*self.Nearest)
@@ -167,7 +154,27 @@ class Texture2D:
     def filterLinearMipmap(self):
         self.setParams(*self.MipmapLinear)
 
+    def setParams(self, *args):
+        with self:
+            for pname, val in args:
+                glTexParameteri(self.Target, pname, val)
+
+    def genMipmaps(self):
+        with self:
+            glGenerateMipmapEXT(self.Target)
+    
+    def __enter__(self):
+        glBindTexture(self.Target, self)
+
+    def __exit__(self, *args):
+        glBindTexture(self.Target, 0)
+
+
+class Texture2D(TextureBase):
+    Target = GL_TEXTURE_2D
+
     def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = GL_RGBA, srcType = GL_FLOAT):
+        TextureBase.__init__(self)
         self._as_parameter_ = glGenTextures(1)
         self.setParams( *(self.Nearest + self.Repeat) )
         if img != None:
@@ -177,28 +184,40 @@ class Texture2D:
                 srcType = arrays.ArrayDatatype.getHandler(img).arrayToGLType(img)
                 glPixelStorei(GL_PACK_ALIGNMENT, 1);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-                glTexImage2D(GL_TEXTURE_2D, 0, format, img.shape[1], img.shape[0], 0, srcFormat, srcType, img)
+                glTexImage2D(self.Target, 0, format, img.shape[1], img.shape[0], 0, srcFormat, srcType, img)
                 self.size = YX(img.shape[:2])
             return
         elif size != None:
             with self:
-                glTexImage2D(GL_TEXTURE_2D, 0, format, size[0], size[1], 0, srcFormat, srcType, None)
+                glTexImage2D(self.Target, 0, format, size[0], size[1], 0, srcFormat, srcType, None)
                 self.size = size
 
-    def setParams(self, *args):
-        with self:
-            for pname, val in args:
-                glTexParameteri(GL_TEXTURE_2D, pname, val)
+class Texture3D(TextureBase):
+    Target = GL_TEXTURE_3D
 
-    def genMipmaps(self):
-        with self:
-            glGenerateMipmapEXT(GL_TEXTURE_2D)
-    
-    def __enter__(self):
-        glBindTexture(GL_TEXTURE_2D, self)
+    def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = GL_RGBA, srcType = GL_FLOAT):
+        TextureBase.__init__(self)
+        self._as_parameter_ = glGenTextures(1)
+        self.setParams( *(self.Nearest + self.Repeat) )
+        if img != None:
+            with self:
+                img = atleast_3d(ascontiguousarray(img))
+                if img.ndim == 3:
+                    ch = 1
+                else
+                    ch = im.shape[3]
+                srcFormat = self.ChNum2Format[ch]
+                srcType = arrays.ArrayDatatype.getHandler(img).arrayToGLType(img)
+                glPixelStorei(GL_PACK_ALIGNMENT, 1);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+                glTexImage2D(self.Target, 0, format, img.shape[1], img.shape[0], 0, srcFormat, srcType, img)
+                self.size = YX(img.shape[:2])
+            return
+        elif size != None:
+            with self:
+                glTexImage2D(self.Target, 0, format, size[0], size[1], 0, srcFormat, srcType, None)
+                self.size = size
 
-    def __exit__(self, *args):
-        glBindTexture(GL_TEXTURE_2D, 0)
 
 
 class RenderTexture:
@@ -600,6 +619,21 @@ def loadTex(fn):
     return tex
 
 
+TestShaders = '''
+  uniform sampler2D tex;
+
+  float4 TexCoordFP( float3 tc: TEXCOORD0 ) : COLOR 
+  { 
+    return float4(tc, 1); 
+  }
+  
+  float4 TexLookupFP( float2 tc: TEXCOORD0 ) : COLOR 
+  { 
+    return tex2D(tex, tc);
+  }
+'''
+
+
 """
 from __future__ import with_statement
 from zgl import *
@@ -607,13 +641,7 @@ from zgl import *
 class App(ZglApp):
     def __init__(self):
         ZglApp.__init__(self, OrthoCamera())
-
-        self.fragProg = CGShader('fp40', '''
-          float4 main( float2 tc: TEXCOORD0 ) : COLOR 
-          { 
-            return float4(tc, 0, 1); 
-          }
-        ''')
+        self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
     
     def display(self):
         glClearColor(0, 0, 0, 0)
@@ -625,11 +653,11 @@ class App(ZglApp):
         glutSwapBuffers()
 
 if __name__ == "__main__":
-  viewSize = (800, 600)
-  zglInit(viewSize, "hello")
+    viewSize = (800, 600)
+    zglInit(viewSize, "hello")
 
-  glutSetCallbacks(App())
+    glutSetCallbacks(App())
 
-  #wglSwapIntervalEXT(0)
-  glutMainLoop()
+    #wglSwapIntervalEXT(0)
+    glutMainLoop()
 """
