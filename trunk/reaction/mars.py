@@ -16,14 +16,16 @@ class App(ZglApp):
         self.dustN = dustRowN * w
 
         pstate = random.rand(self.psize[1], self.psize[0], 4).astype(float32)
-        pstate[..., 2] = pstate[..., 2] ** 5
-        pstate[..., 2] = 0.02 + (pstate[..., 2])*2  # radius
+        pstate[..., 0:2] *= 0.1
+        pstate[..., 0:2] += 0.45
+        pstate[..., 2] = pstate[..., 2] ** 2
+        pstate[..., 2] = 0.02 + (pstate[..., 2])  # radius
         pstate[..., 3] = (2 * pstate[..., 3] - 1)*2 # curl
         self.particles = PingPong(img=pstate, format = GL_RGBA_FLOAT32_ATI)
         self.partVBO = BufferObject(pstate, GL_STREAM_COPY)
 
         flowBufSize = 256
-        self.flowTex = RenderTexture(size = (flowBufSize, flowBufSize), format = GL_RGBA_FLOAT16_ATI)
+        self.flowTex = RenderTexture(size = (flowBufSize, flowBufSize), format = GL_RGBA_FLOAT32_ATI)
         self.flowTex.tex.filterLinear()
 
         particleCode = '''
@@ -107,7 +109,7 @@ class App(ZglApp):
         a = zeros((len(x), len(x), 4), float32)
         a[...,0] = X
         a[...,1] = Y
-        self.sandTex = PingPong(img=a, format = GL_RGBA_FLOAT16_ATI)
+        self.sandTex = PingPong(img=a, format = GL_RGBA_FLOAT32_ATI)
         self.sandTex.texparams(*Texture2D.Linear)
         self.sandUpdate = CGShader('fp40', '''
           uniform sampler2D flowTex;
@@ -125,6 +127,8 @@ class App(ZglApp):
         glTexEnvf(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE)
 
         self.time = clock()
+
+        self.paused = True
 
     def updateParticles(self, dt):
         glBlendFunc(GL_ONE, GL_ONE);
@@ -157,11 +161,17 @@ class App(ZglApp):
     
     def display(self):
         t = clock()
-        dt = t - self.time
-        self.time = t
 
-        for i in xrange(2):
-            self.updateParticles(0.01)
+        if self.paused:
+            self.time = t
+        else:
+            dt = t - self.time
+            tstep = 0.01
+            iterNum = int(dt / tstep)
+            self.time += tstep * iterNum
+
+            for i in xrange(iterNum):
+                self.updateParticles(tstep*0.2)
 
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -179,6 +189,14 @@ class App(ZglApp):
             #    glDrawArrays(GL_POINTS, self.dustOfs, self.dustN)
 
         glutSwapBuffers()
+
+    def keyDown(self, key, x, y):
+        if key == ' ':
+            self.paused = not self.paused
+        else:
+            ZglApp.keyDown(self, key, x, y)
+        
+
 
 if __name__ == "__main__":
   viewSize = (800, 600)
