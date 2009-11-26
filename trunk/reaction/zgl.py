@@ -64,7 +64,8 @@ cgParamSetters = {
   cg.cgGetType("float2")    : lambda p, v : cgGLSetParameter2f(p, v[0], v[1]),
   cg.cgGetType("float3")    : lambda p, v : cgGLSetParameter3f(p, v[0], v[1], v[2]),
   cg.cgGetType("float4")    : lambda p, v : cgGLSetParameter4f(p, v[0], v[1], v[2], v[3]),
-  cg.cgGetType("sampler2D") : lambda p, v : cgGLSetTextureParameter(p, v)
+  cg.cgGetType("sampler2D") : lambda p, v : cgGLSetTextureParameter(p, v),
+  cg.cgGetType("sampler3D") : lambda p, v : cgGLSetTextureParameter(p, v)
 }
 
 
@@ -204,18 +205,18 @@ class Texture3D(TextureBase):
                 img = atleast_3d(ascontiguousarray(img))
                 if img.ndim == 3:
                     ch = 1
-                else
+                else:
                     ch = im.shape[3]
                 srcFormat = self.ChNum2Format[ch]
                 srcType = arrays.ArrayDatatype.getHandler(img).arrayToGLType(img)
                 glPixelStorei(GL_PACK_ALIGNMENT, 1);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-                glTexImage2D(self.Target, 0, format, img.shape[1], img.shape[0], 0, srcFormat, srcType, img)
-                self.size = YX(img.shape[:2])
+                glTexImage3D(self.Target, 0, format, img.shape[2], img.shape[1], img.shape[0], 0, srcFormat, srcType, img)
+                self.size = V(img.shape[::-1])
             return
         elif size != None:
             with self:
-                glTexImage2D(self.Target, 0, format, size[0], size[1], 0, srcFormat, srcType, None)
+                glTexImage3D(self.Target, 0, format, size[0], size[1], size[2], 0, srcFormat, srcType, None)
                 self.size = size
 
 
@@ -567,11 +568,18 @@ def safe_call(obj, method, *l, **d):
 class ZglApp(object):
     def __init__(self, viewControl):
         self.viewControl = viewControl
+        self.time = clock()
     
     def resize(self, x, y):
         safe_call(self.viewControl, 'resize', x, y)
 
     def idle(self):
+        t = clock()
+        dt = t - self.time
+        self.time = t
+        self.viewControl.update(dt)
+        if hasattr(self, 'update'):
+            self.update(t, dt)
         glutPostRedisplay()
     
     def display(self):
