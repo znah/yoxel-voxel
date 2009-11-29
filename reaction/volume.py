@@ -7,8 +7,10 @@ class App(ZglApp):
 
         data = fromfile("img/bonsai.raw", uint8)
         data.shape = (256, 256, 256)
+        data = swapaxes(data, 0, 1)
         self.volumeTex =  Texture3D(img=data)
         self.volumeTex.filterLinear()
+        self.volumeTex.setParams(*TextureBase.Clamp)
         self.traceVP = CGShader('vp40', '''
           uniform float3 eyePos;
           float4 main(float2 p : POSITION, 
@@ -24,7 +26,7 @@ class App(ZglApp):
         ''')
 
         self.traceFP = CGShader('fp40', '''
-        # line 26
+        # line 30
           uniform sampler3D volume;
           uniform float time;
           uniform float3 eyePos;
@@ -42,8 +44,20 @@ class App(ZglApp):
             texit  = min(t2.x, min(t2.y, t2.z));
           }
 
+          float3 getnormal(float3 p)
+          {
+            float d = 1.0/256.0;
+            float x = tex3D(volume, p + float3(d, 0, 0)) - tex3D(volume, p - float3(d, 0, 0));
+            float y = tex3D(volume, p + float3(0, d, 0)) - tex3D(volume, p - float3(0, d, 0));
+            float z = tex3D(volume, p + float3(0, 0, d)) - tex3D(volume, p - float3(0, 0, d));
+            float3 n = -0.5*float3(x, y, z);
+            return normalize(n);
+          }
+
           float4 main( float3 rayDir: TEXCOORD0 ) : COLOR 
           {
+            const float3 lightDir = normalize(float3(1, 1, 1));
+
             rayDir = normalize(rayDir);
             float t1, t2;
             hitBox(eyePos, rayDir, t1, t2);
@@ -52,16 +66,25 @@ class App(ZglApp):
               return float4(0, 0, 0, 0);
             float3 p = eyePos + rayDir * t1;
 
-            float dt = 0.01;
+            float dt = 0.005;
             float3 step = dt * rayDir;
-            for (float t = t1; t < t2; t += dt)
+            float4 res = float4(0);
+            for (float t = t1; t < t2; t += dt, p += step)
             {
               float v = tex3D(volume, p);
-              if (v > 0.5)
-                return float4(p, 1);
-              p += step;
+              v = (v - 0.2) * 10;
+              if (v < 0.0)
+                continue;
+              v = saturate(v);
+
+              float3 n = getnormal(p);
+              float diff = max(dot(lightDir, n), 0);
+              float4 col = float4(diff*v, diff*v, diff*v, v);
+              float trans = 1.0f - res.a;
+              res.rgb += col.rgb * trans;
+              res.a += trans * col.a;
             }
-            return float4(0, 0, 0, 1);
+            return res;
           }
         ''')
         self.traceFP.volume = self.volumeTex
