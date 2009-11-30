@@ -10,7 +10,7 @@ class App(ZglApp):
         data = swapaxes(data, 0, 1)
         self.volumeTex =  Texture3D(img=data)
         self.volumeTex.filterLinear()
-        self.volumeTex.setParams(*TextureBase.Clamp)
+        self.volumeTex.setParams(*Texture.Clamp)
         self.traceVP = CGShader('vp40', '''
           uniform float3 eyePos;
           float4 main(float2 p : POSITION, 
