@@ -2,6 +2,80 @@ from __future__ import with_statement
 from zgl import *
 
 
+class EmptyFlowVis(object):
+    def __init__(self):
+        pass
+
+    def reset(self):
+        pass
+
+    def update(self, dt, time, flowTex):
+        pass
+
+    def render(self):
+        pass
+
+
+class TexFlowVis(object):
+    def __init__(self):
+        x = linspace(0, 1, 1024)
+        X, Y = meshgrid(x, x)
+        a = zeros((len(x), len(x), 4), float32)
+        a[...,0] = X
+        a[...,1] = Y
+        self.sandTex = PingPong(img=a, format = GL_RGBA_FLOAT32_ATI)
+        self.sandTex.texparams(*Texture2D.Linear)
+        self.sandUpdate = CGShader('fp40', '''
+          uniform sampler2D flowTex;
+          uniform sampler2D sandTex;
+          uniform float dt;
+          float4 main( float2 tc: TEXCOORD0 ) : COLOR
+          {
+            float2 v = tex2D(flowTex, tc).xy;
+            float2 p = tc - v*dt;
+            return tex2D(sandTex, p);
+          }
+        ''')
+
+        self.visFrag = CGShader( 'fp40', '''
+          uniform sampler2D flowTex;
+          uniform sampler2D sandTex;
+          uniform sampler2D bgTex;
+          uniform float t;
+          float4 main( float2 tc: TEXCOORD0 ) : COLOR
+          {
+            float2 p = tex2D(sandTex, tc).xy;
+            return tex2D(bgTex, p);
+          }
+        ''')
+        self.bgTex = loadTex("img\\lush.jpg")
+        self.visFrag.bgTex = self.bgTex
+        self.visFrag.sandTex = self.sandTex.src.tex
+
+
+    def reset(self):
+        pass
+
+    def update(self, dt, time, flowTex):
+        self.sandUpdate.sandTex = self.sandTex.src.tex
+        self.sandUpdate.dt = dt
+        self.sandUpdate.flowTex = flowTex
+        with ctx(self.sandTex.dst, self.sandUpdate, ortho):
+            drawQuad()
+        self.sandTex.flip()
+
+        self.visFrag.flowTex = flowTex
+        self.visFrag.sandTex = self.sandTex.src.tex
+        self.visFrag.t = time
+
+
+    def render(self):
+        with self.visFrag:
+            drawQuad()
+
+
+        
+
 class App(ZglApp):
     def __init__(self):
         ZglApp.__init__(self, OrthoCamera())
@@ -76,21 +150,6 @@ class App(ZglApp):
           }
         ''')
         self.vortexVert.spriteScale = flowBufSize
-
-        self.visFrag = CGShader( 'fp40', '''
-          uniform sampler2D flowTex;
-          uniform sampler2D sandTex;
-          uniform sampler2D bgTex;
-          uniform float t;
-          float4 main( float2 tc: TEXCOORD0 ) : COLOR
-          {
-            float2 p = tex2D(sandTex, tc).xy;
-            return tex2D(bgTex, p);
-          }
-        ''')
-        self.bgTex = loadTex("img\\lush.jpg")
-        self.visFrag.bgTex = self.bgTex
-
         
         self.dustVert = CGShader('vp40', '''
           void main( 
@@ -104,29 +163,11 @@ class App(ZglApp):
           }
         ''')
 
-        x = linspace(0, 1, 1024)
-        X, Y = meshgrid(x, x)
-        a = zeros((len(x), len(x), 4), float32)
-        a[...,0] = X
-        a[...,1] = Y
-        self.sandTex = PingPong(img=a, format = GL_RGBA_FLOAT32_ATI)
-        self.sandTex.texparams(*Texture2D.Linear)
-        self.sandUpdate = CGShader('fp40', '''
-          uniform sampler2D flowTex;
-          uniform sampler2D sandTex;
-          uniform float dt;
-          float4 main( float2 tc: TEXCOORD0 ) : COLOR
-          {
-            float2 v = tex2D(flowTex, tc).xy;
-            float2 p = tc - v*dt;
-            return tex2D(sandTex, p);
-          }
-        ''')
-        self.sandUpdate.flowTex = self.flowTex.tex
+
+        self.flowVis = TexFlowVis()
+
 
         glTexEnvf(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE)
-
-        self.time = clock()
 
         self.paused = True
 
@@ -152,23 +193,20 @@ class App(ZglApp):
                 OpenGL.raw.GL.glReadPixels(0, 0, self.psize[0], self.psize[1], GL_RGBA, GL_FLOAT, None)
         self.particles.flip()
 
-        self.sandUpdate.sandTex = self.sandTex.src.tex
-        self.sandUpdate.dt = dt
-        with ctx(self.sandTex.dst, self.sandUpdate, ortho):
-            drawQuad()
-        self.sandTex.flip()
+        self.flowVis.update(dt, self.time, self.flowTex.tex)
 
     
     def display(self):
-        t = clock()
-
         if self.paused:
-            self.time = t
+            self.simTime = self.time
         else:
-            dt = t - self.time
+            dt = self.time - self.simTime
             tstep = 0.01
             iterNum = int(dt / tstep)
-            self.time += tstep * iterNum
+            self.simTime += tstep * iterNum
+            if iterNum > 5:
+                self.simTime = self.time
+                iterNum = 1
 
             for i in xrange(iterNum):
                 self.updateParticles(tstep*0.2)
@@ -176,12 +214,8 @@ class App(ZglApp):
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        self.visFrag.flowTex = self.flowTex.tex
-        self.visFrag.sandTex = self.sandTex.src.tex
-        self.visFrag.t = t
         with self.viewControl.with_vp:
-            with self.visFrag:
-                drawQuad()
+            self.flowVis.render()
 
             #with self.partVBO.array:
             #    glVertexAttribPointer(0, 4, GL_FLOAT, False, 0, 0)
