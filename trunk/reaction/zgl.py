@@ -136,7 +136,7 @@ class CGShader:
         cgParamSetters[type_](param, value)
         self.__dict__[name] = value
 
-class TextureBase(object):
+class Texture(object):
     Target = None  # to be set by subclass
 
     ChNum2Format = {1:GL_LUMINANCE, 3:GL_RGB, 4:GL_RGBA}
@@ -171,11 +171,11 @@ class TextureBase(object):
         glBindTexture(self.Target, 0)
 
 
-class Texture2D(TextureBase):
+class Texture2D(Texture):
     Target = GL_TEXTURE_2D
 
     def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = GL_RGBA, srcType = GL_FLOAT):
-        TextureBase.__init__(self)
+        Texture.__init__(self)
         self._as_parameter_ = glGenTextures(1)
         self.setParams( *(self.Nearest + self.Repeat) )
         if img != None:
@@ -193,11 +193,11 @@ class Texture2D(TextureBase):
                 glTexImage2D(self.Target, 0, format, size[0], size[1], 0, srcFormat, srcType, None)
                 self.size = size
 
-class Texture3D(TextureBase):
+class Texture3D(Texture):
     Target = GL_TEXTURE_3D
 
     def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = GL_RGBA, srcType = GL_FLOAT):
-        TextureBase.__init__(self)
+        Texture.__init__(self)
         self._as_parameter_ = glGenTextures(1)
         self.setParams( *(self.Nearest + self.Repeat) )
         if img != None:
@@ -569,17 +569,18 @@ class ZglApp(object):
     def __init__(self, viewControl):
         self.viewControl = viewControl
         self.time = clock()
+        self.dt = 0
     
     def resize(self, x, y):
         safe_call(self.viewControl, 'resize', x, y)
 
     def idle(self):
         t = clock()
-        dt = t - self.time
+        self.dt = t - self.time
         self.time = t
-        self.viewControl.update(dt)
+        self.viewControl.update(self.dt)
         if hasattr(self, 'update'):
-            self.update(t, dt)
+            self.update(t, self.dt)
         glutPostRedisplay()
     
     def display(self):

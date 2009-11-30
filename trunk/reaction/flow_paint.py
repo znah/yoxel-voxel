@@ -31,18 +31,12 @@ class App(ZglApp):
             a = glReadPixels(0, 0, 512, 384, GL_RGBA, GL_FLOAT)
             a.shape = (384, 512, 4)
             save("a", a)
-            
-
-        self.time = clock()
 
     def setCommonParam(self, name, val):
         for prog in self.shaders:
             setattr(prog, name, val)
 
     def display(self):
-        t = clock()
-        dt = t - self.time
-        self.time = t
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         

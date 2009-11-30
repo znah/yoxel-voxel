@@ -49,6 +49,11 @@ class TexFlowVis(object):
           }
         ''')
         self.bgTex = loadTex("img\\lush.jpg")
+        #a = random.rand(512, 512, 4).astype(float32)
+        #self.bgTex = Texture2D(img=a)
+        #self.bgTex.genMipmaps()
+        #self.bgTex.filterLinearMipmap()
+        
         self.visFrag.bgTex = self.bgTex
         self.visFrag.sandTex = self.sandTex.src.tex
 
@@ -68,6 +73,58 @@ class TexFlowVis(object):
         self.visFrag.sandTex = self.sandTex.src.tex
         self.visFrag.t = time
 
+    def render(self):
+        with self.visFrag:
+            drawQuad()
+
+class NoiseFlowVis(object):
+    def __init__(self):
+        a = random.rand(512, 512, 4).astype(float32)
+        self.noiseTex = PingPong(img=a, format = GL_RGBA_FLOAT32_ATI)
+        self.noiseTex.texparams(*Texture2D.Linear)
+        self.sandUpdate = CGShader('fp40', '''
+          uniform sampler2D flowTex;
+          uniform sampler2D noiseTex;
+          uniform sampler2D sandTex;
+          uniform float dt;
+          float4 main( float2 tc: TEXCOORD0 ) : COLOR
+          {
+            float2 v = tex2D(flowTex, tc).xy;
+            float2 p = tc - v*dt;
+            return lerp(tex2D(sandTex, p), tex2D(noiseTex, p)  ) ;
+          }
+        ''')
+
+        self.visFrag = CGShader( 'fp40', '''
+          uniform sampler2D flowTex;
+          uniform sampler2D sandTex;
+          uniform sampler2D bgTex;
+          uniform float t;
+          float4 main( float2 tc: TEXCOORD0 ) : COLOR
+          {
+            float2 p = tex2D(sandTex, tc).xy;
+            return tex2D(bgTex, p);
+          }
+        ''')
+        self.bgTex = loadTex("img\\lush.jpg")
+        self.visFrag.bgTex = self.bgTex
+        self.visFrag.sandTex = self.sandTex.src.tex
+
+
+    def reset(self):
+        pass
+
+    def update(self, dt, time, flowTex):
+        self.sandUpdate.sandTex = self.sandTex.src.tex
+        self.sandUpdate.dt = dt
+        self.sandUpdate.flowTex = flowTex
+        with ctx(self.sandTex.dst, self.sandUpdate, ortho):
+            drawQuad()
+        self.sandTex.flip()
+
+        self.visFrag.flowTex = flowTex
+        self.visFrag.sandTex = self.sandTex.src.tex
+        self.visFrag.t = time
 
     def render(self):
         with self.visFrag:

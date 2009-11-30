@@ -101,8 +101,6 @@ class App(ZglApp):
 
         glTexEnvf(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE)
 
-        self.time = clock()
-
     def updateParticles(self, dt):
         glEnable(GL_POINT_SPRITE)
         glEnable(GL_VERTEX_PROGRAM_POINT_SIZE_ARB)
@@ -134,11 +132,7 @@ class App(ZglApp):
 
     
     def display(self):
-        t = clock()
-        dt =  t - self.time
-        self.time = t
-
-        self.updateParticles(dt)
+        self.updateParticles(self.dt)
 
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
