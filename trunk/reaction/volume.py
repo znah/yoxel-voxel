@@ -25,17 +25,18 @@ class App(ZglApp):
         
         ''')
 
-        self.traceFP = CGShader('fp40', '''
+        self.traceFP = CGShader('gp4fp', '''
         # line 30
           uniform sampler3D volume;
           uniform float time;
           uniform float3 eyePos;
-
+          uniform float dt;
+         
           void hitBox(float3 o, float3 d, out float tenter, out float texit)
           {
             float3 invD = 1.0 / d;
             float3 tlo = invD*(-o);
-            float3 thi = invD*(float3(1, 1, 1)-o);
+            float3 thi = invD*(float3(1.0, 1.0, 1.0)-o);
 
             float3 t1 = min(tlo, thi);
             float3 t2 = max(tlo, thi);
@@ -46,10 +47,10 @@ class App(ZglApp):
 
           float3 getnormal(float3 p)
           {
-            float d = 1.0/256.0;
-            float x = tex3D(volume, p + float3(d, 0, 0)) - tex3D(volume, p - float3(d, 0, 0));
-            float y = tex3D(volume, p + float3(0, d, 0)) - tex3D(volume, p - float3(0, d, 0));
-            float z = tex3D(volume, p + float3(0, 0, d)) - tex3D(volume, p - float3(0, 0, d));
+            float d = 0.2/256.0;
+            float x = tex3D(volume, p + float3(d, 0, 0)).r - tex3D(volume, p - float3(d, 0, 0)).r;
+            float y = tex3D(volume, p + float3(0, d, 0)).r - tex3D(volume, p - float3(0, d, 0)).r;
+            float z = tex3D(volume, p + float3(0, 0, d)).r - tex3D(volume, p - float3(0, 0, d)).r;
             float3 n = -0.5*float3(x, y, z);
             return normalize(n);
           }
@@ -61,34 +62,53 @@ class App(ZglApp):
             rayDir = normalize(rayDir);
             float t1, t2;
             hitBox(eyePos, rayDir, t1, t2);
-            t1 = max(0, t1);
+            t1 = max(0.0, t1);
             if (t1 > t2)
               return float4(0, 0, 0, 0);
             float3 p = eyePos + rayDir * t1;
 
-            float dt = 0.005;
             float3 step = dt * rayDir;
             float4 res = float4(0);
-            for (float t = t1; t < t2; t += dt, p += step)
-            {
-              float v = tex3D(volume, p);
-              v = (v - 0.2) * 10;
-              if (v < 0.0)
-                continue;
-              v = saturate(v);
+            float c0 = tex3D(volume, p).r;
+            p += step;
 
-              float3 n = getnormal(p);
-              float diff = max(dot(lightDir, n), 0);
-              float4 col = float4(diff*v, diff*v, diff*v, v);
-              float trans = 1.0f - res.a;
-              res.rgb += col.rgb * trans;
-              res.a += trans * col.a;
+            const float ths = 0.4;
+            for (float t = t1+dt; t < t2; t += dt, p += step)
+            {
+              float c1 = tex3D(volume, p).r;
+              if (c0 < ths && c1 > ths)
+              {
+                float3 p1 = p-step, p2 = p;
+                for (int i = 0; i < 4; ++i)
+                {
+                  float r = (ths - c0) / (c1 - c0);
+                  float3 pm = p1 + (p2-p1)*r;
+                  float cm = tex3D(volume, pm).r;
+                  if (cm < ths)
+                  {
+                    p1 = pm;
+                    c0 = cm;
+                  }
+                  else
+                  {
+                    p2 = pm;
+                    c1 = cm;
+                  }
+                }
+                float3 hitP = 0.5*(p1 + p2);
+                float3 n = getnormal(hitP);
+                float diffuse = dot(n, lightDir);
+                res = float4(diffuse, diffuse, diffuse, 1.0);
+                break;
+              }
+              c0 = c1;
             }
             return res;
           }
         ''')
         self.traceFP.volume = self.volumeTex
         self.viewControl.eye = (0, -1, 1)
+        self.traceFP.dt = 0.01
 
     def display(self):
         glClearColor(0, 0, 0, 0)
@@ -101,6 +121,15 @@ class App(ZglApp):
             drawQuad()
 
         glutSwapBuffers()
+
+    def keyDown(self, key, x, y):
+        if key == '[':
+            self.traceFP.dt = 0.5 * self.traceFP.dt
+        if key == ']':
+            self.traceFP.dt = 2.0 * self.traceFP.dt
+        else:
+            ZglApp.keyDown(self, key, x, y)
+
 
 if __name__ == "__main__":
     viewSize = (800, 600)

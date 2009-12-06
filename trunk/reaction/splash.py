@@ -38,12 +38,10 @@ class App(ZglApp):
             if (Age < 0)
               return 0;
             float r = length(p);
-            if (r < 3)
-              return 0;
             float wave = sin(2*pi*r/Wavelength - WavePhaseSpeed*Age);
             float timeFade = exp(-Dissipation*Age);
             float distFade = 1.0 / (r*r);
-            float h = Intensity * wave * timeFade * distFade;
+            float h = Intensity * timeFade * distFade;
             return min(h, 10.0);
           }
 
