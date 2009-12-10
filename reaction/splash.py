@@ -36,18 +36,23 @@ class App(ZglApp):
           
           const float pi = 3.141593;
 
-          float splashHeight(float2 p)
+          float2 splashHeightRad(float r, float frontDist)
+          {
+            float waveFade = r < frontDist ? pow(WaveFadeCoef, frontDist - r) / (1+r) : 0;
+
+            float shock = 5*exp(-0.5*r*r/frontDist/frontDist) / (1 + frontDist);
+            shock = min(shock, 10);
+
+            float wave = -sin(2*pi*(r-frontDist)/Wavelength);
+            float h = Intensity * wave * waveFade + shock;
+            return float2(h, shock/(1+Age));
+          } 
+          
+          float2 splashHeight(float2 p)
           {
             float r = length(p);
             float frontDist = Age * WaveVelocity;
-            if (r > frontDist)
-              return 0;
-
-            float waveFade = pow(WaveFadeCoef, frontDist - r) / (1+r*r);
-
-            float timeFade = 1;
-            float wave = -sin(2*pi*(r-frontDist)/Wavelength);
-            return Intensity * waveFade * timeFade * wave;
+            return splashHeightRad(r, frontDist);
           }
 
           void main(float2 inP : ATTR0, 
@@ -58,21 +63,29 @@ class App(ZglApp):
           {
             float3 pos = float3(inP*40, 0);
             float2 r = pos.xy - float2(20, 20);
-            float h = splashHeight(r);
+            float2 h_col = splashHeight(r);
+            float h = h_col.x;
+            float c = h_col.y;
 
             float step = 0.1;
-            float dx = splashHeight(r + float2(step, 0)) - h;
-            float dy = splashHeight(r + float2(0, step)) - h;
+            float dx = splashHeight(r + float2(step, 0)).x - h;
+            float dy = splashHeight(r + float2(0, step)).x - h;
             float3 n = normalize(float3(-dx/step, -dy/step, 1));
-            const float3 lightDir = normalize(float3(0.5));
+            const float3 lightDir = normalize(float3(-1 ,-1, 1));
             float diff = max(dot(lightDir, n), 0.0);
 
             pos.z = h;
 
             oPos = mul(glstate.matrix.mvp, float4(pos, 1));
             
-            float col = saturate(h/6 + 1);
-            oTC = float4(float3(col)*(0.1+diff*0.9), 0);
+            float shockR = Age*50 + 0.1;
+            float x = length(r)-shockR;
+            float a = Age*50+0.1;
+            c = exp(-x*x/a/a)/a;
+
+            float3 col = lerp(float3(0.1, 0.2, 0.6), float3(1), c);
+
+            oTC = float4(col*(0.1+diff*0.9), 0);
             oNormal = float3(0, 0, 1);
           }
         ''')
@@ -87,11 +100,10 @@ class App(ZglApp):
         glVertexAttribPointer(0, 2, GL_FLOAT, False, 0, self.verts.ctypes.data)
         
         self.vertProg.Age = self.time - self.startTime
-        self.vertProg.Intensity = 3.0;
+        self.vertProg.Intensity = 10.0;
         self.vertProg.WaveFadeCoef= 0.5;
-        #self.vertProg.TimeFadeCoef= 0.5;
-        self.vertProg.WaveVelocity = 5;
-        self.vertProg.Wavelength = 2;
+        self.vertProg.WaveVelocity = 10;
+        self.vertProg.Wavelength = 3;
 
         with ctx(self.viewControl.with_vp, self.vertProg, self.fragProg, vattr(0), glstate(GL_DEPTH_TEST)):
             glDrawElements(GL_QUADS, len(self.idxs), GL_UNSIGNED_INT, self.idxs)
