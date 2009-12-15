@@ -3,32 +3,12 @@
 
 using namespace boost::python;
 
-namespace numpy
-{
-template <class T> struct TypeTrairs {};
-
-template <> struct TypeTrairs<float> 
-{ 
-  static const char * name() { return "float32"; } 
-};
-
-template <> struct TypeTrairs<int> 
-{ 
-  static const char * name() { return "int32"; } 
-};
-
-template <> struct TypeTrairs<unsigned int> 
-{ 
-  static const char * name() { return "uint32"; } 
-};
-
-}
 
 template <class T>
 T * get_array_ptr(object a)
 {
   // TODO: type check
-  return (float*)(int)extract<int>(a.attr("ctypes").attr("data"));
+  return (T*)(int)extract<int>(a.attr("ctypes").attr("data"));
 }
 
 /*point_3i get_array_shape(object a)
@@ -41,15 +21,24 @@ T * get_array_ptr(object a)
   for (int i = 0; i < ndim; ++i)
     res[i] = extract<int>(shape[i]);
   return res;
+
 }*/
 
-
-void test(int i)
+object LapGrow_FetchBlack(const LapGrow & grow)
 {
-  printf("asdad %d\n", i);
-}
+  int sz = grow.size();
+  object numpy = import("numpy");
+  object a = numpy.attr("zeros")(make_tuple(sz, 2), "float32");
+  point_2f * dst = get_array_ptr<point_2f>(a);
+  const point_2f * src = grow.black();
+  std::copy(src, src + sz, dst);
+  return a;
+};
 
 BOOST_PYTHON_MODULE(_grower)
 {
-  def("test", test);
+  class_<LapGrow>("LapGrow")
+    .def("GrowParticle", &LapGrow::GrowParticle)
+    .def("SetExponent", &LapGrow::SetExponent)
+    .def("FetchBlack", LapGrow_FetchBlack);
 }

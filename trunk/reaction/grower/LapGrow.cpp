@@ -6,16 +6,17 @@ point_2f LapGrow::neib(const point_2f & p, int i)
   static const point_2f ofs[NeibNum] = { point_2f( 1, 0),
                                          point_2f( 0, 1),
                                          point_2f(-1, 0),
-                                         point_2f( 0,-0)};
+                                         point_2f( 0,-1)};
   return p + ofs[i];
 }
 
 LapGrow::LapGrow() 
-  : m_nu(2.0f)
+  : m_exponent(3.0f)
   , m_chargeR(1.0f)
 {
   point_2f p0 = point_2f(0, 0);
   m_black.push_back(p0);
+  TryMarkSpace(p0);
   for (int i = 0; i < NeibNum; ++i)
     TryAddGrey(neib(p0, i));
 }
@@ -60,22 +61,37 @@ void LapGrow::GrowParticle()
     hi = max(hi, v);
   }
   if (hi - lo < epsf)
-    std::fill(m_prob.begin(), m_prob.end(), 1.0f / m_prob.size());
+    std::fill(m_prob.begin(), m_prob.end(), 1.0f);
   else
   {
     float invd = 1.0f / (hi - lo);
     for (int i = 0; i < m_prob.size(); ++i)
       m_prob[i] = (m_grey[i].phi - lo) * invd;
-    float invsum = 1.0f / std::accumulate(m_prob.begin(), m_prob.end(), 0.0f);
-    for (int i = 0; i < m_prob.size(); ++i)
-      m_prob[i] *= invsum;
   }
-  std::partial_sum( m_prob.begin(), m_prob.end(), m_prob.begin());
-  float r = randf();
-  std::lower_bound();
-    
+  for (int i = 0; i < m_prob.size(); ++i)
+  {
+    //m_prob[i] = pow(m_prob[i], m_exponent);
+    float v = m_prob[i];
+    float v2 = v*v;
+    m_prob[i] = v2*v2;
+  }
 
+  float invsum = 1.0f / std::accumulate(m_prob.begin(), m_prob.end(), 0.0f);
+  for (int i = 0; i < m_prob.size(); ++i)
+    m_prob[i] *= invsum;
 
+  std::partial_sum(m_prob.begin(), m_prob.end(), m_prob.begin());
+  int chosen = std::lower_bound(m_prob.begin(), m_prob.end(), randf()) - m_prob.begin();
+  chosen = min(chosen, m_prob.size()-1);
   
+  point_2f pos = m_grey[chosen].pos;
+  m_grey[chosen] = m_grey.back();
+  m_grey.pop_back();
+  m_black.push_back(pos);
 
+  for (int i = 0; i < m_grey.size(); ++i)
+    m_grey[i].phi += calcPhi(pos, m_grey[i].pos);
+
+  for (int i = 0; i < NeibNum; ++i)
+    TryAddGrey(neib(pos, i));
 }
