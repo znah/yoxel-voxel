@@ -11,7 +11,7 @@ n0 = neib(p0)
 grey  = dict(zip(n0, [0.0]*len(n0)))
 eps = 1e-6
 
-for i in xrange(4000):
+for i in xrange(2000):
     sites = grey.keys()
     phi   = array(grey.values(), float32)
     
