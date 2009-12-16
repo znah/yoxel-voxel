@@ -628,6 +628,39 @@ def loadTex(fn):
     return tex
 
 
+
+_ObejctPool = {}
+
+def drawGrid(w, h = None):
+    if h is None:
+        h = w
+    objName = "drawGrid_%dx%d" % (w, h)
+    if objName not in _ObejctPool:
+        verts = zeros((h, w, 2), float32)
+        verts[...,1], verts[...,0] = indices((h, w))
+        verts /= (w, h)
+    
+        idxgrid = arange(h*w).reshape(h, w)
+        idxs= zeros((h-1, w-1, 4), uint32)
+        idxs[...,0] = idxgrid[ :-1, :-1 ]
+        idxs[...,1] = idxgrid[ :-1,1:   ]  
+        idxs[...,2] = idxgrid[1:  ,1:   ]
+        idxs[...,3] = idxgrid[1:  , :-1 ]
+        idxs = idxs.flatten()
+
+        vertBuf = BufferObject(verts)
+        idxBuf = BufferObject(idxs)
+        _ObejctPool[objName] = (vertBuf, idxBuf, len(idxs))
+
+    (vertBuf, idxBuf, idxNum) = _ObejctPool[objName]
+    with vertBuf.array:
+        glVertexAttribPointer(0, 2, GL_FLOAT, False, 0, 0)
+    with ctx(idxBuf.elementArray, vattr(0)):
+        glDrawElements(GL_QUADS, idxNum, GL_UNSIGNED_INT, None)
+   
+
+
+
 TestShaders = '''
   uniform sampler2D tex;
 
