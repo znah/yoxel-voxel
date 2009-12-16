@@ -8,19 +8,6 @@ class App(ZglApp):
         self.viewControl.eye = (0, 0, 10)
         self.viewControl.speed = 5
 
-        n = 256
-        self.verts = zeros((n, n, 2), float32)
-        self.verts[...,1], self.verts[...,0] = indices((n, n))
-        self.verts /= (n-1)
-        
-        idxgrid = arange(n*n).reshape(n, n)
-        self.idxs= zeros((n-1, n-1, 4), uint32)
-        self.idxs[...,0] = idxgrid[ :-1, :-1 ]
-        self.idxs[...,1] = idxgrid[ :-1,1:   ]  
-        self.idxs[...,2] = idxgrid[1:  ,1:   ]
-        self.idxs[...,3] = idxgrid[1:  , :-1 ]
-        self.idxs = self.idxs.flatten()
-
         self.vertProg = CGShader("vp40", '''
           #line 26
           uniform float time;
@@ -97,17 +84,14 @@ class App(ZglApp):
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        glVertexAttribPointer(0, 2, GL_FLOAT, False, 0, self.verts.ctypes.data)
-        
         self.vertProg.Age = self.time - self.startTime
         self.vertProg.Intensity = 10.0;
         self.vertProg.WaveFadeCoef= 0.5;
         self.vertProg.WaveVelocity = 10;
         self.vertProg.Wavelength = 3;
 
-        with ctx(self.viewControl.with_vp, self.vertProg, self.fragProg, vattr(0), glstate(GL_DEPTH_TEST)):
-            glDrawElements(GL_QUADS, len(self.idxs), GL_UNSIGNED_INT, self.idxs)
-            #drawQuad()
+        with ctx(self.viewControl.with_vp, self.vertProg, self.fragProg, glstate(GL_DEPTH_TEST)):
+            drawGrid(256)
 
         glutSwapBuffers()
 
