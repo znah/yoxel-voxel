@@ -1,7 +1,15 @@
 from __future__ import with_statement
 from zgl import *
 
-
+def sample_ball(n):
+    a = zeros((0, 3), float32)    
+    while len(a) < n:
+        b = random.rand(n - len(a), 3) * 2.0 - 1.0
+        v = sum(b*b, axis=1)
+        b = b[v<1.0]
+        a = vstack((a, b))
+    return a.astype(float32)   
+        
 class Explosion:
     def __init__(self):
         self.spriteFP = CGShader('fp40', '''
@@ -19,44 +27,51 @@ class Explosion:
         ''')
         
         self.spriteVP = CGShader('vp40', '''
-          uniform float time;
+          uniform float age;
           uniform float spriteSize;
           uniform float projCoef;
           
+          uniform float3 basePos;
+          
           void main( 
             float3 inPos  : ATTR0,
+            float3 inVel  : ATTR1,
             out float4 oPos  : POSITION,
             out float oPSize : PSIZE) 
           {
-            oPos = mul(glstate.matrix.mvp, float4(inPos, 1));
+            oPos = mul(glstate.matrix.mvp, float4(basePos + inPos, 1));
             oPSize = projCoef * spriteSize / oPos.w;
           }
         ''')
-        self.spriteVP.spriteSize = 5.0
-        
-        self.partNum = 1000
-        #self.verts = random.rand(self.partNum, 3).astype(float32) * 10.0
-        #self.verts[:,0:2] += 50.0
 
-        self.partVel = random.rand(self.partNum, 3).astype(float32) - 0.5
-        self.partVel[:,2] += 0.5
-        self.partVel *= 20.0
+        self.spriteVP.spriteSize = 5.0
+        self.spriteVP.basePos = (50, 50, 10)
         
-        self.time = -1.0
+        self.reset(0.0)
+        
+    def reset(self, startTime):
+        self.startTime = startTime
+        self.lastTime = startTime
+
+        self.pNum = 1000
+        self.ppos = sample_ball(self.pNum) * 1.0
+        self.pvel = sample_ball(self.pNum) * 50.0
+        self.zidx = arange(self.pNum).astype(uint32)
+
         
     def update(self, time, viewControl):
-        self.time = time
-        if time < 0:
+        dt = time - self.lastTime
+        self.lastTime = time
+        self.age = time - self.startTime
+        if self.age < 0:
             return
             
-        #self.verts += (random.rand(self.partNum, 3)-0.5) * 0.1   
-        self.verts = self.partVel * time
-        self.verts[:,2] -= 9.8*time*time
+        self.ppos += self.pvel * dt
+        self.pvel *= 0.5**dt
+        self.pvel += sin(self.ppos*0.1)*dt*10
         
-        self.verts += (50, 50, 0)
-            
         eyeDir = viewControl.forwardVec()
-        z = dot(self.verts, eyeDir)
+        z = dot(self.ppos, eyeDir)
         self.zidx = argsort(-z).astype(uint32)
         
         fov = radians(viewControl.fovy)
@@ -64,16 +79,17 @@ class Explosion:
         self.spriteVP.projCoef = h / (2.0*tan(0.5*fov))
         
     def render(self):
-        if self.time < 0:
+        if self.age < 0:
             return
             
         glTexEnvf(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE)
         glDepthMask(GL_FALSE)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
                         
-        glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, self.verts.ctypes.data)
+        glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, self.ppos.ctypes.data)
+        glVertexAttribPointer(1, 3, GL_FLOAT, False, 0, self.pvel.ctypes.data)
         flags = [GL_POINT_SPRITE, GL_VERTEX_PROGRAM_POINT_SIZE_ARB, GL_DEPTH_TEST, GL_BLEND]
-        with ctx(self.spriteVP, self.spriteFP, vattr(0), glstate(*flags)):
+        with ctx(self.spriteVP, self.spriteFP, vattr(0, 1), glstate(*flags)):
             glDrawElements(GL_POINTS, len(self.zidx), GL_UNSIGNED_INT, self.zidx)
             
         glDepthMask(GL_TRUE)    
@@ -125,15 +141,13 @@ class App(ZglApp):
         
         self.exlposion = Explosion()
 
-        self.startTime = 0
-
     
     def display(self):
         glClearColor(0, 0.5, 0.7, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
         self.vertProg.time = self.time
-        self.exlposion.update(self.time - self.startTime, self.viewControl)
+        self.exlposion.update(self.time, self.viewControl)
 
         with self.viewControl.with_vp:
             with ctx(self.vertProg, self.fragProg, glstate(GL_DEPTH_TEST)):
@@ -144,7 +158,7 @@ class App(ZglApp):
 
     def keyDown(self, key, x, y):
         if key == ' ':
-            self.startTime = self.time
+            self.exlposion.reset(self.time)
         else:
             ZglApp.keyDown(self, key, x, y)
 
@@ -154,9 +168,5 @@ if __name__ == "__main__":
     zglInit(viewSize, "hello")
 
     #wglSwapIntervalEXT(0)
-    try:
-        glutSetCallbacks(App())
-        glutMainLoop()
-    except:
-        print sys.exc_info()
-        raw_input()
+    glutSetCallbacks(App())
+    glutMainLoop()
