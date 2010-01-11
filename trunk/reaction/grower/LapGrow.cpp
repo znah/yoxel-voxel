@@ -73,7 +73,9 @@ void LapGrow::GrowParticle()
     //m_prob[i] = pow(m_prob[i], m_exponent);
     float v = m_prob[i];
     float v2 = v*v;
-    m_prob[i] = v2*v2;
+    float v4 = v2*v2;
+    float v8 = v4*v4;
+    m_prob[i] = v8;
   }
 
   float invsum = 1.0f / std::accumulate(m_prob.begin(), m_prob.end(), 0.0f);

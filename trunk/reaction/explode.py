@@ -12,39 +12,62 @@ def sample_ball(n):
         
 class Explosion:
     def __init__(self):
+        bb = array([[[0, 0, 0],
+                    [1, 0, 0],
+                    [1, 1, 0],
+                    [1, 1, 1]]], float32)
+        gradTex = Texture2D(img = bb)
+        gradTex.filterLinear()
+        gradTex.setParams(*Texture.ClampToEdge)
+    
         self.spriteFP = CGShader('fp40', '''
-          //uniform sampler2D tex;
-          float4 main(float2 tc: TEXCOORD0) : COLOR
+          uniform sampler2D tex;
+          uniform sampler2D gradTex;
+          float4 main(float2 tc: TEXCOORD0, float fade: TEXCOORD1) : COLOR
           {
-            float2 p = 2.0 * tc - 1.0;
-            float r = length(p);
-            float a = smoothstep(1.0, 0.0, r);
-            float3 c1 = float3(0.3, 0.2, 0.2);
-            float3 c2 = float3(1.0, 0.7, 0.2);
-            float3 c = lerp(c1, c2, a*a);
-            return float4(c, a);//tex2D(tex, tc);
+            float4 c = tex2D(tex, tc);
+            c.rgb = tex2D(gradTex, float2(c.a*0.8, 0.5)).rgb;
+            c.a *= fade;
+            return c;
           }
         ''')
+        self.spriteFP.tex = loadTex('img\\smoke.png')
+        self.spriteFP.gradTex = gradTex
         
         self.spriteVP = CGShader('vp40', '''
           uniform float age;
-          uniform float spriteSize;
-          uniform float projCoef;
           
           uniform float3 basePos;
           
           void main( 
             float3 inPos  : ATTR0,
             float3 inVel  : ATTR1,
+            float2 inTC   : ATTR2,
+            float2 inRotation : ATTR4, // (ang0, angVel)
             out float4 oPos  : POSITION,
-            out float oPSize : PSIZE) 
+            out float4 oTC   : TEXCOORD0,
+            out float oFade : TEXCOORD1) 
           {
-            oPos = mul(glstate.matrix.mvp, float4(basePos + inPos, 1));
-            oPSize = projCoef * spriteSize / oPos.w;
+            float4 posWld = float4(basePos + inPos, 1.0);
+            float4 posEye = mul(glstate.matrix.modelview[0], posWld);
+            
+            float ang = inRotation.x + inRotation.y * age;
+            float size = 10.0 * (1 - exp(-age));
+            
+            float2 u;
+            sincos(ang, u.y, u.x);
+            float2 v = float2(-u.y, u.x);
+            float2 uv = (inTC-0.5) * size;
+            
+            posEye.xy += uv.x * u + uv.y * v;
+            oPos = mul(glstate.matrix.projection, posEye);
+            oTC = float4(inTC, 0, 1);
+            
+            oFade = 1;//smoothstep(0.0, 5.0, age);
+            
           }
         ''')
 
-        self.spriteVP.spriteSize = 5.0
         self.spriteVP.basePos = (50, 50, 10)
         
         self.reset(0.0)
@@ -53,11 +76,23 @@ class Explosion:
         self.startTime = startTime
         self.lastTime = startTime
 
-        self.pNum = 1000
+        self.pNum = 100
         self.ppos = sample_ball(self.pNum) * 1.0
-        self.pvel = sample_ball(self.pNum) * 50.0
-        self.zidx = arange(self.pNum).astype(uint32)
-
+        
+        self.pvel = sample_ball(self.pNum) * 30.0
+        self.zorder = arange(self.pNum).astype(uint32)
+        
+        self.arrTC = tile([[0, 0], [1, 0], [1, 1], [0, 1]], (self.pNum, 1)).astype(float32)
+        
+        rotation = random.rand(self.pNum, 2).astype(float32)
+        ang0 = rotation[:,0]
+        angVel = rotation[:,1]
+        ang0 *= 2*pi
+        angVel[:] = angVel*2 - 1
+        #angVel *= 5.0
+        self.arrRot = tile(rotation, (1, 4))
+        
+        self.updateRenderArrays()
         
     def update(self, time, viewControl):
         dt = time - self.lastTime
@@ -67,30 +102,36 @@ class Explosion:
             return
             
         self.ppos += self.pvel * dt
-        self.pvel *= 0.5**dt
-        self.pvel += sin(self.ppos*0.1)*dt*10
         
         eyeDir = viewControl.forwardVec()
         z = dot(self.ppos, eyeDir)
-        self.zidx = argsort(-z).astype(uint32)
+        self.zorder = argsort(-z).astype(uint32)
         
-        fov = radians(viewControl.fovy)
-        h = viewControl.vp.size[1]
-        self.spriteVP.projCoef = h / (2.0*tan(0.5*fov))
+        self.updateRenderArrays()
+        
+    def updateRenderArrays(self, indexOnly = False):
+        if not indexOnly:
+            self.arrPos = tile(self.ppos,  (1, 4))
+            self.arrVel = tile(self.pvel,  (1, 4))
+        self.arrIdx = repeat(self.zorder*4, 4).reshape(-1, 4)
+        self.arrIdx += [0, 1, 2, 3]
         
     def render(self):
         if self.age < 0:
             return
             
-        glTexEnvf(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE)
         glDepthMask(GL_FALSE)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+                  
+        self.spriteVP.age = self.age
                         
-        glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, self.ppos.ctypes.data)
-        glVertexAttribPointer(1, 3, GL_FLOAT, False, 0, self.pvel.ctypes.data)
-        flags = [GL_POINT_SPRITE, GL_VERTEX_PROGRAM_POINT_SIZE_ARB, GL_DEPTH_TEST, GL_BLEND]
-        with ctx(self.spriteVP, self.spriteFP, vattr(0, 1), glstate(*flags)):
-            glDrawElements(GL_POINTS, len(self.zidx), GL_UNSIGNED_INT, self.zidx)
+        glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, self.arrPos.ctypes.data)
+        glVertexAttribPointer(1, 3, GL_FLOAT, False, 0, self.arrVel.ctypes.data)
+        glVertexAttribPointer(2, 2, GL_FLOAT, False, 0, self.arrTC.ctypes.data)
+        glVertexAttribPointer(4, 2, GL_FLOAT, False, 0, self.arrRot.ctypes.data)
+        flags = [GL_DEPTH_TEST, GL_BLEND]
+        with ctx(self.spriteVP, self.spriteFP, vattr(0, 1, 2, 4), glstate(*flags)):
+            glDrawElements(GL_QUADS, self.pNum * 4, GL_UNSIGNED_INT, self.arrIdx)
             
         glDepthMask(GL_TRUE)    
 

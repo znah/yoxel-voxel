@@ -11,7 +11,7 @@ grow = LapGrow()
 grow.SetExponent(5.0)
 
 t = clock()
-for i in xrange(20000):
+for i in xrange(50000):
     if i % 1000 == 0:
         print i
     grow.GrowParticle()     
