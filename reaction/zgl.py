@@ -163,6 +163,9 @@ class Texture(object):
     def genMipmaps(self):
         with self:
             glGenerateMipmapEXT(self.Target)
+
+    def aniso(self, n):
+        self.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, n))
     
     def __enter__(self):
         glBindTexture(self.Target, self)
@@ -624,7 +627,7 @@ def loadTex(fn):
     tex = Texture2D(Image.open(fn))
     tex.filterLinearMipmap()
     tex.genMipmaps()
-    tex.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, 8))
+    tex.aniso(8)
     return tex
 
 

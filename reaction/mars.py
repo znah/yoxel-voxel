@@ -49,9 +49,10 @@ class TexFlowVis(object):
           }
         ''')
         self.bgTex = loadTex("img\\lush.jpg")
-        #a = random.rand(512, 512, 4).astype(float32)
+        #a = random.rand(1024, 1024).astype(float32)
         #self.bgTex = Texture2D(img=a)
         #self.bgTex.genMipmaps()
+        #self.bgTex.aniso(16)
         #self.bgTex.filterLinearMipmap()
         
         self.visFrag.bgTex = self.bgTex
