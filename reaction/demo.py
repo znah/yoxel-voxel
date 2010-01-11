@@ -37,8 +37,8 @@ def init():
         l += tex2D(texture, pos + float2( 0, dpos.y)).xy*flow;
         l += tex2D(texture, pos + float2( 0,-dpos.y)).xy*(1/flow);
         
-        if (cdist < 0.2)
-          l *= 1 + (1-cdist/0.2) * 2;
+        //if (cdist < 0.2)
+        //  l *= 1 + (1-cdist/0.2) * 2;
 
         const float2 diffCoef = float2(0.082, 0.041*1.8);
 
@@ -48,7 +48,7 @@ def init():
 
         const float f = fc;//lerp(fc, 0.011, d);
         const float k = kc;//lerp(kc, 0.055, d);
-        const float dt = 0.3f;
+        const float dt = 0.5f;
 
         float2 dv = diffCoef * l;
         float rate = v.x * v.y * v.y;
