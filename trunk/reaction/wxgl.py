@@ -3,12 +3,11 @@ from zgl import *
 import wx
 from wx import glcanvas
 
-class ZglWXApp(object):
-    def __init__(self, title = "ZglWXApp", size = (800, 600)):
+class ZglAppWX(object):
+    def __init__(self, title = "ZglAppWX", size = (800, 600)):
         self.app = wx.PySimpleApp()
         self.frame = frame = wx.Frame(None, wx.ID_ANY, title)
         self.canvas = canvas = glcanvas.GLCanvas(frame, -1)
-        self.client = None
         self.initSize = size
 
         canvas.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)
@@ -36,7 +35,7 @@ class ZglWXApp(object):
 
     def OnPaint(self, event):
         dc = wx.PaintDC(self.canvas)
-        safe_call(self.client, "display")
+        safe_call(self, "display")
         self.canvas.SwapBuffers()
 
     def OnKeyDown(self, event):
@@ -49,7 +48,7 @@ class ZglWXApp(object):
 
     def OnSize(self, event):
         size = self.canvas.GetClientSize()
-        safe_call(self.client, "resize", size.width, size.height)
+        #safe_call(self.client, "resize", size.width, size.height)
         self.canvas.Refresh(False)
 
     def OnMouse(self, evt):
@@ -59,9 +58,10 @@ class ZglWXApp(object):
             btn = evt.GetButton()
             print up, btn
 
-class App(ZglApp):
+class App(ZglAppWX):
     def __init__(self):
-        ZglApp.__init__(self, OrthoCamera())
+        ZglAppWX.__init__(self)
+        self.viewControl = OrthoCamera()
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
     
     def display(self):
@@ -72,6 +72,5 @@ class App(ZglApp):
             drawQuad()
 
 if __name__ == "__main__":
-    app = ZglWXApp("wx test", (800, 600))
-    app.client = App()
+    app = App()
     app.run()
