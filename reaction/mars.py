@@ -134,9 +134,9 @@ class NoiseFlowVis(object):
 
         
 
-class App(ZglApp):
+class App(ZglAppWX):
     def __init__(self):
-        ZglApp.__init__(self, OrthoCamera())
+        ZglAppWX.__init__(self, viewControl = OrthoCamera())
 
         vortexRowN = 4
         dustRowN = 256
@@ -280,21 +280,13 @@ class App(ZglApp):
             #with ctx(vattr(0), self.dustVert):
             #    glDrawArrays(GL_POINTS, self.dustOfs, self.dustN)
 
-        glutSwapBuffers()
-
-    def keyDown(self, key, x, y):
-        if key == ' ':
+    def OnKeyDown(self, evt):
+        key = evt.GetKeyCode()
+        if key == ord(' '):
             self.paused = not self.paused
         else:
-            ZglApp.keyDown(self, key, x, y)
-        
-
+            ZglAppWX.OnKeyDown(self, evt)
 
 if __name__ == "__main__":
-  viewSize = (800, 600)
-  zglInit(viewSize, "hello")
-
-  glutSetCallbacks(App())
-
-  #wglSwapIntervalEXT(0)
-  glutMainLoop()
+    app = App()
+    app.run()

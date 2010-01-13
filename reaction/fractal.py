@@ -3,9 +3,9 @@ from zgl import *
 from PIL import Image
 from time import clock
 
-class App(ZglApp):
+class App(ZglAppWX):
     def __init__(self):
-        ZglApp.__init__(self, OrthoCamera())
+        ZglAppWX.__init__(self, size = (960, 600), viewControl = OrthoCamera())
 
         self.viewControl.rect = (-2, -1, 2, 1)
 
@@ -88,23 +88,26 @@ class App(ZglApp):
         with ctx(self.viewControl.with_vp, self.fragProg):
             drawQuad(self.viewControl.rect)
 
-        glutSwapBuffers()
-
-    def mouseMove(self, x, y):
+    def OnMouse(self, evt):
         if self.viewControl.mButtons[2]:
-           dp = self.viewControl.scr2wld(x, y) - self.viewControl.mPosWld
-           self.juliaSeed += dp
-           self.fragProg.juliaSeed = self.juliaSeed
-        ZglApp.mouseMove(self, x, y)
+            x, y = evt.Position
+            dp = self.viewControl.scr2wld(x, y) - self.viewControl.mPosWld
+            self.juliaSeed += dp
+            self.fragProg.juliaSeed = self.juliaSeed
+        ZglAppWX.OnMouse(self, evt)
+        
 
-    def keyDown(self, key, x, y):
-        if self.tex.has_key(key):
-            self.fragProg.tex = self.tex[key]           
-        if key == 'w':
-            self.screenshot()
-        if key == 's':
-            self.renderShot()
-        ZglApp.keyDown(self, key, x, y)
+    def OnKeyDown(self, evt):
+        code = evt.GetKeyCode()
+        if code < 256:
+            key = chr(code)
+            if self.tex.has_key(key):
+                self.fragProg.tex = self.tex[key]
+            if key == 'W':
+                self.screenshot()
+            if key == 'S':
+                self.renderShot()
+        ZglAppWX.OnKeyDown(self, evt)
 
     def screenshot(self):
         sz = self.viewControl.vp.size
@@ -128,12 +131,5 @@ class App(ZglApp):
         self.shotn += 1
     
 
-
 if __name__ == "__main__":
-  viewSize = (960, 600)
-  zglInit(viewSize, "hello")
-
-  glutSetCallbacks(App())
-
-  #wglSwapIntervalEXT(0)
-  glutMainLoop()
+    App().run()
