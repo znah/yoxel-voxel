@@ -1,5 +1,7 @@
 from __future__ import with_statement
 import sys
+import wx
+from wx import glcanvas
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GL.EXT.framebuffer_object import *
@@ -357,7 +359,7 @@ class FlyCamera:
         self.zNear = 1.0
         self.zFar  = 1000.0
         
-        self.mButtons = zeros((3,), bool)
+        self.mButtons = zeros((3,), bool) # left, middle, right
         self.mPos = (0, 0)
         self.keyModifiers = 0
         
@@ -394,7 +396,7 @@ class FlyCamera:
     def mouseMove(self, x, y):
         dx = x - self.mPos[0]
         dy = y - self.mPos[1]
-        if self.mButtons[GLUT_LEFT_BUTTON]:
+        if self.mButtons[0]:
             self.course -= dx * self.sensitivity
             self.pitch = clip(self.pitch - dy * self.sensitivity, -89.9, 89.9)
         self.mPos = (x, y)
@@ -479,10 +481,9 @@ class OrthoCamera:
         self.rect = (0.0, 0.0, 1.0, 1.0)
         self.unsized = True
 
-        self.mButtons = zeros((3,), bool)
+        self.mButtons = zeros((3,), bool)  # left, middle, right
         self.mPos = (0, 0)
         self.mPosWld = (0, 0)
-        self.keyModifiers = 0
         self.with_vp = ctx(self.vp, self)
    
     def extent(self):
@@ -520,13 +521,12 @@ class OrthoCamera:
     def mouseMove(self, x, y):
         dx = x - self.mPos[0]
         dy = y - self.mPos[1]
-        if self.mButtons[GLUT_LEFT_BUTTON]:
+        if self.mButtons[0]:
             (sx, sy) = V(-dx, dy) / self.vp.size * self.extent()
             (x1, y1, x2, y2) = self.rect
             self.rect = (x1+sx, y1+sy, x2+sx, y2+sy)
         self.mPos = (x, y)
         self.mPosWld = self.scr2wld(x, y)
-        self.keyModifiers = glutGetModifiers()
 
     def scr2wld(self, x, y):
         (x1, y1, x2, y2) = self.rect
@@ -546,7 +546,6 @@ class OrthoCamera:
     def mouseButton(self, btn, up, x, y):
         self.mPos = (x, y)
         self.mPosWld = self.scr2wld(x, y)
-        self.keyModifiers = glutGetModifiers()
         if btn < 3:
             self.mButtons[btn] = not up
         if btn == 3:
@@ -562,6 +561,25 @@ class OrthoCamera:
 
     def update(self, dt):
         pass
+
+    # wxWindow callbacks
+    wx2glut = {wx.MOUSE_BTN_LEFT : 0, wx.MOUSE_BTN_MIDDLE: 1, wx.MOUSE_BTN_RIGHT: 2}
+
+    def OnMouse(self, evt):
+        x, y = evt.Position
+        wheel = evt.GetWheelRotation()
+        if evt.IsButton():
+            up = evt.ButtonUp()            
+            btn = self.wx2glut[evt.GetButton()]
+            self.mouseButton(btn, up, x, y)
+        elif wheel > 0:
+            self.mouseButton(3, 0, x, y)
+        elif wheel < 0:
+            self.mouseButton(4, 0, x, y)
+        else:
+            self.mouseMove(x, y)
+            
+
 
 
 def safe_call(obj, method, *l, **d):
@@ -604,6 +622,73 @@ class ZglApp(object):
 
     def mouseButton(self, btn, up, x, y):             
         safe_call(self.viewControl, 'mouseButton', btn, up, x, y)
+
+class ZglAppWX(object):
+    def __init__(self, title = "ZglAppWX", size = (800, 600), viewControl = None):
+        self.app = wx.PySimpleApp()
+        self.frame = frame = wx.Frame(None, wx.ID_ANY, title)
+        self.canvas = canvas = glcanvas.GLCanvas(frame, -1)
+        self.initSize = size
+        self.viewControl = viewControl
+
+        canvas.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)
+        canvas.Bind(wx.EVT_PAINT, self.OnPaint)
+
+        canvas.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
+        canvas.Bind(wx.EVT_KEY_UP, self.OnKeyUp)
+        canvas.Bind(wx.EVT_MOUSE_EVENTS, self.OnMouse)
+
+        canvas.Bind(wx.EVT_IDLE, self.OnIdle)
+       
+        frame.Show(True)
+        canvas.SetCurrent()
+        InitCG()
+
+    def run(self):
+        self.canvas.Bind(wx.EVT_SIZE, self.OnSize)
+        self.frame.SetClientSize(self.initSize)
+        self.app.SetTopWindow(self.frame)
+        
+        self.time = clock()
+        self.dt = 0
+        self.app.MainLoop()
+
+    def OnIdle(self, event):
+        t = clock()
+        self.dt = t - self.time
+        self.time = t
+        self.viewControl.update(self.dt)
+        safe_call(self, 'update', t, self.dt)
+        self.canvas.Refresh(False)
+
+    def OnEraseBackground(self, event):
+        pass # Do nothing, to avoid flashing on MSW.
+
+    def OnPaint(self, event):
+        dc = wx.PaintDC(self.canvas)
+        safe_call(self, "display")
+        self.canvas.SwapBuffers()
+
+    def display(self):
+        glClearColor(0, 0.5, 0, 0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+         
+    def OnKeyDown(self, event):
+        keycode = event.GetKeyCode()
+        if keycode == wx.WXK_ESCAPE:
+            self.frame.Close(True)
+        safe_call(self.viewControl, 'OnKeyDown', event)
+
+    def OnKeyUp(self, event):
+        safe_call(self.viewControl, 'OnKeyUp', event)
+
+    def OnMouse(self, evt):
+        safe_call(self.viewControl, 'OnMouse', evt)
+
+    def OnSize(self, event):
+        x, y = self.canvas.GetClientSize()
+        safe_call(self.viewControl, 'resize', x, y)
+        self.canvas.Refresh(False)
 
 
 class vattr:
@@ -682,10 +767,10 @@ TestShaders = '''
 """
 from __future__ import with_statement
 from zgl import *
-
-class App(ZglApp):
+    
+class App(ZglAppWX):
     def __init__(self):
-        ZglApp.__init__(self, OrthoCamera())
+        ZglAppWX.__init__(self, viewControl = OrthoCamera())
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
     
     def display(self):
@@ -695,14 +780,7 @@ class App(ZglApp):
         with ctx(self.viewControl.with_vp, self.fragProg):
             drawQuad()
 
-        glutSwapBuffers()
-
 if __name__ == "__main__":
-    viewSize = (800, 600)
-    zglInit(viewSize, "hello")
-
-    glutSetCallbacks(App())
-
-    #wglSwapIntervalEXT(0)
-    glutMainLoop()
+    app = App()
+    app.run()
 """

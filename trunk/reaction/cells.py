@@ -1,10 +1,9 @@
 from __future__ import with_statement
 from zgl import *
-from time import clock
 
-class App(ZglApp):
+class App(ZglAppWX):
     def __init__(self):
-        ZglApp.__init__(self, OrthoCamera())
+        ZglAppWX.__init__(self, viewControl = OrthoCamera())
 
         self.cellFrag = CGShader("fp40", fileName = "cells.cg")
 
@@ -17,17 +16,10 @@ class App(ZglApp):
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        self.cellFrag.time = clock()
+        self.cellFrag.time = self.time
         with ctx(self.viewControl.with_vp, self.cellFrag):
             drawQuad()
 
-        glutSwapBuffers()
-
 if __name__ == "__main__":
-  viewSize = (800, 600)
-  zglInit(viewSize, "hello")
-
-  glutSetCallbacks( App() )
-
-  #wglSwapIntervalEXT(0)
-  glutMainLoop()
+    app = App()
+    app.run()
