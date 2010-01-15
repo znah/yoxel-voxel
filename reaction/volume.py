@@ -1,9 +1,9 @@
 from __future__ import with_statement
 from zgl import *
 
-class App(ZglApp):
+class App(ZglAppWX):
     def __init__(self):
-        ZglApp.__init__(self, FlyCamera())
+        ZglAppWX.__init__(self, viewControl = FlyCamera())
 
         data = fromfile("img/bonsai.raw", uint8)
         data.shape = (256, 256, 256)
@@ -72,7 +72,7 @@ class App(ZglApp):
             float c0 = tex3D(volume, p).r;
             p += step;
 
-            const float ths = 0.4;
+            const float ths = 0.2;
             for (float t = t1+dt; t < t2; t += dt, p += step)
             {
               float c1 = tex3D(volume, p).r;
@@ -120,22 +120,15 @@ class App(ZglApp):
         with ctx(self.viewControl.with_vp, self.traceVP, self.traceFP):
             drawQuad()
 
-        glutSwapBuffers()
-
-    def keyDown(self, key, x, y):
-        if key == '[':
+    def OnKeyDown(self, evt):
+        key = evt.GetKeyCode()
+        if key == ord('['):
             self.traceFP.dt = 0.5 * self.traceFP.dt
-        if key == ']':
+        if key == ord(']'):
             self.traceFP.dt = 2.0 * self.traceFP.dt
         else:
-            ZglApp.keyDown(self, key, x, y)
+            ZglAppWX.OnKeyDown(self, evt)
 
 
 if __name__ == "__main__":
-    viewSize = (800, 600)
-    zglInit(viewSize, "hello")
-
-    glutSetCallbacks(App())
-
-    #wglSwapIntervalEXT(0)
-    glutMainLoop()
+    App().run()

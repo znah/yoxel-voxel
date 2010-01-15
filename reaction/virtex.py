@@ -65,10 +65,11 @@ class TileProvider:
             glColor(*col)
             with self.texFrag:
                 drawQuad()
+        '''
         with Ortho((0, 0, self.padTileSize, self.padTileSize)):
             glWindowPos2i(10, 15)
-            glutBitmapString(GLUT_BITMAP_9_BY_15, "(%d, %d) %d" % (tileIdx + (lod,)))
-            '''
+            BitmapString(BITMAP_9_BY_15, "(%d, %d) %d" % (tileIdx + (lod,)))
+            
             glBegin(GL_LINE_LOOP)
             a = self.tileBorder + 0.5
             b = self.tileBorder + self.tileSize - 0.5
@@ -77,9 +78,7 @@ class TileProvider:
             glVertex(b, b)
             glVertex(b, a)
             glEnd()
-            '''
-
-
+        '''    
 
 def makegrid(x, y):
     a = zeros((y, x, 2), float32)
@@ -87,9 +86,9 @@ def makegrid(x, y):
     return a
 
 
-class App:
-    def __init__(self, viewSize):
-        self.viewControl = FlyCamera()
+class App(ZglAppWX):
+    def __init__(self):
+        ZglAppWX.__init__(self, size = (800, 600), viewControl = FlyCamera())
         self.viewControl.speed = 50
         self.viewControl.eye = (0, 0, 10)
         self.viewControl.zFar = 10000
@@ -97,14 +96,7 @@ class App:
         self.tileProvider = TileProvider("img/sand.jpg", 512, 512, 8)
         self.virtualTex = vtex.VirtualTexture(self.tileProvider, 15)
         
-        self.texFrag = CGShader("fp40", '''
-          uniform sampler2D tex;
-          float4 main(float2 texCoord: TEXCOORD0) : COLOR
-          {
-            return tex2D(tex, texCoord);
-          }
-                  
-        ''')
+        self.texFrag = CGShader("fp40", TestShaders, entry = 'TexLookupFP')
         self.texFrag.tex = self.virtualTex.cacheTex
 
         self.vtexFrag = CGShader("fp40", fileName = 'vtex.cg')
@@ -122,10 +114,7 @@ class App:
           depth = True)
         self.feedbackArray = zeros((prod(fbSize),), uint32)
 
-        self.vtexUpdateTime = clock()
         self.moved = True
-
-        self.t = clock()
 
     def initTerrain(self):
         heightmap = asarray(Image.open("img/heightmap.png"))
@@ -161,18 +150,7 @@ class App:
         glDisableClientState(GL_TEXTURE_COORD_ARRAY)
         glDisableClientState(GL_VERTEX_ARRAY)
 
-    def resize(self, x, y):
-        self.viewControl.resize(x, y)
-
-    def idle(self):
-        glutPostRedisplay()
-    
     def display(self):
-        t = clock()
-        dt = t - self.t;
-        self.t = t
-        self.viewControl.update(dt)
-
         if self.moved:
             self.updateVTex()
             self.moved = False
@@ -188,9 +166,6 @@ class App:
                 glTranslate(-110, 0, 0)
                 glScale(100, 100, 1)
                 drawQuad()
-
-
-        glutSwapBuffers()
 
     def fetchFeedback(self):
         self.vtexFeedbackFrag.dcoef = V(self.feedbackBuf.size()) / V(self.viewControl.vp.size)
@@ -223,36 +198,19 @@ class App:
         t2 = clock()
         print "tileNum: %d,  feedback: %d ms, udate: %d ms,  %d tiles upd" % (len(tiles), (t1-t0)*1000, (t2-t1)*1000, len(updated))
 
-    def keyDown(self, key, x, y):
-        if ord(key) == 27:
-            glutLeaveMainLoop()
-        elif key == ' ':
+    def OnKeyDown(self, evt):
+        self.moved = True
+        key = evt.GetKeyCode()
+        if key == ord(' '):
             self.updateVTex()
         else:
-            self.viewControl.keyDown(key, x, y)
+            ZglAppWX.OnKeyDown(self, evt)
+
+    def OnMouse(self, evt):
+        if evt.GetWheelRotation() != 0 or evt.Dragging():
             self.moved = True
-                
-    def keyUp(self, key, x, y):
-        self.viewControl.keyUp(key, x, y)
-        self.moved = True
+        ZglAppWX.OnMouse(self, evt)
 
-    def mouseMove(self, x, y):
-        self.viewControl.mouseMove(x, y)
-        self.moved = True
-
-    def mouseButton(self, btn, up, x, y):
-        self.viewControl.mouseButton(btn, up, x, y)
-        self.moved = True
-
-
-
+            
 if __name__ == "__main__":
-  viewSize = (800, 600)
-  zglInit(viewSize, "hello")
-
-  app = App(viewSize)
-  glutSetCallbacks(app)
-
-  #wglSwapIntervalEXT(0)
-  glutMainLoop()
-  
+    App().run()

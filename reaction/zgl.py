@@ -10,13 +10,6 @@ from numpy import *
 from time import clock
 from PIL import Image
 
-# freeglut hack
-platform.GLUT = ctypes.windll.LoadLibrary("freeglut")
-from OpenGL.GLUT import *
-special._base_glutInit = OpenGL.raw.GLUT.glutInit
-glutCreateWindow = OpenGL.raw.GLUT.glutCreateWindow
-glutCreateMenu = OpenGL.raw.GLUT.glutCreateMenu
-
 from ctypes import cdll, c_int, c_uint, c_float, c_char_p
 cg = cdll.LoadLibrary("cg.dll")
 cggl = cdll.LoadLibrary("cggl.dll")
@@ -318,26 +311,6 @@ def drawVerts(primitive, pos, texCoord = None):
         glVertex(*pos[i])
     glEnd()
     
-
-
-def glutSetCallbacks(app):
-    if hasattr(app, "display"):
-        glutDisplayFunc(app.display)
-    if hasattr(app, "resize"):
-        glutReshapeFunc(app.resize)
-    if hasattr(app, "idle"):
-        glutIdleFunc(app.idle)
-    if hasattr(app, "keyDown"):
-        glutKeyboardFunc(app.keyDown)
-    if hasattr(app, "keyUp"):
-        glutKeyboardUpFunc(app.keyUp)
-    if hasattr(app, "mouseMove"):
-        glutMotionFunc(app.mouseMove)
-    if hasattr(app, "mouseButton"):
-        glutMouseFunc(app.mouseButton)
-    if hasattr(app, "close"):
-        glutCloseFunc(app.close)
-
 class Viewport:
     def __init__(self):
         self.origin = (0, 0)
@@ -349,7 +322,25 @@ class Viewport:
     def aspect(self):
         return float(self.size[0]) / self.size[1]
 
-class FlyCamera:
+class WXAdapter:
+    wx2glut = {wx.MOUSE_BTN_LEFT : 0, wx.MOUSE_BTN_MIDDLE: 1, wx.MOUSE_BTN_RIGHT: 2}
+
+    def OnMouse(self, evt):
+        x, y = evt.Position
+        wheel = evt.GetWheelRotation()
+        if evt.IsButton():
+            up = evt.ButtonUp()            
+            btn = self.wx2glut[evt.GetButton()]
+            self.mouseButton(btn, up, x, y)
+        elif wheel > 0:
+            self.mouseButton(3, 0, x, y)
+        elif wheel < 0:
+            self.mouseButton(4, 0, x, y)
+        else:
+            self.mouseMove(x, y)
+
+
+class FlyCamera(WXAdapter):
     def __init__(self):
         self.eye = (0.0, 0.0, 0.0)
         self.course = 0
@@ -361,11 +352,12 @@ class FlyCamera:
         
         self.mButtons = zeros((3,), bool) # left, middle, right
         self.mPos = (0, 0)
-        self.keyModifiers = 0
         
         self.vel = [0, 0]
         self.sensitivity = 0.3
         self.speed = 1.0
+
+        self.boost = False
 
         self.with_vp = ctx(self.vp, self)
 
@@ -380,19 +372,37 @@ class FlyCamera:
     key2vel = {'w': (0, 1), 's': (0, -1), 'd': (1, 1), 'a': (1, -1) }
 
     def keyDown(self, key, x, y):
-        self.keyModifiers = glutGetModifiers()
         k = key.lower()
         if self.key2vel.has_key(k):
             a, d = self.key2vel[k]
             self.vel[a] = d
 
     def keyUp(self, key, x, y):
-        self.keyModifiers = glutGetModifiers()
         k = key.lower()
         if self.key2vel.has_key(k):
             a, d = self.key2vel[k]
             self.vel[a] = 0
 
+    def OnKeyDown(self, evt):
+        key = evt.GetKeyCode()
+        if key < 256:
+            k = chr(key).lower()
+            if self.key2vel.has_key(k):
+                a, d = self.key2vel[k]
+                self.vel[a] = d
+        elif key == wx.WXK_SHIFT:
+            self.boost = True
+
+    def OnKeyUp(self, evt):
+        key = evt.GetKeyCode()
+        if key < 256:
+            k = chr(key).lower()
+            if self.key2vel.has_key(k):
+                a, d = self.key2vel[k]
+                self.vel[a] = 0
+        elif key == wx.WXK_SHIFT:
+            self.boost = False
+            
     def mouseMove(self, x, y):
         dx = x - self.mPos[0]
         dy = y - self.mPos[1]
@@ -400,7 +410,6 @@ class FlyCamera:
             self.course -= dx * self.sensitivity
             self.pitch = clip(self.pitch - dy * self.sensitivity, -89.9, 89.9)
         self.mPos = (x, y)
-        self.keyModifiers = glutGetModifiers()
 
     def mouseButton(self, btn, up, x, y):
         if btn < 3:
@@ -412,7 +421,6 @@ class FlyCamera:
             self.sensitivity *= 1.1
             self.fovy *= 1.1
         self.mPos = (x, y)
-        self.keyModifiers = glutGetModifiers()
 
     def __enter__(self):
         glMatrixMode(GL_PROJECTION)
@@ -441,17 +449,9 @@ class FlyCamera:
     
     def update(self, dt):
         v = self.vel[0] * self.forwardVec() + self.vel[1] * self.rightVec()
-        if self.keyModifiers & GLUT_ACTIVE_SHIFT != 0:
+        if self.boost != 0:
             v *= 10
         self.eye += v*self.speed*dt
-
-def zglInit(viewSize, title):
-    glutInit([])
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
-    glutInitWindowSize(*viewSize)
-    glutCreateWindow(title)
-    glutSetOption ( GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION )
-    InitCG()
 
 class BufferObject:
     def __init__(self, data = None, use = GL_STATIC_DRAW):
@@ -475,7 +475,7 @@ class BufferObject:
                 
 
 
-class OrthoCamera:
+class OrthoCamera(WXAdapter):
     def __init__(self):
         self.vp = Viewport()
         self.rect = (0.0, 0.0, 1.0, 1.0)
@@ -562,66 +562,10 @@ class OrthoCamera:
     def update(self, dt):
         pass
 
-    # wxWindow callbacks
-    wx2glut = {wx.MOUSE_BTN_LEFT : 0, wx.MOUSE_BTN_MIDDLE: 1, wx.MOUSE_BTN_RIGHT: 2}
-
-    def OnMouse(self, evt):
-        x, y = evt.Position
-        wheel = evt.GetWheelRotation()
-        if evt.IsButton():
-            up = evt.ButtonUp()            
-            btn = self.wx2glut[evt.GetButton()]
-            self.mouseButton(btn, up, x, y)
-        elif wheel > 0:
-            self.mouseButton(3, 0, x, y)
-        elif wheel < 0:
-            self.mouseButton(4, 0, x, y)
-        else:
-            self.mouseMove(x, y)
-            
-
-
 
 def safe_call(obj, method, *l, **d):
     if hasattr(obj, method):
         getattr(obj, method)(*l, **d)
-
-class ZglApp(object):
-    def __init__(self, viewControl):
-        self.viewControl = viewControl
-        self.time = clock()
-        self.dt = 0
-    
-    def resize(self, x, y):
-        safe_call(self.viewControl, 'resize', x, y)
-
-    def idle(self):
-        t = clock()
-        self.dt = t - self.time
-        self.time = t
-        self.viewControl.update(self.dt)
-        if hasattr(self, 'update'):
-            self.update(t, self.dt)
-        glutPostRedisplay()
-    
-    def display(self):
-        glClearColor(0, 0.5, 0, 0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glutSwapBuffers()
-
-    def keyDown(self, key, x, y):
-        if ord(key) == 27:
-            glutLeaveMainLoop()
-        safe_call(self.viewControl, 'keyDown', key, x, y)
-                
-    def keyUp(self, key, x, y):
-        safe_call(self.viewControl, 'keyUp', key, x, y)
-
-    def mouseMove(self, x, y):
-        safe_call(self.viewControl, 'mouseMove', x, y)
-
-    def mouseButton(self, btn, up, x, y):             
-        safe_call(self.viewControl, 'mouseButton', btn, up, x, y)
 
 class ZglAppWX(object):
     def __init__(self, title = "ZglAppWX", size = (800, 600), viewControl = None):
