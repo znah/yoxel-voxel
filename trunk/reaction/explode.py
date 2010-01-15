@@ -136,9 +136,9 @@ class Explosion:
         glDepthMask(GL_TRUE)    
 
 
-class App(ZglApp):
+class App(ZglAppWX):
     def __init__(self):
-        ZglApp.__init__(self, FlyCamera())
+        ZglAppWX.__init__(self, viewControl = FlyCamera())
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
         self.viewControl.eye = (0, 0, 10)
         self.viewControl.speed = 5
@@ -195,19 +195,13 @@ class App(ZglApp):
                 drawGrid(256)
             self.exlposion.render()    
 
-        glutSwapBuffers()
-
-    def keyDown(self, key, x, y):
-        if key == ' ':
+    def OnKeyDown(self, evt):
+        key = evt.GetKeyCode()
+        if key == ord(' '):
             self.exlposion.reset(self.time)
         else:
-            ZglApp.keyDown(self, key, x, y)
+            ZglAppWX.OnKeyDown(self, evt)
 
 
 if __name__ == "__main__":
-    viewSize = (800, 600)
-    zglInit(viewSize, "hello")
-
-    #wglSwapIntervalEXT(0)
-    glutSetCallbacks(App())
-    glutMainLoop()
+    App().run()

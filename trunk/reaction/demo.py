@@ -3,6 +3,14 @@ from numpy import *
 from zgl import *
 import time
 
+# freeglut hack
+platform.GLUT = ctypes.windll.LoadLibrary("freeglut")
+from OpenGL.GLUT import *
+special._base_glutInit = OpenGL.raw.GLUT.glutInit
+glutCreateWindow = OpenGL.raw.GLUT.glutCreateWindow
+glutCreateMenu = OpenGL.raw.GLUT.glutCreateMenu
+
+
 viewSize = (640, 640)
 
 
@@ -27,35 +35,30 @@ def init():
       uniform float kc;
       float4 main(float2 pos : TEXCOORD0) : COLOR
       {
-        float cdist = length(pos-float2(0.5, 0.5));
-        float flow = 0.99;//length(pos-float2(0.5, 0.5)) > 0.2 ? 0.8 : 1.0;
-
-        float2 v = tex2D(texture, pos).xy;
+        float3 data = tex2D(texture, pos).xyz;
+        float2 v = data.xy;
         float2 l = -4.0 * v;
         l += tex2D(texture, pos + float2( dpos.x, 0)).xy;
         l += tex2D(texture, pos + float2(-dpos.x, 0)).xy;
-        l += tex2D(texture, pos + float2( 0, dpos.y)).xy*flow;
-        l += tex2D(texture, pos + float2( 0,-dpos.y)).xy*(1/flow);
+        l += tex2D(texture, pos + float2( 0, dpos.y)).xy;
+        l += tex2D(texture, pos + float2( 0,-dpos.y)).xy;
         
-        //if (cdist < 0.2)
-        //  l *= 1 + (1-cdist/0.2) * 2;
-
-        const float2 diffCoef = float2(0.082, 0.041*1.8);
-
-        const float fs = 0.0;
-        const float ks = 0.0;
-        float d = saturate( length(2*pos-float2(1, 1)) );
+        l *= 2.0;
+        
+        const float2 diffCoef = float2(0.082, 0.041);
 
         const float f = fc;//lerp(fc, 0.011, d);
         const float k = kc;//lerp(kc, 0.055, d);
-        const float dt = 0.5f;
+        const float dt = 1;
 
         float2 dv = diffCoef * l;
         float rate = v.x * v.y * v.y;
         dv += float2(-rate, rate);
-        dv += float2(f * (1.0 - v.x), -(f + k) * v.y );
+        
+        float dis = -(f + k) * v.y;
+        dv += float2(f * (1.0 - v.x), dis);
         v += dt * dv;
-        return float4(v, rate, 0);
+        return float4(v, data.z - dis * dt, 0);
       }
     """)
 
@@ -75,9 +78,7 @@ def init():
       float4 main(float2 texCoord : TEXCOORD0) : COLOR 
       {
         float4 d = tex2D(texture, texCoord);
-        return float4(30*d.z, d.y, d.x*0.5, 1); 
-        //float v = d.y > 0.2 ? 1 : 0;
-        //return float4(v, v, v, 1); 
+        return float4(d.y*2, d.y, d.x*.5, 1); 
       }
     """)
 
