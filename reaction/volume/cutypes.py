@@ -7,10 +7,13 @@ def CU_PTR(ref_type):
             c_uint.__init__(self, int(d_ptr))
     return cu_ptr
 
+ctype2name = {
+  c_int32  : 'int', 
+  c_uint32 : 'unsigned int',
+  c_float  : 'float'}
+
+
 def gen_struct(struct):
-    ctype2name = {c_int32 : 'int', 
-      c_uint32 : 'unsigned int',
-      c_float : 'float'}
     def getcname(t):
         if t in ctype2name:
             return ctype2name[t]
@@ -28,6 +31,12 @@ def gen_struct(struct):
     s += "};\n"
     return s
 
+def gen_code(ctype):
+    if type(ctype).__name__ == 'StructType':
+       return gen_struct(ctype)
+    else:
+       raise NotImplementedError;
+
 def make_cu_vec(name, t, n):
     comp = ['x', 'y', 'z', 'w']
     class vec(Structure):
@@ -43,16 +52,21 @@ globals().update( make_cu_vecs('uint', c_uint32) )
 globals().update( make_cu_vecs('float', c_float) )
 
 
-if __name__ == '__main__':
-    print gen_struct(float4)
+def struct(name, *fields):
+    class ttt(Structure):
+        _fields_ = fields
+    ttt.__name__ = name
+    return ttt
 
-    class Test(Structure):
-        _fields_ = [
-          ('p1', CU_PTR(int2) ),
-          ('p2', c_float      ),
-          ('p3', c_float * 3  ),
-          ('p4', float4 * 2   )]
-    print gen_struct(Test)
+if __name__ == '__main__':
+    print gen_code(float4)
+
+    Test = struct('Test', 
+          ( 'p1', CU_PTR(int2) ),
+          ( 'p2', c_float      ),
+          ( 'p3', c_float * 3  ),
+          ( 'p4', float4 * 2   ))
+    print gen_code(Test)
 
     p = int3(1, 2, 3)
     print p.x, p.y, p.z
