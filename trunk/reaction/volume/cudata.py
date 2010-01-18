@@ -1,10 +1,10 @@
-from ctypes import *
+from ctypes import c_uint32, c_int32, c_float, Structure, addressof, sizeof
 
 def CU_PTR(ref_type):
-    class cu_ptr(c_uint):
+    class cu_ptr(c_uint32):
         _ref_type_ = ref_type
-        def __init__(self, d_ptr):
-            c_uint.__init__(self, d_ptr)
+        def __init__(self, d_ptr = 0):
+            c_uint.__init__(self, int(d_ptr))
     return cu_ptr
 
 def gen_struct(struct):
@@ -25,7 +25,7 @@ def gen_struct(struct):
         s += "  %s * %s;\n" % (getcname(ctype._ref_type_), field)
       else:
         s += "  %s %s;\n" % (getcname(ctype), field)
-    s += "};\n\n"
+    s += "};\n"
     return s
 
 def make_cu_vec(name, t, n):
@@ -36,23 +36,28 @@ def make_cu_vec(name, t, n):
     return vec
 
 def make_cu_vecs(name, t):
-    return dict( [(i, make_cu_vec(name, t, i)) for i in xrange(1, 5)] )
+    return dict( [(name + str(i), make_cu_vec(name, t, i)) for i in xrange(1, 5)] )
 
-cu_intv = make_cu_vecs('int', c_int)
-cu_uintv = make_cu_vecs('uint', c_uint)
-cu_floatv = make_cu_vecs('float', c_float)
-          
+globals().update( make_cu_vecs('int', c_int32) )
+globals().update( make_cu_vecs('uint', c_uint32) )
+globals().update( make_cu_vecs('float', c_float) )
+
+
 if __name__ == '__main__':
-    code = ''
-
-
-    for tt in [cu_intv, cu_uintv, cu_floatv]:
-        for n in tt:
-            code += gen_struct(tt[n])
+    print gen_struct(float4)
 
     class Test(Structure):
-        _fields_ = [('f1', cu_intv[3]*5), 
-          ('f2', CU_PTR(cu_floatv[4]))]
-    code += gen_struct(Test)
+        _fields_ = [
+          ('p1', CU_PTR(int2) ),
+          ('p2', c_float      ),
+          ('p3', c_float * 3  ),
+          ('p4', float4 * 2   )]
+    print gen_struct(Test)
 
-    print code
+    p = int3(1, 2, 3)
+    print p.x, p.y, p.z
+    print sizeof(p)
+    print hex(addressof(p))
+
+
+
