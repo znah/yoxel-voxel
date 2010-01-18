@@ -9,6 +9,7 @@ import pycuda.tools
 import pycuda.autoinit
 from pycuda.compiler import SourceModule
 
+from cutypes import *
 
 class CuSparseVolume:
     def __init__(self, brickSize = 8):
@@ -17,6 +18,33 @@ class CuSparseVolume:
         self.brickSize3 = brickSize**3
         self.brickMap = {}
         self.reallocPool(256)
+
+        range3i = struct('range3i', ('lo', int3), ('hi', int3))
+        CuCtx   = struct('CuCtx',
+            ( 'brick_num' , c_int32         ),
+            ( 'brick_data', CU_PTR(c_float) ),
+            ( 'brick_info', CU_PTR(int4)    ),
+            ( 'range', range3i))
+
+        self.cuCtx = CuCtx;
+        self.header = ''
+        self.header += gen_code(range3i)
+        self.header += gen_code(CuCtx)
+        self.header += '''
+          typedef float value_t;
+          const int brickSize = %(brickSize)d;
+          const int brickSize3 = %(brickSize3)d;
+
+          texture<value_t, 1> brick_data_tex;
+          texture<int4, 1>  brick_info_tex;
+
+          __constant__ CuCtx ctx;
+
+        ''' % {"brickSize" : brickSize, "brickSize3" : brickSize**3}
+
+        print self.header
+
+
 
     def reallocPool(self, capacity):
         d_bricks = {}
@@ -61,49 +89,34 @@ class CuSparseVolume:
         cu.memcpy_dtoh(a, d_ptr)
         return a
 
+    def makeProcessor(self, proc):
 
-    commonCode = '''
-        texture<float, 1> brick_data_tex;
-        texture<int4, 1> brick_pos_tex;
-
-        __constant__ float * brick_data_ptr;
-
-
-
-    '''
-
-    def makeProcessor(self, neib, proc):
-        '''
-          neib : 0, 1, 7 
-        '''
-
-        template = '''
-          // block size 8x8x4
-
-          const int brickSize = 8;
-          const int brickSize3 = 8*8*8;
-
-          typedef float value_t;
-
-          texture<value_t, 1> brick_data_tex;
-          texture<int4, 1>  brick_info_tex;
-
-          __constant__ int brick_num;
-          __constant__ float * brick_data_ptr;
-
-          __device__ bool Proc(int4 brickInfo, int3 idx, value_t & output) 
+        code = self.header + '''
+          __device__ bool inrange(range3i r, int3 p)
+          {
+            if (p.x < r.lo.x || p.y < r.lo.y || p.z < r.lo.z)
+              return false;
+            if (p.x >= r.hi.x || p.y >= r.hi.y || p.z >= r.hi.z)
+              return false;
+            return true;
+          }
+          
+          __device__ bool Proc(int3 brickPos, int flags, int3 idx, value_t & output) 
           { 
             output = brickInfo.x + brickInfo.y + brickInfo.z + idx;
             return true; 
           }
 
-          __global__ void RunKernel()
+          __ghibal__ void RunKernel()
           {
             int brickId = blockIdx.x + blockIdx.y * gridDim.x;
             if (brickId > brick_num)
               return;
 
-            int4 brickInfo = tex1Dfetch(brick_info_tex, brickId);
+            int4 info = tex1Dfetch(brick_info_tex, brickId);
+            int3 pos = make_int3(info.x, info.y, info.z);
+            if (!inrange(ctx.range, pos))
+              return;
             value_t output;
             if (Proc(brickInfo, threadIdx, output))
               brick_data_ptr[brickId * brickSize3] = output;
