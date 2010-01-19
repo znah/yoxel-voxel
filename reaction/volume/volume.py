@@ -10,27 +10,37 @@ import pycuda.autoinit
 from pycuda.compiler import SourceModule
 
 from cutypes import *
+from string import Template
 
 class CuSparseVolume:
+
     def __init__(self, brickSize = 8):
         self.dtype = dtype(float32)
         self.brickSize = brickSize
         self.brickSize3 = brickSize**3
         self.brickMap = {}
+
+        self.buildModule()
         self.reallocPool(256)
 
+    def buildModule(self):
         range3i = struct('range3i', ('lo', int3), ('hi', int3))
-        CuCtx   = struct('CuCtx',
+        self.CuCtx   = struct('CuCtx',
             ( 'brick_num' , c_int32         ),
             ( 'brick_data', CU_PTR(c_float) ),
-            ( 'brick_info', CU_PTR(int4)    ),
-            ( 'range', range3i))
+            ( 'brick_info', CU_PTR(int4)    ))
+        header = ''
+        header += gen_code(range3i)
+        header += gen_code(self.CuCtx)
 
-        self.cuCtx = CuCtx;
-        self.header = ''
-        self.header += gen_code(range3i)
-        self.header += gen_code(CuCtx)
-        self.header += '''
+        brickSize = self.brickSize
+        brickSize3 = self.brickSize3
+        
+        code = '''
+          %(header)s
+
+          #line 44
+
           typedef float value_t;
           const int brickSize = %(brickSize)d;
           const int brickSize3 = %(brickSize3)d;
@@ -40,11 +50,58 @@ class CuSparseVolume:
 
           __constant__ CuCtx ctx;
 
-        ''' % {"brickSize" : brickSize, "brickSize3" : brickSize**3}
+          
+          __device__ bool inrange(range3i r, int3 p)
+          {
+            if (p.x < r.lo.x || p.y < r.lo.y || p.z < r.lo.z)
+              return false;
+            if (p.x >= r.hi.x || p.y >= r.hi.y || p.z >= r.hi.z)
+              return false;
+            return true;
+          }
+          
+          __device__ bool Proc(int3 bpos, int flags, uint3 cpos, value_t & output) 
+          { 
+            output = bpos.x + bpos.y + bpos.z + cpos.x + cpos.y + cpos.z;
+            return true; 
+          }
 
-        print self.header
+          __global__ void RunKernel()
+          {
+            int brickId = blockIdx.x + blockIdx.y * gridDim.x;
+            if (brickId > ctx.brick_num)
+              return;
 
+            int4 info = tex1Dfetch(brick_info_tex, brickId);
+            int3 bpos = make_int3(info.x, info.y, info.z);
+            value_t output;
+            if (Proc(bpos, info.w, threadIdx, output))
+            {
+              int tid = (threadIdx.z * blockDim.y + threadIdx.y) * blockDim.x + threadIdx.x;
+              ctx.brick_data[brickId * brickSize3 + tid] = output;
+            }
+          }
 
+        ''' % locals()
+        print code
+        self.mod = SourceModule(code)
+
+    def runTest(self):
+        ctx = self.CuCtx()
+        n = len(self.brickMap)
+        ctx.brick_num = n
+        ctx.brick_data = self.d_bricks['data'].gpudata
+        ctx.brick_info = self.d_bricks['info'].gpudata
+        d_ctx = self.mod.get_global('ctx')[0]
+        cu.memcpy_htod(d_ctx, ctx)
+
+        brick_info_tex = self.mod.get_texref('brick_info_tex')
+        self.d_bricks['info'].bind_to_texref_ext(brick_info_tex, channels = 4)
+
+        RunKernel = self.mod.get_function("RunKernel")
+        RunKernel(grid = (n, 1), block=(8, 8, 8))
+        
+        
 
     def reallocPool(self, capacity):
         d_bricks = {}
@@ -63,12 +120,16 @@ class CuSparseVolume:
         if pos in self.brickMap:
             return self.brickMap[pos]
 
-        brickN = len(self.brickMap)
-        if brickN >= self.capacity:
+        idx = len(self.brickMap)
+        if idx >= self.capacity:
             self.reallocPool(self.capacity * 2)
 
-        self.brickMap[pos] = brickN
-        return brickN
+        d_infoPtr = int(self.d_bricks['info'].gpudata) + idx * sizeof(int4)
+        info = int4( pos[0], pos[1], pos[2], 0 )
+        cu.memcpy_htod(d_infoPtr, info)
+
+        self.brickMap[pos] = idx
+        return idx
 
     def brickOfs(self, idx):
         return idx * self.brickSize3 * self.dtype.itemsize
@@ -89,45 +150,6 @@ class CuSparseVolume:
         cu.memcpy_dtoh(a, d_ptr)
         return a
 
-    def makeProcessor(self, proc):
-
-        code = self.header + '''
-          __device__ bool inrange(range3i r, int3 p)
-          {
-            if (p.x < r.lo.x || p.y < r.lo.y || p.z < r.lo.z)
-              return false;
-            if (p.x >= r.hi.x || p.y >= r.hi.y || p.z >= r.hi.z)
-              return false;
-            return true;
-          }
-          
-          __device__ bool Proc(int3 brickPos, int flags, int3 idx, value_t & output) 
-          { 
-            output = brickInfo.x + brickInfo.y + brickInfo.z + idx;
-            return true; 
-          }
-
-          __ghibal__ void RunKernel()
-          {
-            int brickId = blockIdx.x + blockIdx.y * gridDim.x;
-            if (brickId > brick_num)
-              return;
-
-            int4 info = tex1Dfetch(brick_info_tex, brickId);
-            int3 pos = make_int3(info.x, info.y, info.z);
-            if (!inrange(ctx.range, pos))
-              return;
-            value_t output;
-            if (Proc(brickInfo, threadIdx, output))
-              brick_data_ptr[brickId * brickSize3] = output;
-          }
-
-        '''
-
-        
-
-
-
         
 '''
 class App(ZglAppWX):
@@ -147,7 +169,13 @@ if __name__ == '__main__':
     a.shape = (8, 8, 8)
 
     vol[1, 2, 3] = a
+    vol[0, 0, 0] = zeros_like(a)
     b = vol[1, 2, 3]
     print abs(a - b).max()
+
+    vol.runTest()
+    print vol[0, 0, 0]
+    print vol[1, 2, 3][0, 0, 0]
+
 
 
