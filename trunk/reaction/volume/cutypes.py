@@ -56,6 +56,20 @@ globals().update( make_cu_vecs('float', c_float) )
 
 range3i = struct('range3i', ('lo', int3), ('hi', int3))
 
+common_code = '#include "cutil_math.h"\n\n'
+common_code += gen_code(range3i)
+common_code += '''
+__device__ bool inrange(range3i r, int3 p)
+{
+  if (p.x < r.lo.x || p.y < r.lo.y || p.z < r.lo.z)
+    return false;
+  if (p.x >= r.hi.x || p.y >= r.hi.y || p.z >= r.hi.z)
+    return false;
+  return true;
+}
+
+'''
+
 if __name__ == '__main__':
     print gen_code(float4)
 
@@ -70,6 +84,8 @@ if __name__ == '__main__':
     print p.x, p.y, p.z
     print sizeof(p)
     print hex(addressof(p))
+
+    print common_code
 
 
 
