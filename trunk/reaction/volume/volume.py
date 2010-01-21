@@ -130,7 +130,7 @@ if __name__ == '__main__':
     vol[1, 2, 3] = a
     vol[0, 0, 0] = zeros_like(a)
     b = vol[1, 2, 3]
-    print abs(a - b).max() == 0
+    print all(a == b)
 
 
     code = common_code + vol.header + '''
@@ -159,8 +159,10 @@ if __name__ == '__main__':
     mod = SourceModule(code, include_dirs = [os.getcwd()], no_extern_c = True)
     vol.runKernel(mod, "Test")
 
-    print vol[0, 0, 0][7, 7, 7] == 21
-    print vol[1, 2, 3][0, 0, 0] == 1+2+3
+    a = sum( mgrid[:8,:8,:8], 0 )
+
+    print all( vol[0, 0, 0] == a )
+    print all( vol[1, 2, 3] == a+1+2+3 )
 
 
 
