@@ -17,14 +17,12 @@ class CuSparseVolume:
     def __init__(self, brickSize = 8):
         self.dtype = dtype(float32)
         self.brickSize = brickSize
-        self.brickSize3 = brickSize**3
         self.brickMap = {}
 
         self.buildModule()
         self.reallocPool(256)
 
     def buildModule(self):
-        range3i = struct('range3i', ('lo', int3), ('hi', int3))
         self.CuCtx   = struct('CuCtx',
             ( 'brick_num' , c_int32         ),
             ( 'brick_data', CU_PTR(c_float) ),
@@ -34,15 +32,17 @@ class CuSparseVolume:
         header += gen_code(self.CuCtx)
 
         brickSize = self.brickSize
-        brickSize3 = self.brickSize3
+        brickSize2 = self.brickSize**2
+        brickSize3 = self.brickSize**3
         
         code = '''
           %(header)s
 
-          #line 44
+          #line 43
 
           typedef float value_t;
-          const int brickSize = %(brickSize)d;
+          const int brickSize  = %(brickSize)d;
+          const int brickSize2 = %(brickSize2)d;
           const int brickSize3 = %(brickSize3)d;
 
           texture<value_t, 1> brick_data_tex;
@@ -132,7 +132,7 @@ class CuSparseVolume:
         return idx
 
     def brickOfs(self, idx):
-        return idx * self.brickSize3 * self.dtype.itemsize
+        return idx * self.brickSize**3 * self.dtype.itemsize
 
     def __setitem__(self, pos, data):
         idx = self.allocBrick(pos)
