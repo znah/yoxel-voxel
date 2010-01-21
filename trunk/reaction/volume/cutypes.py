@@ -37,12 +37,15 @@ def gen_code(ctype):
     else:
        raise NotImplementedError;
 
+def struct(name, *fields):
+    class ttt(Structure):
+        _fields_ = fields
+    ttt.__name__ = name
+    return ttt
+
 def make_cu_vec(name, t, n):
     comp = ['x', 'y', 'z', 'w']
-    class vec(Structure):
-        _fields_ = [(comp[i], t) for i in xrange(n)]
-    vec.__name__ = name + str(n)
-    return vec
+    return struct( name + str(n), *zip(comp, [t]*n) )
 
 def make_cu_vecs(name, t):
     return dict( [(name + str(i), make_cu_vec(name, t, i)) for i in xrange(1, 5)] )
@@ -51,12 +54,7 @@ globals().update( make_cu_vecs('int', c_int32) )
 globals().update( make_cu_vecs('uint', c_uint32) )
 globals().update( make_cu_vecs('float', c_float) )
 
-
-def struct(name, *fields):
-    class ttt(Structure):
-        _fields_ = fields
-    ttt.__name__ = name
-    return ttt
+range3i = struct('range3i', ('lo', int3), ('hi', int3))
 
 if __name__ == '__main__':
     print gen_code(float4)
@@ -65,7 +63,7 @@ if __name__ == '__main__':
           ( 'p1', CU_PTR(int2) ),
           ( 'p2', c_float      ),
           ( 'p3', c_float * 3  ),
-          ( 'p4', float4 * 2   ))
+          ( 'p4', float3 * 2   ))
     print gen_code(Test)
 
     p = int3(1, 2, 3)
