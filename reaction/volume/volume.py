@@ -151,8 +151,15 @@ class CuSparseVolume:
         func = mod.get_function(name)
         func(grid = (self.brickNum, 1), block=block)
         
-
-
+    def processNeibAllocs(self):
+        info = self.d_bricks['info'].get()[:self.brickNum]
+        reqs = compress(info[:,3] != 0, info, 0)
+        for i in xrange(self.nhood):
+            rs = compress(info[:,3] & (1<<i), info, 0)
+            pos = rs[:,:3] + self.nhoodDir[i]
+            for p in pos:
+                self[p] = 0
+            
 class Tests(unittest.TestCase):
     def __init__(self, *la, **ka):
         unittest.TestCase.__init__(self, *la, **ka)
@@ -200,6 +207,9 @@ class Tests(unittest.TestCase):
             if (p.z < 0)
               bid = tex1Dfetch(brick_nhood_tex, bid * nhood + 5);
 
+            if (bid < 0)
+                return 0.0f;
+
             p.x  = (p.x + bsize) % bsize;
             p.y  = (p.y + bsize) % bsize;
             p.z  = (p.z + bsize) % bsize;
@@ -242,6 +252,24 @@ class Tests(unittest.TestCase):
             ctx.brick_data[calcOfs(bid, p)] = res*2;
           }
 
+          extern "C"
+          __global__ void TestAllocReqest()
+          {
+            if (gettid() != 0)
+              return;
+            int bid = getbid();
+            if (bid > ctx.brick_num)
+              return;
+            int flags = 0;
+            for (int i = 0; i < nhood; ++i)
+            {
+              int neib = tex1Dfetch(brick_nhood_tex, bid * nhood + i);
+              if (neib < 0)
+                flags |= 1<<i;
+            }
+            ctx.brick_info[bid].w = flags;
+          }
+
 
         '''
         self.mod = SourceModule(code, include_dirs = [os.getcwd()], no_extern_c = True)
@@ -269,7 +297,7 @@ class Tests(unittest.TestCase):
         self.assert_( all( vol[0, 0, 0] == a ) )
         self.assert_( all( vol[1, 1, 1] == a+1+1+1 ) )
 
-    def testRealloc(self):
+    def _testRealloc(self):
         vol = CuSparseVolume()
         bricks = pickle.load( file("bonsai02.dmp", "rb") )
         for p, a in bricks.items()[:600]:
@@ -286,17 +314,28 @@ class Tests(unittest.TestCase):
     def testNeib(self):
         vol = CuSparseVolume()
         p = array([5, 5, 5])
-        vol[p] = 1
-        mark = 2
+        vol[p] = 0
+        mark = 1
         for dp in vol.nhoodDir:
             vol[p + dp] = mark
             mark += 1
+        vol[p + (2, 0, 0)] = -1
         vol.runKernel(self.mod, "TestNeibMax")
-        print vol[p]
+        # TODO asserts
+        #print vol[p + (2, 0, 0)]
 
-        
+    def testAllocReq(self):
+        vol = CuSparseVolume()
+        vol[0, 0, 0] = 0
+        vol.runKernel(self.mod, "TestAllocReqest")
+        vol.processNeibAllocs()
+        self.assert_(vol.brickNum == 7)
 
-        
+        vol.runKernel(self.mod, "TestAllocReqest")
+        vol.processNeibAllocs()
+        self.assert_(vol.brickNum == 25)
+
+
 
 
 
