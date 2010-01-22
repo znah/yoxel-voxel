@@ -68,6 +68,16 @@ __device__ bool inrange(range3i r, int3 p)
   return true;
 }
 
+__device__ int getbid() 
+{
+  return blockIdx.x + blockIdx.y * gridDim.x;
+}
+
+__device__ int gettid() 
+{
+  return (threadIdx.z * blockDim.y + threadIdx.y) * blockDim.x + threadIdx.x;
+}
+
 '''
 
 if __name__ == '__main__':
