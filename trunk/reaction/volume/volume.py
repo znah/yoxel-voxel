@@ -87,13 +87,19 @@ class CuSparseVolume:
         cu.memcpy_htod(d_infoPtr, info)
 
         if self.nhood > 0:
+            d_nhoodPtr = int(self.d_bricks['nhood'].gpudata)
+            
             nhoodIds = zeros(self.nhood, int32)
             apos = array(pos)
             for i, d in enumerate(self.nhoodDir):
                 npos = tuple(apos + d)
-                nhoodIds[i] = self.brickMap.get(npos, -1)
-            d_nhoodPtr = int(self.d_bricks['nhood'].gpudata) + idx * sizeof(c_int32) * self.nhood
-            cu.memcpy_htod(d_nhoodPtr, nhoodIds)
+                neibIdx = self.brickMap.get(npos, -1)
+                nhoodIds[i] = neibIdx
+                if neibIdx >= 0:
+                    ofs = neibIdx * self.nhood + i^1
+                    cu.memcpy_htod(d_nhoodPtr + ofs * sizeof(c_int32), c_int32(idx))
+            ofs = idx * self.nhood
+            cu.memcpy_htod(d_nhoodPtr + ofs * sizeof(c_int32), nhoodIds)
 
         self.brickMap[pos] = idx
         self.brickNum += 1
