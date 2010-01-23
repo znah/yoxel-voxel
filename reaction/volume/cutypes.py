@@ -1,4 +1,5 @@
 from ctypes import c_uint32, c_int32, c_float, Structure, addressof, sizeof
+import numpy as np
 
 def CU_PTR(ref_type):
     class cu_ptr(c_uint32):
@@ -45,20 +46,25 @@ def struct(name, *fields):
 
 def make_cu_vec(name, t, n):
     comp = ['x', 'y', 'z', 'w']
-    return struct( name + str(n), *zip(comp, [t]*n) )
+    fields = zip(comp, [t]*n)
+    s = struct( name + str(n), *fields )
+    s.dtype = np.dtype(fields)
+    return s
 
 def make_cu_vecs(name, t):
     return dict( [(name + str(i), make_cu_vec(name, t, i)) for i in xrange(1, 5)] )
 
-globals().update( make_cu_vecs('int', c_int32) )
-globals().update( make_cu_vecs('uint', c_uint32) )
-globals().update( make_cu_vecs('float', c_float) )
+cuda_vectors = {}
+cuda_vectors.update( make_cu_vecs('int', c_int32) )
+cuda_vectors.update( make_cu_vecs('uint', c_uint32) )
+cuda_vectors.update( make_cu_vecs('float', c_float) )
+globals().update(cuda_vectors)
 
 range3i = struct('range3i', ('lo', int3), ('hi', int3))
 
-common_code = '#include "cutil_math.h"\n\n'
-common_code += gen_code(range3i)
-common_code += '''
+cu_header = '#include "cutil_math.h"\n\n'
+cu_header += gen_code(range3i)
+cu_header += '''
 __device__ bool inrange(range3i r, int3 p)
 {
   if (p.x < r.lo.x || p.y < r.lo.y || p.z < r.lo.z)
@@ -95,7 +101,9 @@ if __name__ == '__main__':
     print sizeof(p)
     print hex(addressof(p))
 
-    print common_code
+    print cu_header
+
+    print int4.dtype
 
 
 

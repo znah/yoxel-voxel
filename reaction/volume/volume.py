@@ -16,8 +16,18 @@ import pickle
 
 class CuSparseVolume:
 
-    def __init__(self, brickSize = 8, nhood = 6):
-        self.dtype = dtype(float32)
+    def __init__(self, brickSize = 8, nhood = 6, format = float32):
+        if format in cuda_vectors.values():
+            self.dtype = format.dtype
+            self.ctype = format
+            self.texChannelsNum = len(format._fields_)
+            self.ctypename = ctypename = format.__name__
+        else:
+            self.dtype = dtype(float32)
+            self.ctype = c_float
+            self.texChannelsNum = 1 # TODO
+            self.ctypename = ctypename = 'float'
+
         self.brickSize = brickSize
         assert nhood in [0, 6]
         self.nhood = nhood
@@ -36,7 +46,7 @@ class CuSparseVolume:
 
         self.Ctx = struct('Ctx',
             ( 'brick_num'  , c_int32         ),
-            ( 'brick_data' , CU_PTR(c_float) ),
+            ( 'brick_data' , CU_PTR(self.ctype) ),
             ( 'brick_info' , CU_PTR(int4)    ),
             ( 'brick_nhood', CU_PTR(c_int32) ))
 
@@ -44,7 +54,7 @@ class CuSparseVolume:
         brickSize3 = brickSize**3
         Ctx_decl = gen_code(self.Ctx)
         self.header = '''
-          typedef float value_t;
+          typedef %(ctypename)s value_t;
           const int bsize  = %(brickSize)d;
           const int bsize2 = %(brickSize2)d;
           const int bsize3 = %(brickSize3)d;
@@ -143,7 +153,7 @@ class CuSparseVolume:
         self.d_bricks['info'].bind_to_texref_ext(brick_info_tex, channels = 4)
         
         brick_data_tex = mod.get_texref('brick_data_tex')
-        self.d_bricks['data'].bind_to_texref_ext(brick_data_tex)
+        self.d_bricks['data'].bind_to_texref_ext(brick_data_tex, channels = self.texChannelsNum)
 
         brick_nhood_tex = mod.get_texref('brick_nhood_tex')
         self.d_bricks['nhood'].bind_to_texref_ext(brick_nhood_tex)
@@ -165,7 +175,7 @@ class Tests(unittest.TestCase):
         unittest.TestCase.__init__(self, *la, **ka)
 
         vol = CuSparseVolume()
-        code = common_code + vol.header + '''
+        code = cu_header + vol.header + '''
           #line 151
           extern "C" 
           __global__ void TestFill()
@@ -336,7 +346,13 @@ class Tests(unittest.TestCase):
         self.assert_(vol.brickNum == 25)
 
 
+    def _testValueType(self):
+        vol = CuSparseVolume(channelNum = 2)
 
+
+
+
+        
 
 
 if __name__ == '__main__':
