@@ -70,7 +70,7 @@ class CuSparseVolume:
 
     def reallocPool(self, capacity):
         d_bricks = {}
-        d_bricks['data'] = ga.zeros((capacity,) + (self.brickSize,)*3, self.dtype)
+        d_bricks['data'] = ga.empty((capacity,) + (self.brickSize,)*3, self.dtype)
         d_bricks['info'] = ga.zeros((capacity, 4), int32)
         if self.nhood > 0:
             d_bricks['nhood'] = ga.zeros((capacity, self.nhood), int32)
@@ -121,11 +121,8 @@ class CuSparseVolume:
     def __setitem__(self, pos, data):
         idx = self.allocBrick(pos)
         d_ptr = int(self.d_bricks['data'].gpudata) + self.brickOfs(idx)
-        if isscalar(data):
-            a = zeros((self.brickSize,)*3, self.dtype)
-            a[:] = data
-        else:
-            a = ascontiguousarray(data, self.dtype)
+        a = zeros((self.brickSize,)*3, self.dtype)
+        a[:] = data
         cu.memcpy_htod(d_ptr, a)
 
     def __getitem__(self, pos):
@@ -346,13 +343,10 @@ class Tests(unittest.TestCase):
         self.assert_(vol.brickNum == 25)
 
 
-    def _testValueType(self):
-        vol = CuSparseVolume(channelNum = 2)
-
-
-
-
-        
+    def testValueType(self):
+        vol = CuSparseVolume(format = float2)
+        vol[1, 2, 3] = (0,5)
+        print vol[1, 2, 3]
 
 
 if __name__ == '__main__':

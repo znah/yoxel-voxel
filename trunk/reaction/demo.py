@@ -49,7 +49,7 @@ def init():
 
         const float f = fc;//lerp(fc, 0.011, d);
         const float k = kc;//lerp(kc, 0.055, d);
-        const float dt = 1;
+        const float dt = 1.0;
 
         float2 dv = diffCoef * l;
         float rate = v.x * v.y * v.y;
@@ -106,7 +106,7 @@ def display():
 
     glutSetWindow(window);
 
-    ipf = 10
+    ipf = 30
     glFinish()
     startTime = time.clock()
     for i in xrange(ipf):
@@ -140,7 +140,7 @@ def display():
             drawQuad()
         glWindowPos2i(100, 100);
         glColor(1, 1, 1, 1)
-        glutBitmapString(GLUT_BITMAP_9_BY_15, "iterTime: %.3f ms  f = %f  k = %f, c: %d" % (iterTime, fc, kc, count));
+        glutBitmapString(GLUT_BITMAP_9_BY_15, "iterTime: %.3f ms  f = %f  k = %f" % (iterTime, fc, kc));
     
 
     glutSwapBuffers()

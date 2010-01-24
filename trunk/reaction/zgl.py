@@ -725,6 +725,5 @@ class App(ZglAppWX):
             drawQuad()
 
 if __name__ == "__main__":
-    app = App()
-    app.run()
+    App().run()
 """
