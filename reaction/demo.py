@@ -169,8 +169,7 @@ def keyDown(key, x, y):
         step /= 2.0
     if key == ']':
         step *= 2.0
-    reactFrag.fc = fc
-    reactFrag.kc = kc
+    reactFrag(fc = fc, kc = kc)
 
 def dropDrop(x, y):
     with ctx(pp.src, colorFrag, ortho):

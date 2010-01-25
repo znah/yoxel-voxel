@@ -10,12 +10,13 @@ import pycuda.autoinit
 from pycuda.compiler import SourceModule
 from cutypes import *
 import os
+from time import clock
 
 class ReactDiff:
     def __init__(self, sz = 64):
         self.volSize = sz
 
-        self.block = (8, 8, 4)
+        self.block = (32, 4, 2)
         self.grid = (sz / self.block[0], sz / self.block[1] * sz / self.block[2])
         print self.grid
 
@@ -43,7 +44,7 @@ class ReactDiff:
             l += tex3D(srcTex, x, y, z+1.0f);
             l += tex3D(srcTex, x, y, z-1.0f);
 
-            l *= 2.0f;
+            //l *= 2.0f;
 
             float2 diffCoef = make_float2(0.082, 0.041);
             float dt = 0.5f;
@@ -77,7 +78,6 @@ class ReactDiff:
         c = sz/2
         initArray[c:,c:,c:][:20,:20,:20] = (1, 1)
         self.d_dst = ga.to_gpu(initArray)
-        print initArray .strides
 
         self.dst2src = copy = cu.Memcpy3D()
         copy.set_src_device(self.d_dst.gpudata)
@@ -99,21 +99,36 @@ class ReactDiff:
        
 
 
+def sync_clock():
+    cu.Context.synchronize()
+    return clock()
+
 
 sz = 64
+iterNum = 3000
+
 rd = ReactDiff(sz = sz)
-for i in xrange(3000):
+times = zeros((iterNum,), float64)
+for i in xrange(iterNum):
+    t = sync_clock()
     rd.iterate()
-    print '.',
+    times[i] = sync_clock() - t
+    if i % 100 == 0:
+        print '.',
+print
 
 a = rd.d_dst.get()
 b = (a[...,1]*255).astype(uint8)
 b.tofile("a.dat")
 
-import pylab
-pylab.imshow(a[sz / 2 + 10, ... ,1])
-pylab.colorbar()
-pylab.show()
+#import pylab
+#pylab.imshow(a[sz / 2 + 10, ... ,1])
+#pylab.colorbar()
+#print a
+#pylab.plot(times)
+#pylab.show()
+
+print "avg time: %2f ms" % (times.mean() * 1000 ,)
 
 
 
