@@ -131,6 +131,11 @@ class CGShader:
         cgParamSetters[type_](param, value)
         self.__dict__[name] = value
 
+    def __call__(self, **args):
+        for name in args:
+            setattr(self, name, args[name])
+        return self
+
 class Texture(object):
     Target = None  # to be set by subclass
 

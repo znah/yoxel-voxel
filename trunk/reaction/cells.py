@@ -77,8 +77,7 @@ class App(ZglAppWX):
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        self.cellFrag.time = self.time
-        with ctx(self.viewControl.with_vp, self.cellFrag):
+        with ctx(self.viewControl.with_vp, self.cellFrag(time = self.time)):
             drawQuad()
 
 if __name__ == "__main__":
