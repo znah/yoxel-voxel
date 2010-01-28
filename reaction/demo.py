@@ -210,8 +210,9 @@ if __name__ == "__main__":
   InitCG()
   init()
 
+  
+  wglSwapIntervalEXT(0)
 
-  #wglSwapIntervalEXT(0)
   glutSetOption ( GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION )
   glutMainLoop()
   
