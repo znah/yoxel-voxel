@@ -10,9 +10,21 @@ from numpy import *
 from time import clock
 from PIL import Image
 
-from ctypes import cdll, c_int, c_uint, c_float, c_char_p
+from ctypes import cdll, c_int, c_uint, c_float, c_char_p, c_long
 cg = cdll.LoadLibrary("cg.dll")
 cggl = cdll.LoadLibrary("cggl.dll")
+
+# wglSwapIntervalEXT workaround
+import OpenGL.platform
+wglSwapIntervalEXT = OpenGL.platform.createExtensionFunction( 
+  'wglSwapIntervalEXT', dll=OpenGL.platform.GL,
+  extension='WGL_EXT_swap_control',
+  resultType=c_long, 
+  argTypes=[c_int],
+  doc='wglSwapIntervalEXT( c_int(None) ) -> BOOL', 
+  argNames=['None'],
+)
+
 
 cgGetError = cg.cgGetError
 cgGetErrorString = cg.cgGetErrorString
@@ -573,7 +585,7 @@ def safe_call(obj, method, *l, **d):
         getattr(obj, method)(*l, **d)
 
 class ZglAppWX(object):
-    def __init__(self, title = "ZglAppWX", size = (800, 600), viewControl = None):
+    def __init__(self, title = "ZglAppWX", size = (800, 600), viewControl = None, vsync = 0):
         self.app = wx.PySimpleApp()
         self.frame = frame = wx.Frame(None, wx.ID_ANY, title)
         self.canvas = canvas = glcanvas.GLCanvas(frame, -1)
@@ -592,6 +604,8 @@ class ZglAppWX(object):
         frame.Show(True)
         canvas.SetCurrent()
         InitCG()
+        
+        wglSwapIntervalEXT(vsync)
 
     def run(self):
         self.canvas.Bind(wx.EVT_SIZE, self.OnSize)
