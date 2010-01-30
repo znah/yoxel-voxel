@@ -269,9 +269,7 @@ class App(ZglAppWX):
             for i in xrange(iterNum):
                 self.updateParticles(tstep*0.2)
 
-        glClearColor(0, 0, 0, 0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        
+        clearBuffers()
         with self.viewControl.with_vp:
             self.flowVis.render()
 
