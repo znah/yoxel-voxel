@@ -9,10 +9,9 @@ from OpenGL.GL.EXT.texture_integer import *
 from numpy import *
 from time import clock
 from PIL import Image
+from enthought.traits.api import *
 
 from ctypes import cdll, c_int, c_uint, c_float, c_char_p, c_long
-cg = cdll.LoadLibrary("cg.dll")
-cggl = cdll.LoadLibrary("cggl.dll")
 
 # wglSwapIntervalEXT workaround
 import OpenGL.platform
@@ -25,6 +24,8 @@ wglSwapIntervalEXT = OpenGL.platform.createExtensionFunction(
   argNames=['None'],
 )
 
+cg = cdll.LoadLibrary("cg.dll")
+cggl = cdll.LoadLibrary("cggl.dll")
 
 cgGetError = cg.cgGetError
 cgGetErrorString = cg.cgGetErrorString
@@ -123,6 +124,9 @@ class CGShader:
         checkCGerror()
         cggl.cgGLLoadProgram(self._prog)
         checkCGerror()
+
+    def __del__(self):
+        cg.cgDestroyProgram(self._prog)
 
     def __enter__(self):
         cgGLEnableProfile(self._profile)
@@ -584,8 +588,11 @@ def safe_call(obj, method, *l, **d):
     if hasattr(obj, method):
         getattr(obj, method)(*l, **d)
 
-class ZglAppWX(object):
+class ZglAppWX(HasTraits):
+    _ = Python(editable = False)
+
     def __init__(self, title = "ZglAppWX", size = (800, 600), viewControl = None, vsync = 0):
+        HasTraits.__init__(self)
         self.app = wx.PySimpleApp()
         self.frame = frame = wx.Frame(None, wx.ID_ANY, title)
         self.canvas = canvas = glcanvas.GLCanvas(frame, -1)
@@ -640,6 +647,9 @@ class ZglAppWX(object):
         keycode = event.GetKeyCode()
         if keycode == wx.WXK_ESCAPE:
             self.frame.Close(True)
+            self.app.Exit()
+        if keycode == wx.WXK_F9:
+            self.edit_traits() 
         safe_call(self.viewControl, 'OnKeyDown', event)
 
     def OnKeyUp(self, event):
@@ -710,7 +720,16 @@ def drawGrid(w, h = None):
         glDrawElements(GL_QUADS, idxNum, GL_UNSIGNED_INT, None)
    
 
-
+def clearBuffers(color = (0, 0, 0, 0), colorBit = True, depthBit = True):
+    mask = 0
+    if colorBit:
+       glClearColor(*color)
+       mask |= GL_COLOR_BUFFER_BIT
+    if depthBit:
+       mask |= GL_DEPTH_BUFFER_BIT
+    glClear(mask)
+        
+    
 
 TestShaders = '''
   uniform sampler2D tex;
@@ -737,9 +756,7 @@ class App(ZglAppWX):
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
     
     def display(self):
-        glClearColor(0, 0, 0, 0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        
+        clearBuffers()
         with ctx(self.viewControl.with_vp, self.fragProg):
             drawQuad()
 

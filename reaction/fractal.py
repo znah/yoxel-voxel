@@ -81,9 +81,7 @@ class App(ZglAppWX):
 
     
     def display(self):
-        glClearColor(0, 0, 0, 0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        
+        clearBuffers()
         self.fragProg.time = clock()
         with ctx(self.viewControl.with_vp, self.fragProg):
             drawQuad(self.viewControl.rect)
