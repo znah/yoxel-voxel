@@ -73,7 +73,7 @@ class App(ZglAppWX):
         self.cellFrag.noiseSize = self.noiseTex.size
     
     def display(self):
-        clearBuffers()
+        clearGLBuffers()
         with ctx(self.viewControl.with_vp, self.cellFrag(time = self.time)):
             drawQuad()
 

@@ -269,7 +269,7 @@ class App(ZglAppWX):
             for i in xrange(iterNum):
                 self.updateParticles(tstep*0.2)
 
-        clearBuffers()
+        clearGLBuffers()
         with self.viewControl.with_vp:
             self.flowVis.render()
 

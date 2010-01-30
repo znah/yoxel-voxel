@@ -81,7 +81,7 @@ class App(ZglAppWX):
 
     
     def display(self):
-        clearBuffers()
+        clearGLBuffers()
         self.fragProg.time = clock()
         with ctx(self.viewControl.with_vp, self.fragProg):
             drawQuad(self.viewControl.rect)

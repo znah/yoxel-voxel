@@ -46,7 +46,7 @@ class App(ZglAppWX):
         self.buildShader()
     
     def display(self):
-        clearBuffers()
+        clearGLBuffers()
         self.fragProg.dcoef = self.dcoef
         with ctx(self.viewControl.with_vp, self.fragProg(time = self.time)):
             drawQuad(self.viewControl.rect)
