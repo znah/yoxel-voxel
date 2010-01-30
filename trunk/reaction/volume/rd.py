@@ -2,6 +2,7 @@ from __future__ import with_statement
 import sys
 sys.path.append('..')
 from zgl import *
+from volvis import VolumeRenderer
 
 import pycuda.driver as cu
 import pycuda.gpuarray as ga
@@ -12,11 +13,27 @@ from cutypes import *
 import os
 from time import clock
 
-class ReactDiff:
+from enthought.traits.ui.api import *
+class ReactDiff(HasTraits):
+    f = Float(0.027)
+    k = Float(0.062)
+    reset = Button(label = "Reset")
+
+    view = View(
+        Item( 'f' ),
+        Item( 'k' ),
+        Item('reset'))
+
+
+    _ = Python(editable = False)
+
+    #def _reset_fired(self):
+    #    self.d_dst = ga.to_gpu(self.initArray)
+
     def __init__(self, sz = 64):
         self.volSize = sz
 
-        self.block = (32, 4, 2)
+        self.block = (8, 8, 4)
         self.grid = (sz / self.block[0], sz / self.block[1] * sz / self.block[2])
         print self.grid
 
@@ -73,7 +90,7 @@ class ReactDiff:
         descr.flags = 0
         self.d_srcArray = cu.Array(descr)
 
-        initArray = zeros((sz, sz, sz, 2), float32)
+        self.initArray = initArray = zeros((sz, sz, sz, 2), float32)
         initArray[...,0] = 1
         c = sz/2
         initArray[c:,c:,c:][:20,:20,:20] = (1, 1)
@@ -93,7 +110,7 @@ class ReactDiff:
         self.RDKernel = self.mod.get_function('RDKernel')
 
     def iterate(self):
-        self.RDKernel(float32(0.027), float32(0.062), int32(self.volSize), self.d_dst, 
+        self.RDKernel(float32(self.f), float32(self.k), int32(self.volSize), self.d_dst, 
           block = self.block, grid = self.grid, texrefs = [self.d_srcTex])
         self.dst2src()
        
@@ -104,48 +121,55 @@ def sync_clock():
     return clock()
 
 
-sz = 64
-iterNum = 3000
-
-rd = ReactDiff(sz = sz)
-times = zeros((iterNum,), float64)
-for i in xrange(iterNum):
-    t = sync_clock()
-    rd.iterate()
-    times[i] = sync_clock() - t
-    if i % 100 == 0:
-        print '.',
-print
-
-a = rd.d_dst.get()
-b = (a[...,1]*255).astype(uint8)
-b.tofile("a.dat")
-
-#import pylab
-#pylab.imshow(a[sz / 2 + 10, ... ,1])
-#pylab.colorbar()
-#print a
-#pylab.plot(times)
-#pylab.show()
-
-print "avg time: %2f ms" % (times.mean() * 1000 ,)
-
-
-
-'''
-    
 class App(ZglAppWX):
-    def __init__(self):
-        ZglAppWX.__init__(self, viewControl = OrthoCamera())
-        self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
+    volumeRender = Instance(VolumeRenderer)    
+    rd = Instance(ReactDiff)    
     
-    def display(self):
-        glClearColor(0, 0, 0, 0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    def __init__(self):
+        ZglAppWX.__init__(self, viewControl = FlyCamera())
         
-        with ctx(self.viewControl.with_vp, self.fragProg):
-            drawQuad()
+        self.rd = ReactDiff(64)
+        a = self.rd.d_dst.get()
+        self.volumeRender = VolumeRenderer(Texture3D(img = a[...,1]))
+
+    def display(self):
+        clearGLBuffers()
+        
+        for i in xrange(30):
+            self.rd.iterate()
+        a = self.rd.d_dst.get()
+        a = ascontiguousarray(a[...,1])
+        with self.volumeRender.volumeTex:
+            glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, a.shape[0], a.shape[1], a.shape[2], GL_LUMINANCE, GL_FLOAT, a)
+            
+        
+        with ctx(self.viewControl.with_vp):
+            self.volumeRender.render()
+
 
 if __name__ == "__main__":
     App().run()
+
+
+'''
+if __name__ == '__main__':
+
+    sz = 64
+    iterNum = 3000
+
+    rd = ReactDiff(sz = sz)
+    times = zeros((iterNum,), float64)
+    for i in xrange(iterNum):
+        t = sync_clock()
+        rd.iterate()
+        times[i] = sync_clock() - t
+        if i % 100 == 0:
+            print '.',
+    print
+
+    a = rd.d_dst.get()
+    b = (a[...,1]*255).astype(uint8)
+    b.tofile("a.dat")
+
+    print "avg time: %2f ms" % (times.mean() * 1000 ,)
 '''
