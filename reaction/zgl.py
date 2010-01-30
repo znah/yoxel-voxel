@@ -248,7 +248,7 @@ class Texture3D(Texture):
                 if img.ndim == 3:
                     ch = 1
                 else:
-                    ch = im.shape[3]
+                    ch = img.shape[3]
                 srcFormat = self.ChNum2Format[ch]
                 srcType = arrays.ArrayDatatype.getHandler(img).arrayToGLType(img)
                 glPixelStorei(GL_PACK_ALIGNMENT, 1);
