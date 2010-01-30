@@ -72,6 +72,7 @@ cgParamSetters = {
   cg.cgGetType("float2")    : lambda p, v : cgGLSetParameter2f(p, v[0], v[1]),
   cg.cgGetType("float3")    : lambda p, v : cgGLSetParameter3f(p, v[0], v[1], v[2]),
   cg.cgGetType("float4")    : lambda p, v : cgGLSetParameter4f(p, v[0], v[1], v[2], v[3]),
+  cg.cgGetType("sampler1D") : lambda p, v : cgGLSetTextureParameter(p, v),
   cg.cgGetType("sampler2D") : lambda p, v : cgGLSetTextureParameter(p, v),
   cg.cgGetType("sampler3D") : lambda p, v : cgGLSetTextureParameter(p, v)
 }
@@ -189,6 +190,28 @@ class Texture(object):
     def __exit__(self, *args):
         glBindTexture(self.Target, 0)
 
+
+class Texture1D(Texture):
+    Target = GL_TEXTURE_1D
+
+    def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = GL_RGBA, srcType = GL_FLOAT):
+        Texture.__init__(self)
+        self._as_parameter_ = glGenTextures(1)
+        self.setParams( *(self.Nearest + self.Repeat) )
+        if img != None:
+            with self:
+                img = atleast_2d(ascontiguousarray(img))
+                srcFormat = self.ChNum2Format[img.shape[1]]
+                srcType = arrays.ArrayDatatype.getHandler(img).arrayToGLType(img)
+                glPixelStorei(GL_PACK_ALIGNMENT, 1);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+                glTexImage1D(self.Target, 0, format, img.shape[0], 0, srcFormat, srcType, img)
+                self.size = img.shape[0]
+            return
+        elif size != None:
+            with self:
+                glTexImage1D(self.Target, 0, format, size, 0, srcFormat, srcType, None)
+                self.size = size
 
 class Texture2D(Texture):
     Target = GL_TEXTURE_2D
@@ -648,7 +671,7 @@ class ZglAppWX(HasTraits):
         if keycode == wx.WXK_ESCAPE:
             self.frame.Close(True)
             self.app.Exit()
-        if keycode == wx.WXK_F9:
+        if keycode == wx.WXK_F2:
             self.edit_traits() 
         safe_call(self.viewControl, 'OnKeyDown', event)
 
@@ -720,7 +743,7 @@ def drawGrid(w, h = None):
         glDrawElements(GL_QUADS, idxNum, GL_UNSIGNED_INT, None)
    
 
-def clearBuffers(color = (0, 0, 0, 0), colorBit = True, depthBit = True):
+def clearGLBuffers(color = (0, 0, 0, 0), colorBit = True, depthBit = True):
     mask = 0
     if colorBit:
        glClearColor(*color)
@@ -756,7 +779,7 @@ class App(ZglAppWX):
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
     
     def display(self):
-        clearBuffers()
+        clearGLBuffers()
         with ctx(self.viewControl.with_vp, self.fragProg):
             drawQuad()
 

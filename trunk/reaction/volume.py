@@ -1,23 +1,57 @@
 from __future__ import with_statement
 from zgl import *
 
-class App(ZglAppWX):
-    def __init__(self):
-        ZglAppWX.__init__(self, viewControl = FlyCamera())
-
-        data = fromfile("img/bonsai.raw", uint8)
-        data.shape = (256, 256, 256)
-        data = swapaxes(data, 0, 1)
-        self.volumeTex =  Texture3D(img=data)
-        self.volumeTex.filterLinear()
-        self.volumeTex.setParams(*Texture.Clamp)
+class VolumeRenderer(HasTraits):
+    density        = Range( 0.0, 1.0, 0.05)
+    brightness     = Range( 0.0, 2.0, 1.0 )
+    transferOffset = Range(-1.0, 1.0, 0.0 )
+    transferScale  = Range( 0.0, 2.0, 1.0 )
+    stepsInTexel   = Range( 0.5, 4.0, 2.0 )
+    
+    _ = Python(editable = False)
+    
+    @on_trait_change( '+' )
+    def updateShaderParams(self):
+        self.traceFP.density = self.density
+        self.traceFP.brightness = self.brightness
+        self.traceFP.transferOffset = self.transferOffset
+        self.traceFP.transferScale = self.transferScale
+        if hasattr(self, "volumeTex"):
+            self.traceFP.dt = 1.0 / (self.volumeTex.size[0] * self.stepsInTexel)
+            self.volumeTex.filterLinear()
+            self.volumeTex.setParams(*Texture.Clamp)
+            self.traceFP.volume = self.volumeTex
+            
+    
+    def __init__(self, volumeTex = None):
+        HasTraits.__init__(self)
+        
+        if volumeTex is not None:
+            self.volumeTex = volumeTex
+            
+        transferFunc = array([
+            [  0.0, 0.0, 0.0, 0.0 ],
+            [  1.0, 0.0, 0.0, 1.0 ],
+            [  1.0, 0.5, 0.0, 1.0 ],
+            [  1.0, 1.0, 0.0, 1.0 ],
+            [  0.0, 1.0, 0.0, 1.0 ],
+            [  0.0, 1.0, 1.0, 1.0 ],
+            [  0.0, 0.0, 1.0, 1.0 ],
+            [  1.0, 0.0, 1.0, 1.0 ],
+            [  0.0, 0.0, 0.0, 0.0 ]], float32)
+        self.transferTex = Texture1D(transferFunc, format = GL_RGBA8)
+        self.transferTex.filterLinear()
+        self.transferTex.setParams(*Texture.Clamp)
+            
         self.traceVP = CGShader('vp40', '''
-          uniform float3 eyePos;
+          #line 58
           float4 main(float2 p : POSITION, 
-             out float3 rayDir : TExCOORD0 ) : POSITION
+             out float3 rayDir : TExCOORD0,
+             out float3 eyePos : TExCOORD1) : POSITION
           {
             float4 projVec = float4(p * 2.0 - float2(1.0, 1.0), 0, 1);
             float4 wldVec = mul(glstate.matrix.inverse.mvp, projVec);
+            eyePos = mul(glstate.matrix.inverse.modelview[0], float4(0, 0, 0, 1)).xyz;
             wldVec /= wldVec.w;
             rayDir = wldVec.xyz - eyePos;
             return projVec;
@@ -26,11 +60,15 @@ class App(ZglAppWX):
         ''')
 
         self.traceFP = CGShader('gp4fp', '''
-        # line 30
+        # line 44
+          uniform sampler1D transferTex;
           uniform sampler3D volume;
-          uniform float time;
-          uniform float3 eyePos;
+          
           uniform float dt;
+          uniform float density;
+          uniform float brightness;
+          uniform float transferOffset;
+          uniform float transferScale;
          
           void hitBox(float3 o, float3 d, out float tenter, out float texit)
           {
@@ -55,10 +93,8 @@ class App(ZglAppWX):
             return normalize(n);
           }
 
-          float4 main( float3 rayDir: TEXCOORD0 ) : COLOR 
+          float4 main( float3 rayDir: TEXCOORD0, float3 eyePos : TEXCOORD1) : COLOR 
           {
-            const float3 lightDir = normalize(float3(1, 1, 1));
-
             rayDir = normalize(rayDir);
             float t1, t2;
             hitBox(eyePos, rayDir, t1, t2);
@@ -68,67 +104,49 @@ class App(ZglAppWX):
             float3 p = eyePos + rayDir * t1;
 
             float3 step = dt * rayDir;
-            float4 res = float4(0);
-            float c0 = tex3D(volume, p).r;
-            p += step;
+            float4 accum = float4(0);
 
-            const float ths = 0.2;
-            for (float t = t1+dt; t < t2; t += dt, p += step)
+            for (float t = t1; t < t2; t += dt, p += step)
             {
-              float c1 = tex3D(volume, p).r;
-              if (c0 < ths && c1 > ths)
-              {
-                float3 p1 = p-step, p2 = p;
-                for (int i = 0; i < 4; ++i)
-                {
-                  float r = (ths - c0) / (c1 - c0);
-                  float3 pm = p1 + (p2-p1)*r;
-                  float cm = tex3D(volume, pm).r;
-                  if (cm < ths)
-                  {
-                    p1 = pm;
-                    c0 = cm;
-                  }
-                  else
-                  {
-                    p2 = pm;
-                    c1 = cm;
-                  }
-                }
-                float3 hitP = 0.5*(p1 + p2);
-                float3 n = getnormal(hitP);
-                float diffuse = dot(n, lightDir);
-                res = float4(diffuse, diffuse, diffuse, 1.0);
+              float sample = tex3D(volume, p).r;
+              float4 col = tex1D(transferTex, (sample - transferOffset) * transferScale);
+              col.a *= density;
+              col.rgb *= col.a;
+              accum += col * (1.0 - accum.a);
+              if (accum.a > 0.99f)
                 break;
-              }
-              c0 = c1;
             }
-            return res;
+            return accum * brightness;
           }
         ''')
-        self.traceFP.volume = self.volumeTex
-        self.viewControl.eye = (0, -1, 1)
-        self.traceFP.dt = 0.01
-
-    def display(self):
-        glClearColor(0, 0, 0, 0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-        self.traceVP.eyePos = self.viewControl.eye
-        self.traceFP.eyePos = self.viewControl.eye
-        self.traceFP.time = self.time
-        with ctx(self.viewControl.with_vp, self.traceVP, self.traceFP):
+        self.traceFP.transferTex = self.transferTex
+        self.updateShaderParams()
+        
+    def render(self):
+        with ctx(self.traceVP, self.traceFP):
             drawQuad()
+        
+        
+if __name__ == "__main__":    
 
-    def OnKeyDown(self, evt):
-        key = evt.GetKeyCode()
-        if key == ord('['):
-            self.traceFP.dt = 0.5 * self.traceFP.dt
-        if key == ord(']'):
-            self.traceFP.dt = 2.0 * self.traceFP.dt
-        else:
-            ZglAppWX.OnKeyDown(self, evt)
+    class App(ZglAppWX):
+        volumeRender = Instance(VolumeRenderer)    
+        
+        def __init__(self):
+            ZglAppWX.__init__(self, viewControl = FlyCamera())
+
+            #data = fromfile("volume/a.dat", uint8)
+            #data.shape = (64 , 64, 64)
+            data = fromfile("img/bonsai.raw", uint8)
+            data.shape = (256, 256, 256)
+            data = swapaxes(data, 0, 1)
+            self.volumeRender = VolumeRenderer(Texture3D(img=data))
+
+        def display(self):
+            clearGLBuffers()
+            with ctx(self.viewControl.with_vp):
+                self.volumeRender.render()
 
 
-if __name__ == "__main__":
-    App().run()
+    if __name__ == "__main__":
+        App().run()
