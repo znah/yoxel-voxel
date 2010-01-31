@@ -2,7 +2,7 @@ from __future__ import with_statement
 from zgl import *
 
 class VolumeRenderer(HasTraits):
-    density        = Range( 0.0, 1.0, 0.05)
+    density        = Range( 0.0, 1.0, 0.5)
     brightness     = Range( 0.0, 2.0, 1.0 )
     transferOffset = Range(-1.0, 1.0, 0.0 )
     transferScale  = Range( 0.0, 2.0, 1.0 )
@@ -12,10 +12,10 @@ class VolumeRenderer(HasTraits):
     
     @on_trait_change( '+' )
     def updateShaderParams(self):
-        self.traceFP.density = self.density
         self.traceFP.brightness = self.brightness
         self.traceFP.transferOffset = self.transferOffset
         self.traceFP.transferScale = self.transferScale
+        self.traceFP.density = self.density / self.stepsInTexel
         if hasattr(self, "volumeTex"):
             self.traceFP.dt = 1.0 / (self.volumeTex.size[0] * self.stepsInTexel)
             self.volumeTex.filterLinear()
@@ -59,7 +59,7 @@ class VolumeRenderer(HasTraits):
         
         ''')
 
-        self.traceFP = CGShader('fp40', '''
+        self.traceFP = CGShader('gp4fp', '''
         # line 44
           uniform sampler1D transferTex;
           uniform sampler3D volume;
@@ -106,6 +106,7 @@ class VolumeRenderer(HasTraits):
             float3 step = dt * rayDir;
             float4 accum = float4(0);
 
+            float c = 0;
             for (float t = t1; t < t2; t += dt, p += step)
             {
               float sample = tex3D(volume, p).r;
@@ -115,8 +116,9 @@ class VolumeRenderer(HasTraits):
               accum += col * (1.0 - accum.a);
               if (accum.a > 0.99f)
                 break;
+              c += 1.0f;
             }
-            return accum * brightness;
+            return float4(c/100)*brightness;//accum * brightness;
           }
         ''')
         self.traceFP.transferTex = self.transferTex
@@ -137,9 +139,11 @@ if __name__ == "__main__":
 
             #data = fromfile("volume/a.dat", uint8)
             #data.shape = (64 , 64, 64)
-            data = fromfile("img/bonsai.raw", uint8)
-            data.shape = (256, 256, 256)
-            data = data[100:,100:,100:][:32,:32,:32]
+            #data = fromfile("img/bonsai.raw", uint8)
+            #data.shape = (256, 256, 256)
+            data = random.rand(256, 256, 256).astype(float32)
+            data[100:150,100:150] = 0
+
             data = swapaxes(data, 0, 1)
             self.volumeRender = VolumeRenderer(Texture3D(img=data))
 
