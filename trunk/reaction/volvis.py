@@ -59,7 +59,7 @@ class VolumeRenderer(HasTraits):
         
         ''')
 
-        self.traceFP = CGShader('gp4fp', '''
+        self.traceFP = CGShader('fp40', '''
         # line 44
           uniform sampler1D transferTex;
           uniform sampler3D volume;
@@ -139,6 +139,7 @@ if __name__ == "__main__":
             #data.shape = (64 , 64, 64)
             data = fromfile("img/bonsai.raw", uint8)
             data.shape = (256, 256, 256)
+            data = data[100:,100:,100:][:32,:32,:32]
             data = swapaxes(data, 0, 1)
             self.volumeRender = VolumeRenderer(Texture3D(img=data))
 
