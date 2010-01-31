@@ -15,20 +15,23 @@ from time import clock
 
 from enthought.traits.ui.api import *
 class ReactDiff(HasTraits):
-    f = Float(0.027)
+    f = Float(0.025) #0.27
     k = Float(0.062)
+    scale = Range(0.5, 2.0, 1.0)
     reset = Button(label = "Reset")
 
     view = View(
         Item( 'f' ),
         Item( 'k' ),
-        Item('reset'))
+        Item( 'scale' ),
+        Item( 'reset' ))
 
 
     _ = Python(editable = False)
 
-    #def _reset_fired(self):
-    #    self.d_dst = ga.to_gpu(self.initArray)
+    def _reset_fired(self):
+        self.d_dst.set(self.initArray)
+        self.dst2src()
 
     def __init__(self, sz = 64):
         self.volSize = sz
@@ -40,8 +43,13 @@ class ReactDiff(HasTraits):
         code = cu_header + '''
           texture<float2, 3> srcTex;
 
+          __device__ float wrap(float x, float sz) 
+          { 
+            return fmodf(x + sz, sz);
+          }
+
           extern "C"
-          __global__ void RDKernel(float f, float k, int sz, float2 * dstBuf)
+          __global__ void RDKernel(float f, float k, float scale, int sz, float2 * dstBuf)
           {
             int bx = blockIdx.x;
             int volSizeY = (sz / blockDim.y);
@@ -52,16 +60,18 @@ class ReactDiff(HasTraits):
             int y = threadIdx.y + by * blockDim.y;
             int z = threadIdx.z + bz * blockDim.z;
 
+            float szf = sz;
+
             float2 v = tex3D(srcTex, x, y, z);
             float2 l = -6.0f * v;
-            l += tex3D(srcTex, x+1.0f, y, z);
-            l += tex3D(srcTex, x-1.0f, y, z);
-            l += tex3D(srcTex, x, y+1.0f, z);
-            l += tex3D(srcTex, x, y-1.0f, z);
-            l += tex3D(srcTex, x, y, z+1.0f);
-            l += tex3D(srcTex, x, y, z-1.0f);
+            l += tex3D(srcTex, wrap(x+1.0f, szf), y, z);
+            l += tex3D(srcTex, wrap(x-1.0f, szf), y, z);
+            l += tex3D(srcTex, x, wrap(y+1.0f, szf), z);
+            l += tex3D(srcTex, x, wrap(y-1.0f, szf), z);
+            l += tex3D(srcTex, x, y, wrap(z+1.0f, szf));
+            l += tex3D(srcTex, x, y, wrap(z-1.0f, szf));
 
-            //l *= 2.0f;
+            l *= scale;
 
             float2 diffCoef = make_float2(0.082, 0.041);
             float dt = 0.5f;
@@ -92,8 +102,10 @@ class ReactDiff(HasTraits):
 
         self.initArray = initArray = zeros((sz, sz, sz, 2), float32)
         initArray[...,0] = 1
-        c = sz/2
-        initArray[c:,c:,c:][:20,:20,:20] = (1, 1)
+        
+        for i in xrange(2):
+            p = random.rand(3) * sz - 2
+            initArray[p[0]:, p[1]:, p[2]:,1][:2, :2, :2] = 1
         self.d_dst = ga.to_gpu(initArray)
 
         self.dst2src = copy = cu.Memcpy3D()
@@ -106,11 +118,14 @@ class ReactDiff(HasTraits):
 
         self.d_srcTex = self.mod.get_texref('srcTex')
         self.d_srcTex.set_array(self.d_srcArray)
+        #self.d_srcTex.set_address_mode(0, cu.address_mode.WRAP)
+        #self.d_srcTex.set_address_mode(1, cu.address_mode.WRAP)
+        #self.d_srcTex.set_address_mode(2, cu.address_mode.WRAP)
 
         self.RDKernel = self.mod.get_function('RDKernel')
 
     def iterate(self):
-        self.RDKernel(float32(self.f), float32(self.k), int32(self.volSize), self.d_dst, 
+        self.RDKernel(float32(self.f), float32(self.k), float32(self.scale), int32(self.volSize), self.d_dst, 
           block = self.block, grid = self.grid, texrefs = [self.d_srcTex])
         self.dst2src()
        
@@ -124,6 +139,7 @@ def sync_clock():
 class App(ZglAppWX):
     volumeRender = Instance(VolumeRenderer)    
     rd = Instance(ReactDiff)    
+    iterPerFrame = Int(20)
     
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
@@ -135,14 +151,13 @@ class App(ZglAppWX):
     def display(self):
         clearGLBuffers()
         
-        for i in xrange(30):
+        for i in xrange(self.iterPerFrame):
             self.rd.iterate()
         a = self.rd.d_dst.get()
         a = ascontiguousarray(a[...,1])
         with self.volumeRender.volumeTex:
             glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, a.shape[0], a.shape[1], a.shape[2], GL_LUMINANCE, GL_FLOAT, a)
             
-        
         with ctx(self.viewControl.with_vp):
             self.volumeRender.render()
 
