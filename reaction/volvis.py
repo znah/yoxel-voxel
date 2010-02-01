@@ -137,12 +137,10 @@ if __name__ == "__main__":
         def __init__(self):
             ZglAppWX.__init__(self, viewControl = FlyCamera())
 
-            #data = fromfile("volume/a.dat", uint8)
-            #data.shape = (64 , 64, 64)
-            #data = fromfile("img/bonsai.raw", uint8)
-            #data.shape = (256, 256, 256)
-            data = random.rand(256, 256, 256).astype(float32)
-            data[100:150,100:150] = 0
+            data = fromfile("img/bonsai.raw", uint8)
+            data.shape = (256, 256, 256)
+            #data = random.rand(256, 256, 256).astype(float32)
+            #data[100:150,100:150] = 0
 
             data = swapaxes(data, 0, 1)
             self.volumeRender = VolumeRenderer(Texture3D(img=data))
