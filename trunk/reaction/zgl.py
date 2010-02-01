@@ -6,6 +6,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GL.EXT.framebuffer_object import *
 from OpenGL.GL.EXT.texture_integer import *
+from OpenGL.GL.EXT.texture_array import *
 from numpy import *
 from time import clock
 from PIL import Image
@@ -74,7 +75,8 @@ cgParamSetters = {
   cg.cgGetType("float4")    : lambda p, v : cgGLSetParameter4f(p, v[0], v[1], v[2], v[3]),
   cg.cgGetType("sampler1D") : lambda p, v : cgGLSetTextureParameter(p, v),
   cg.cgGetType("sampler2D") : lambda p, v : cgGLSetTextureParameter(p, v),
-  cg.cgGetType("sampler3D") : lambda p, v : cgGLSetTextureParameter(p, v)
+  cg.cgGetType("sampler3D") : lambda p, v : cgGLSetTextureParameter(p, v),
+  cg.cgGetType("sampler2DARRAY") : lambda p, v : cgGLSetTextureParameter(p, v)
 }
 
 
@@ -194,15 +196,17 @@ class Texture(object):
 class Texture1D(Texture):
     Target = GL_TEXTURE_1D
 
-    def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = GL_RGBA, srcType = GL_FLOAT):
+    def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = None, srcType = None):
         Texture.__init__(self)
         self._as_parameter_ = glGenTextures(1)
         self.setParams( *(self.Nearest + self.Repeat) )
         if img != None:
             with self:
                 img = atleast_2d(ascontiguousarray(img))
-                srcFormat = self.ChNum2Format[img.shape[1]]
-                srcType = arrays.ArrayDatatype.getHandler(img).arrayToGLType(img)
+                if srcFormat is None:
+                    srcFormat = self.ChNum2Format[img.shape[1]]
+                if srcType is None:
+                    srcType = arrays.ArrayDatatype.getHandler(img).arrayToGLType(img)
                 glPixelStorei(GL_PACK_ALIGNMENT, 1);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
                 glTexImage1D(self.Target, 0, format, img.shape[0], 0, srcFormat, srcType, img)
@@ -210,6 +214,10 @@ class Texture1D(Texture):
             return
         elif size != None:
             with self:
+                if srcFormat is None:
+                    srcFormat = GL_RGBA
+                if srcType is None:
+                    srcType = GL_FLOAT
                 glTexImage1D(self.Target, 0, format, size, 0, srcFormat, srcType, None)
                 self.size = size
 
@@ -261,21 +269,32 @@ class Texture3D(Texture):
                 glTexImage3D(self.Target, 0, format, size[0], size[1], size[2], 0, srcFormat, srcType, None)
                 self.size = size
 
+class TextureArray(Texture3D):
+    Target = GL_TEXTURE_2D_ARRAY_EXT
+    def __init__(self, *args, **kargs):
+        Texture3D.__init__(self, *args, **kargs)
 
+
+class Framebuffer:
+    def __init__(self):
+        self._as_parameter_ = glGenFramebuffersEXT(1)
+    def __enter__(self):
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self)
+    def __exit__(self, *args):
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
 
 class RenderTexture:
     def __init__(self, depth = False, **args):
-        self.fbo = glGenFramebuffersEXT(1)
+        self.fbo = Framebuffer()
         self.tex = Texture2D(**args)
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
-        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.tex, 0)
-        if depth:
-            self.depthRB = glGenRenderbuffersEXT(1)
-            glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, self.depthRB)
-            glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, self.size()[0], self.size()[1])
-            glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, self.depthRB)
-            glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0)
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+        with self.fbo:
+            glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.tex, 0)
+            if depth:
+                self.depthRB = glGenRenderbuffersEXT(1)
+                glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, self.depthRB)
+                glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, self.size()[0], self.size()[1])
+                glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, self.depthRB)
+                glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0)
 
     def size(self):
         return self.tex.size
@@ -356,9 +375,9 @@ def drawVerts(primitive, pos, texCoord = None):
     glEnd()
     
 class Viewport:
-    def __init__(self):
-        self.origin = (0, 0)
-        self.size = (1, 1)
+    def __init__(self, x = 0, y = 0, width = 1, height = 1):
+        self.origin = (x, y)
+        self.size = (width, height)
     def __enter__(self):
         glViewport(self.origin[0], self.origin[1], self.size[0], self.size[1])
     def __exit__(self, *args):
