@@ -70,7 +70,9 @@ class Voxelizer:
             uint4 zeros = uint4(0);
             uint4 ones  = uint4(0xffffffff);
             
-            float z = pos.z * sliceNum;    // TODO: use WPOS (no need vertProg)
+            const float sliceDepth = 128.0f;
+            const float halfVoxel = 0.5f / sliceDepth;
+            float z = pos.z * sliceNum - halfVoxel;    // TODO: use WPOS (no need vertProg)
             uint4 bits = tex1D( columnBits, frac(z) );
             
             output.s0 = (z < 0.0f) ? zeros : (z < 1.0f ? bits : ones);
@@ -152,6 +154,20 @@ class Voxelizer:
         return res
 
 
+def drawBox(lo = (0, 0, 0), hi = (1, 1, 1)):
+    i = indices((2, 2, 2)).T.reshape(-1,3)
+    verts = choose(i, (lo, hi)).astype(float32)
+    idxs = [ 0, 2, 3, 1,
+             0, 1, 5, 4, 
+             4, 5, 7, 6,
+             1, 3, 7, 5,
+             0, 4, 6, 2,
+             2, 6, 7, 3]
+    glBegin(GL_QUADS)
+    for i in idxs:
+        glVertex3f(*verts[i])
+    glEnd()
+    
 
 class App(ZglAppWX):
     volumeRender = Instance(VolumeRenderer)
@@ -172,10 +188,17 @@ class App(ZglAppWX):
         self.idxBuf = BufferObject(f)
         self.idxNum = len(f) * 3
 
-        with self.vertBuf.array:
-            glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, 0)
-        with ctx(self.voxelizer, self.idxBuf.elementArray, vattr(0)):
-            glDrawElements(GL_TRIANGLES, self.idxNum, GL_UNSIGNED_INT, None)
+        with self.voxelizer:
+            with self.vertBuf.array:
+                glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, 0)
+            with ctx(self.idxBuf.elementArray, vattr(0)):
+                glDrawElements(GL_TRIANGLES, self.idxNum, GL_UNSIGNED_INT, None)
+                
+            d = 1.0 / 256
+            drawBox((0, 0, 0), (1, 1, 1))
+            drawBox((d, d, 0), (1-d, 1-d, 1))
+            drawBox((d, 0, d), (1-d, 1, 1-d))
+            drawBox((0, d, d), (1, 1-d, 1-d))
         
         a = self.voxelizer.dump()
         self.volumeRender = VolumeRenderer(Texture3D(img=a))
