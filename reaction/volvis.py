@@ -105,8 +105,6 @@ class VolumeRenderer(HasTraits):
 
             float3 step = dt * rayDir;
             float4 accum = float4(0);
-
-            float c = 0;
             for (float t = t1; t < t2; t += dt, p += step)
             {
               float sample = tex3D(volume, p).r;
@@ -116,9 +114,8 @@ class VolumeRenderer(HasTraits):
               accum += col * (1.0 - accum.a);
               if (accum.a > 0.99f)
                 break;
-              c += 1.0f;
             }
-            return float4(c/100)*brightness;//accum * brightness;
+            return accum * brightness;
           }
         ''')
         self.traceFP.transferTex = self.transferTex

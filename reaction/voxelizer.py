@@ -1,6 +1,7 @@
 from __future__ import with_statement
 from zgl import *
 from OpenGL.GL.NV.geometry_program4 import *
+from volvis import VolumeRenderer
 
 from StringIO import StringIO
 
@@ -21,6 +22,13 @@ def fit_box(v):
     v *= scale
     v += (0.5, 0.5, 0.5) - 0.5*d*scale
     return v
+
+
+def expand_uint32(bits):
+    a = zeros( (32,) + bits.shape[:2], uint8 )
+    for i in xrange(32):
+        a[i] = ((bits>>i) & 1) * 128#255
+    return a
 
 
 class Voxelizer:
@@ -111,42 +119,72 @@ class Voxelizer:
             for i in xrange(sliceNum):
                 glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_2D, self.slices[i], 0)
             glDrawBuffers(sliceNum, GL_COLOR_ATTACHMENT0_EXT+arange(sliceNum))
+
+        self.clear()
+
+    def clear(self):
+        with self:
+            clearGLBuffers()
         
     def __enter__(self):
         self.state = ctx(
           self.fbo, Viewport(0, 0, self.size, self.size), ortho,
-          self.vertProg, self.fragProg
+          self.vertProg, self.fragProg,
+          glstate(GL_COLOR_LOGIC_OP)
         )
         self.state.__enter__()
+        glLogicOp(GL_XOR)
         
     def __exit__(self, *args):
         self.state.__exit__(*args)
         del self.state
-        
-        
-    
-    
+
+    def dump(self):
+        res = zeros((self.size,)*3, uint8)
+        for i, sliceTex in enumerate(self.slices):
+            with sliceTex:
+                a = zeros( (self.size, self.size, 4), uint32 )
+                OpenGL.raw.GL.glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER_EXT, GL_UNSIGNED_INT, a.ctypes.data )
+            for j in xrange(4):
+                dst = res[i * 128 + j*32:][:32]
+                src = expand_uint32(a[...,j])
+                dst[:] = src
+        return res
+
+
+
 class App(ZglAppWX):
+    volumeRender = Instance(VolumeRenderer)
+
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
         
-        self.voxelizer = Voxelizer()
+        self.voxelizer = Voxelizer(256)
         
         (v, f) = load_obj("data/bunny/bunny.obj")
         v = fit_box(v)
+        z = v[:,2].copy()
+        v[:,2] = v[:,1]
+        v[:,1] = z
+
         self.vertBuf = BufferObject(v)
         self.idxBuf = BufferObject(f)
         self.idxNum = len(f) * 3
 
-    def display(self):
-        clearGLBuffers()
-        
         with self.vertBuf.array:
             glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, 0)
             
         with ctx(self.voxelizer, self.idxBuf.elementArray, vattr(0)):
             glDrawElements(GL_TRIANGLES, self.idxNum, GL_UNSIGNED_INT, None)
+        
+        a = self.voxelizer.dump()
+        self.volumeRender = VolumeRenderer(Texture3D(img=a))
+
+    def display(self):
+        clearGLBuffers()
+        with ctx(self.viewControl.with_vp):
+            self.volumeRender.render()
 
 if __name__ == "__main__":
     App().run()
