@@ -70,7 +70,7 @@ class Voxelizer:
             uint4 zeros = uint4(0);
             uint4 ones  = uint4(0xffffffff);
             
-            float z = pos.z * sliceNum;
+            float z = pos.z * sliceNum;    // TODO: use WPOS (no need vertProg)
             uint4 bits = tex1D( columnBits, frac(z) );
             
             output.s0 = (z < 0.0f) ? zeros : (z < 1.0f ? bits : ones);
@@ -130,7 +130,7 @@ class Voxelizer:
         self.state = ctx(
           self.fbo, Viewport(0, 0, self.size, self.size), ortho,
           self.vertProg, self.fragProg,
-          glstate(GL_COLOR_LOGIC_OP)
+          glstate(GL_COLOR_LOGIC_OP, GL_DEPTH_CLAMP_NV)
         )
         self.state.__enter__()
         glLogicOp(GL_XOR)
@@ -174,7 +174,6 @@ class App(ZglAppWX):
 
         with self.vertBuf.array:
             glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, 0)
-            
         with ctx(self.voxelizer, self.idxBuf.elementArray, vattr(0)):
             glDrawElements(GL_TRIANGLES, self.idxNum, GL_UNSIGNED_INT, None)
         
