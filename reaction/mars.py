@@ -238,7 +238,7 @@ class App(ZglAppWX):
             glClearColor(0, 0, 0, 0)
             glClear(GL_COLOR_BUFFER_BIT)
             with self.partVBO.array:
-                glVertexAttribPointer(0, 4, GL_FLOAT, False, 0, 0)
+                glVertexAttribPointer(0, 4, GL_FLOAT, False, 0, None)
             with vattr(0):
                 glDrawArrays(GL_POINTS, self.vortexOfs, self.vortexN)
             

@@ -190,7 +190,7 @@ class App(ZglAppWX):
 
         with self.voxelizer:
             with self.vertBuf.array:
-                glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, 0)
+                glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, None)
             with ctx(self.idxBuf.elementArray, vattr(0)):
                 glDrawElements(GL_TRIANGLES, self.idxNum, GL_UNSIGNED_INT, None)
                 
