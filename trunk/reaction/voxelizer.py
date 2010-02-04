@@ -176,7 +176,7 @@ class App(ZglAppWX):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
         
-        self.voxelizer = Voxelizer(256)
+        self.voxelizer = Voxelizer(512)
         
         (v, f) = load_obj("data/bunny/bunny.obj")
         v = fit_box(v)
