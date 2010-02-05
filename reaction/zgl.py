@@ -714,14 +714,23 @@ class vattr:
     def __exit__(self, *args):
         [glDisableVertexAttribArray(idx)  for idx in self.idxs]
 
-
 class glstate:
+    ClientState = set([GL_VERTEX_ARRAY])
+
     def __init__(self, *state):
         self.state = state
     def __enter__(self):
-        [glEnable(idx)  for idx in self.state]
+        for idx in self.state:
+            if idx in self.ClientState:
+                glEnableClientState(idx)
+            else:
+                glEnable(idx)
     def __exit__(self, *args):
-        [glDisable(idx)  for idx in self.state]
+        for idx in self.state:
+            if idx in self.ClientState:
+                glDisableClientState(idx)
+            else:
+                glDisable(idx)
 
 def loadTex(fn):
     tex = Texture2D(Image.open(fn))
@@ -779,6 +788,11 @@ TestShaders = '''
   float4 TexCoordFP( float3 tc: TEXCOORD0 ) : COLOR 
   { 
     return float4(tc, 1); 
+  }
+
+  float4 ColorFP( float4 color: COLOR ) : COLOR 
+  { 
+    return color; 
   }
   
   float4 TexLookupFP( float2 tc: TEXCOORD0 ) : COLOR 

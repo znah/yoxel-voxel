@@ -1,3 +1,4 @@
+from __future__ import with_statement
 from numpy import *
 #import pyximport; pyximport.install()
 #import cmesh
@@ -37,28 +38,60 @@ edge_t = dtype([
 class CoralMesh:
     def __init__(self):
         self.verts = Pool(dtype(float32) * 3)
-        self.faces = Pool(dtype(int32) * 3)
+        self.faces = Pool(dtype(uint32) * 3)
      
     def init_edges(self):
         self.edges = Pool(edge_t)
         #for faceId, face in enumarate()
-        
+
         
 if __name__ == '__main__':
-    mesh = CoralMesh()
+    from zgl import *
     
-    verts = indices((2, 2, 2), float32).T.reshape(-1,3)
-    idxs = [ 0, 2, 3, 1,
-             0, 1, 5, 4, 
-             4, 5, 7, 6,
-             1, 3, 7, 5,
-             0, 4, 6, 2,
-             2, 6, 7, 3]
-    idxs = array(idxs, int32).reshape(-1,4)
-    idxs = idxs[:,(0, 1, 2, 0, 2, 3)]  # quads -> triangles
+    class App(ZglAppWX):
+        def __init__(self):
+            ZglAppWX.__init__(self, viewControl = FlyCamera())
+            
+            verts = indices((2, 2, 2), float32).T.reshape(-1,3)
+            idxs = [ 0, 2, 3, 1,
+                     0, 1, 5, 4, 
+                     4, 5, 7, 6,
+                     1, 3, 7, 5,
+                     0, 4, 6, 2,
+                     2, 6, 7, 3]
+            idxs = array(idxs, uint32).reshape(-1,4)
+            idxs = idxs[:,(0, 1, 2, 0, 2, 3)]  # quads -> triangles
+            idxs = idxs.reshape((-1,3))
+            
+            self.mesh = CoralMesh()
+            self.mesh.verts.set(verts)
+            self.mesh.faces.set(idxs)
+
+        def draw(self):
+            glVertexPointer(3, GL_FLOAT, 0, self.mesh.verts.data)
+            with glstate(GL_VERTEX_ARRAY):
+                glDrawElements(GL_TRIANGLES, len(self.mesh.faces)*3, 
+                    GL_UNSIGNED_INT, self.mesh.faces.data)
     
-    mesh.verts.set(verts)
-    mesh.faces.set(idxs)
+        def display(self):
+            clearGLBuffers()
+            with ctx(self.viewControl.with_vp, glstate(GL_DEPTH_TEST)):
+                glColor3f(0.5, 0.5, 0.5)
+                self.draw()
+
+                glColor3f(1, 1, 1)
+                with glstate(GL_POLYGON_OFFSET_LINE):
+                    glPolygonOffset(-1, -1)
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+                    self.draw()
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
+
+
+    
+    App().run()
+
+    
     
     
     
