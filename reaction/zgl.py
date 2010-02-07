@@ -11,6 +11,7 @@ from numpy import *
 from time import clock
 from PIL import Image
 from enthought.traits.api import *
+from enthought.traits.ui.api import *
 
 from ctypes import cdll, c_int, c_uint, c_float, c_char_p, c_long
 
