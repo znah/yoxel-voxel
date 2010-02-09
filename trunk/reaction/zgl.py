@@ -650,6 +650,8 @@ class ZglAppWX(HasTraits):
         canvas.Bind(wx.EVT_MOUSE_EVENTS, self.OnMouse)
 
         canvas.Bind(wx.EVT_IDLE, self.OnIdle)
+        
+        frame.Bind(wx.EVT_CLOSE, self.OnClose)
        
         frame.Show(True)
         canvas.SetCurrent()
@@ -665,6 +667,9 @@ class ZglAppWX(HasTraits):
         self.time = clock()
         self.dt = 0
         self.app.MainLoop()
+
+    def OnClose(self, event):
+        self.app.Exit()
 
     def OnIdle(self, event):
         t = clock()
@@ -690,7 +695,6 @@ class ZglAppWX(HasTraits):
         keycode = event.GetKeyCode()
         if keycode == wx.WXK_ESCAPE:
             self.frame.Close(True)
-            self.app.Exit()
         if keycode == wx.WXK_F2:
             self.edit_traits() 
         safe_call(self.viewControl, 'OnKeyDown', event)
