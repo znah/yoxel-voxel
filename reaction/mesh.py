@@ -9,6 +9,7 @@ class Pool:
     def __init__(self, dtype_):
         self.data = zeros((16,), dtype_)
         self.count = 0
+        self.view = self.data[:self.count]
     def extend(self, n = 1):
         data = self.data
         if self.count + n > len(data):
@@ -16,32 +17,43 @@ class Pool:
             self.data = resize(data, (capacity, ) + data.shape[1:])
         idx = self.count
         self.count += n
+        self.view = self.data[:self.count]
         return idx
     def push_back(self, v):
         i = self.extend(1)
         self[i] = v
         return i
+    def pop_back(self):
+        self.count -= 1
+        self.view = self.data[:self.count]
     def set(self, a):
         self.data = a
         self.count = len(a)
+        self.view = self.data[:self.count]
     def __len__(self):
         return self.count
     def __getitem__(self, idx):
-        return self.data[idx]
+        return self.view[idx]
     def __setitem__(self, idx, v):
-        self.data[idx] = v
+        self.view[idx] = v
     def __str__(self):
-        return str(self.data[:self.count])
+        return str(self.view)
     def __repr__(self):
-        return repr(self.data[:self.count])
-       
+        return repr(self.view)
+    def __iter__(self):
+        return iter(self.view)
+
+
+def flip(e):
+    return (e[1], e[0])
+        
 class CoralMesh:
     def __init__(self):
         self.verts = Pool(dtype(float32) * 3)
         self.faces = Pool(dtype(uint32) * 3)
         
     def calc_normals(self):
-        self.normals = normals = zeros_like(self.verts.data)
+        self.normals = normals = zeros_like(self.verts.view)
         faces = self.faces
         verts = self.verts
         p0 = verts[faces[:,0]]
@@ -53,11 +65,12 @@ class CoralMesh:
             for v in face:
                 normals[v] += n
         length = sqrt((normals * normals).sum(-1))
+        length[length < 1e-5] = 1.0
         normals /= length[:,newaxis]
         return normals
         
-    def make_face(self, fid, verts):
-        a, b, c = verts
+    def make_face(self, fid, vertIds):
+        a, b, c = vertIds
         e1, e2, e3 = (a, b), (b, c), (c, a)
         self.edgeNext[e1] = e2
         self.edgeNext[e2] = e3
@@ -65,7 +78,7 @@ class CoralMesh:
         self.edgeFace[e1] = fid
         self.edgeFace[e2] = fid
         self.edgeFace[e3] = fid
-        self.faces[fid] = verts
+        self.faces[fid] = vertIds
         
     def build_edges(self):
         self.edgeNext = {}
@@ -85,7 +98,7 @@ class CoralMesh:
         pos = (c*self.verts[e[0]] + (1-c)*self.verts[e[1]])
         v = self.verts.push_back(pos)
         self.split_face(e, v)
-        self.split_face((e[1], e[0]), v)
+        self.split_face(flip(e), v)
         
     def edge_len(self, e):
         dv = self.verts[e[0]] - self.verts[e[1]]
@@ -96,35 +109,70 @@ class CoralMesh:
             if e[0] < e[1] and self.edge_len(e) > threshold]
         for e in to_split:
             self.split_edge(e)
+        if len(to_split) > 0:
+            print "split:", len(to_split)
         return len(to_split)
-        
+
     def del_edges(self, *es):
         for e in es:
-            self.edgeFace.pop(e)
-            self.edgeNext.pop(e)
-        
-    def flip_edge(self, e):
-        re = (e[1], e[0])
-        fid1 = self.edgeFace[e]
-        fid2 = self.edgeFace[re]
-        a, b, c, d = e[1], self.edgeNext[e][1], e[0], self.edgeNext[re][1]
-        self.del_edges(e, re)
-        self.make_face(fid1, (a, b, d))
-        self.make_face(fid2, (b, c, d))
-        
-        
-    def optimize(self):
-        edges = self.edgeFace.keys()
-        for e in edges:
+            del self.edgeFace[e]
+            del self.edgeNext[e]
+
+    def wipe_face(self, fid):
+        a, b, c = self.faces[fid]
+        self.del_edges( (a, b), (b, c), (c, a) )
+        if fid != len(self.faces)-1:
+            last = self.faces[-1]
+            self.make_face(fid, last)
+        self.faces.pop_back()
+
+    def wipe_vert(self, edge):
+        '''
+        wipe all faces adjacent to first vertex of edge
+        '''
+        border = []
+        edge = flip(edge)
+        while edge in self.edgeNext:
+            border.append(edge[0])
+            next = flip( self.edgeNext[edge] )
+            self.wipe_face( self.edgeFace[edge] )
+            edge = next
+        return [border[0]] + border[1:][::-1]
+    
+    def fill_hole(self, border):
+        for i in xrange(2, len(border)):
+            fid = self.faces.extend()
+            f = (border[i-1], border[i], border[0])
+            self.make_face(fid, f)
+    
+    def shrink_edge(self, e):
+        c = 0.5
+        self.verts[e[1]] = (c*self.verts[e[0]] + (1-c)*self.verts[e[1]])
+        holeBorder = flip(self.edgeNext[e])
+        border = self.wipe_vert(e)
+        self.fill_hole(border)
+
+    def shrink_edges(self, threshold):
+        to_shrink = [e for e in self.edgeFace 
+            if e[0] < e[1] and self.edge_len(e) < threshold]
+        count = 0
+        for e in to_shrink:
             if e in self.edgeFace:
-                self.flip_edge(e)
-            
-        #haveFlips = True
-        #while haveFlips:
-        #    haveFlips = False
-        #for e in 
-            
-        
+                self.shrink_edge(e)
+                count += 1
+        if count > 0:
+            print "shrink:", count
+        return count
+
+    def save(self, fn):
+        f = file(fn, 'w')
+        f.write("# verts: %d\n# faces: %d\n\n" % (len(self.verts), len(self.faces)))
+        for v in self.verts:
+            f.write("v %f %f %f\n" % tuple(v))
+        for face in self.faces:
+            f.write("f %d %d %d\n" % tuple(face+1))
+        f.close()
+
 
 if __name__ == '__main__':
     from zgl import *
@@ -148,29 +196,50 @@ if __name__ == '__main__':
             mesh.verts.set(verts)
             mesh.faces.set(idxs)
             mesh.build_edges()
+            mesh.calc_normals()
 
         def draw(self):
-            glVertexPointer(3, GL_FLOAT, 0, self.mesh.verts.data)
+            glVertexPointer(3, GL_FLOAT, 0, self.mesh.verts.view)
             with glstate(GL_VERTEX_ARRAY):
                 glDrawElements(GL_TRIANGLES, len(self.mesh.faces)*3, 
-                    GL_UNSIGNED_INT, self.mesh.faces.data)
+                    GL_UNSIGNED_INT, self.mesh.faces.view)
+
+        def drawNormals(self):
+            n = len(self.mesh.verts)
+            v = zeros((2*n, 3), float32)
+            v[::2] = self.mesh.verts[:]
+            glColor3f(1, 0, 0)
+            v[1::2] = self.mesh.verts[:] + self.mesh.normals[:] * self.growStep
+            glVertexPointer(3, GL_FLOAT, 0, v)
+            with glstate(GL_VERTEX_ARRAY):
+                glDrawArrays(GL_LINES, 0, 2*n)
+            
         
         growBtn = Button(label = "Grow")
-        optimBtn = Button(label = "Optimize")
-        view = View(Item( 'growBtn' ), Item('optimBtn'))
+        saveBtn = Button(label = "Save tmp.obj")
+        view = View(Item('growBtn'), Item('saveBtn'))
+        growStep = Float(0.05)
+
         def _growBtn_fired(self):
-            #ns = self.mesh.calc_normals()
-            self.mesh.verts[:] *= 1.1#+= 0.1 * ns
-            while self.mesh.split_edges(0.5):
+            self.mesh.verts[:] += self.mesh.normals * self.growStep
+            self.mesh.verts[:,2] += self.growStep * sin(self.mesh.verts[:,1])
+            while self.mesh.shrink_edges(0.25):
                 pass
+            while self.mesh.split_edges(1.0):
+                pass
+            self.mesh.calc_normals()
             print len(self.mesh.verts), len(self.mesh.faces)
             
         def _optimBtn_fired(self):
             self.mesh.optimize()
 
+        def _saveBtn_fired(self):
+            self.mesh.save('tmp.obj')
+        
+
         def display(self):
             clearGLBuffers()
-            with ctx(self.viewControl.with_vp, glstate(GL_DEPTH_TEST)):
+            with ctx(self.viewControl.with_vp, glstate(GL_DEPTH_TEST, GL_DEPTH_CLAMP_NV)):
                 glColor3f(0.5, 0.5, 0.5)
                 self.draw()
 
@@ -180,6 +249,7 @@ if __name__ == '__main__':
                     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
                     self.draw()
                     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+                self.drawNormals()
 
     
     App().run()
