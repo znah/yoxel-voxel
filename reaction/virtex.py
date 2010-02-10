@@ -1,9 +1,5 @@
 from __future__ import with_statement
-from numpy import *
 from zgl import *
-from PIL import Image
-from time import clock
-from scipy import weave
 import vtex
 
 class TileProvider:
@@ -18,7 +14,7 @@ class TileProvider:
         self.noiseTex.genMipmaps()
         self.noiseTex.setParams( *Texture2D.MipmapLinear )
 
-        self.tex = Texture2D(Image.open(texFile))
+        self.tex = Texture2D(PIL.Image.open(texFile))
         self.tex.genMipmaps()
         self.tex.setParams( *Texture2D.MipmapLinear )
 
@@ -117,7 +113,7 @@ class App(ZglAppWX):
         self.moved = True
 
     def initTerrain(self):
-        heightmap = asarray(Image.open("img/heightmap.png"))
+        heightmap = asarray(PIL.Image.open("img/heightmap.png"))
         sy, sx = heightmap.shape
         wldStep = 1000.0 / (sx-1)
         texStep = 1.0 / (sx-1)

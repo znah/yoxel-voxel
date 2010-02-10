@@ -4,18 +4,30 @@ import wx
 from wx import glcanvas
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from OpenGL.GL.EXT.framebuffer_object import *
+from OpenGL.GL.ARB.framebuffer_object import *
 from OpenGL.GL.EXT.texture_integer import *
 from OpenGL.GL.EXT.texture_array import *
 from numpy import *
 from time import clock
-from PIL import Image
+import PIL.Image
 from enthought.traits.api import *
 from enthought.traits.ui.api import *
 
 from ctypes import cdll, c_int, c_uint, c_float, c_char_p, c_long
 
-# wglSwapIntervalEXT workaround
+############### ARBframebuffer_object wrappers ##############
+glGenFramebuffers = wrapper.wrapper(glGenFramebuffers).setOutput(
+                'framebuffers', 
+                lambda x: (x,), 
+                'n')
+                
+glGenRenderbuffers = wrapper.wrapper(glGenRenderbuffers).setOutput(
+                'renderbuffers', 
+                lambda x: (x,), 
+                'n')
+#############################################################
+
+############### wglSwapIntervalEXT workaround ###############
 import OpenGL.platform
 wglSwapIntervalEXT = OpenGL.platform.createExtensionFunction( 
   'wglSwapIntervalEXT', dll=OpenGL.platform.GL,
@@ -25,6 +37,7 @@ wglSwapIntervalEXT = OpenGL.platform.createExtensionFunction(
   doc='wglSwapIntervalEXT( c_int(None) ) -> BOOL', 
   argNames=['None'],
 )
+#############################################################
 
 cg = cdll.LoadLibrary("cg.dll")
 cggl = cdll.LoadLibrary("cggl.dll")
@@ -182,7 +195,7 @@ class Texture(object):
 
     def genMipmaps(self):
         with self:
-            glGenerateMipmapEXT(self.Target)
+            glGenerateMipmap(self.Target)
 
     def aniso(self, n):
         self.setParams( (GL_TEXTURE_MAX_ANISOTROPY_EXT, n))
@@ -278,34 +291,34 @@ class TextureArray(Texture3D):
 
 class Framebuffer:
     def __init__(self):
-        self._as_parameter_ = glGenFramebuffersEXT(1)
+        self._as_parameter_ = glGenFramebuffers(1)
     def __enter__(self):
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self)
+        glBindFramebuffer(GL_FRAMEBUFFER, self)
     def __exit__(self, *args):
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
 class RenderTexture:
     def __init__(self, depth = False, **args):
         self.fbo = Framebuffer()
         self.tex = Texture2D(**args)
         with self.fbo:
-            glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.tex, 0)
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.tex, 0)
             if depth:
-                self.depthRB = glGenRenderbuffersEXT(1)
-                glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, self.depthRB)
-                glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, self.size()[0], self.size()[1])
-                glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, self.depthRB)
-                glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0)
+                self.depthRB = glGenRenderbuffers(1)
+                glBindRenderbuffer(GL_RENDERBUFFER, self.depthRB)
+                glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, self.size()[0], self.size()[1])
+                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, self.depthRB)
+                glBindRenderbuffer(GL_RENDERBUFFER, 0)
 
     def size(self):
         return self.tex.size
 
     def __enter__(self):
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
+        glBindFramebuffer(GL_FRAMEBUFFER, self.fbo)
         glViewport(0, 0, self.size()[0], self.size()[1])
 
     def __exit__(self, *args):
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
     def texparams(self, *args):
         self.tex.setParams(*args)
@@ -738,7 +751,7 @@ class glstate:
                 glDisable(idx)
 
 def loadTex(fn):
-    tex = Texture2D(Image.open(fn))
+    tex = Texture2D(PIL.Image.open(fn))
     tex.filterLinearMipmap()
     tex.genMipmaps()
     tex.aniso(8)

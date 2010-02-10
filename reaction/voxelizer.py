@@ -1,6 +1,5 @@
 from __future__ import with_statement
 from zgl import *
-from OpenGL.GL.NV.geometry_program4 import *
 from volvis import VolumeRenderer
 
 from StringIO import StringIO
@@ -37,15 +36,10 @@ class Voxelizer:
         self.sliceNum = sliceNum = size / 128
         assert sliceNum <= 8
 
-        # TODO: texture array
-        self.slices = []
-        for i in xrange(sliceNum):
-            tex = Texture2D(
-              size = (size, size), 
+        self.slices = TextureArray(size = (size, size, sliceNum),
               format = GL_RGBA32UI_EXT,
               srcFormat = GL_RGBA_INTEGER_EXT,
               srcType = GL_UNSIGNED_INT)
-            self.slices.append(tex)  
           
         self.fragProg = CGShader('gp4fp', '''
           #line 38
@@ -117,10 +111,9 @@ class Voxelizer:
         
         self.fbo = Framebuffer()
         with self.fbo:
-            glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
             for i in xrange(sliceNum):
-                glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_2D, self.slices[i], 0)
-            glDrawBuffers(sliceNum, GL_COLOR_ATTACHMENT0_EXT+arange(sliceNum))
+                glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, self.slices, 0, i)
+            glDrawBuffers(sliceNum, GL_COLOR_ATTACHMENT0+arange(sliceNum))
 
         self.clear()
 
@@ -142,14 +135,14 @@ class Voxelizer:
         del self.state
 
     def dump(self):
+        bits = zeros( (self.sliceNum, self.size, self.size, 4), uint32 )
+        with self.slices:
+            OpenGL.raw.GL.glGetTexImage(GL_TEXTURE_2D_ARRAY_EXT, 0, GL_RGBA_INTEGER_EXT, GL_UNSIGNED_INT, bits.ctypes.data )
         res = zeros((self.size,)*3, uint8)
-        for i, sliceTex in enumerate(self.slices):
-            with sliceTex:
-                a = zeros( (self.size, self.size, 4), uint32 )
-                OpenGL.raw.GL.glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER_EXT, GL_UNSIGNED_INT, a.ctypes.data )
+        for i in xrange(self.sliceNum):
             for j in xrange(4):
                 dst = res[i * 128 + j*32:][:32]
-                src = expand_uint32(a[...,j])
+                src = expand_uint32(bits[i,:,:,j])
                 dst[:] = src
         return res
 
@@ -175,7 +168,8 @@ class App(ZglAppWX):
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
-        
+
+        n = 512
         self.voxelizer = Voxelizer(512)
         
         (v, f) = load_obj("data/bunny/bunny.obj")
@@ -194,7 +188,7 @@ class App(ZglAppWX):
             with ctx(self.idxBuf.elementArray, vattr(0)):
                 glDrawElements(GL_TRIANGLES, self.idxNum, GL_UNSIGNED_INT, None)
                 
-            d = 1.0 / 256
+            d = 1.0 / n
             drawBox((0, 0, 0), (1, 1, 1))
             drawBox((d, d, 0), (1-d, 1-d, 1))
             drawBox((d, 0, d), (1-d, 1, 1-d))
