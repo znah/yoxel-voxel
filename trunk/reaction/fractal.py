@@ -1,7 +1,5 @@
 from __future__ import with_statement
 from zgl import *
-from PIL import Image
-from time import clock
 
 class App(ZglAppWX):
     def __init__(self):
