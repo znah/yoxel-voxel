@@ -26,7 +26,7 @@ def fit_box(v):
 def expand_uint32(bits):
     a = zeros( (32,) + bits.shape[:2], uint8 )
     for i in xrange(32):
-        a[i] = ((bits>>i) & 1) * 128#255
+        a[i] = ((bits>>i) & 1) * 255
     return a
 
 
@@ -115,6 +115,8 @@ class Voxelizer:
                 glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, self.slices, 0, i)
             glDrawBuffers(sliceNum, GL_COLOR_ATTACHMENT0+arange(sliceNum))
 
+        self.vpCtx = ctx(Viewport(0, 0, self.size, self.size), ortho)
+
         self.clear()
 
     def clear(self):
@@ -123,7 +125,7 @@ class Voxelizer:
         
     def __enter__(self):
         self.state = ctx(
-          self.fbo, Viewport(0, 0, self.size, self.size), ortho,
+          self.fbo, self.vpCtx,
           self.vertProg, self.fragProg,
           glstate(GL_COLOR_LOGIC_OP, GL_DEPTH_CLAMP_NV)
         )
@@ -145,6 +147,48 @@ class Voxelizer:
                 src = expand_uint32(bits[i,:,:,j])
                 dst[:] = src
         return res
+
+    def dumpToTex(self):
+        if not hasattr(self, "dumpTex"):
+            self.dumpTex = Texture3D(size = (self.size,)*3, )
+            self.dumpFBO = Framebuffer()
+            self.dumpProg = CGShader('gp4fp', '''
+              typedef unsigned int uint;
+
+              uniform usampler2DARRAY slices;
+              uniform float slice;
+              uniform int channel;
+              uniform int mask;
+              
+              float4 main(float2 pos: TEXCOORD0) : COLOR
+              {
+                uint4 bits = tex2DARRAY(slices, float3(pos, slice));
+                uint b;
+                if (channel == 0)
+                  b = bits.r;
+                else if (channel == 1)
+                  b = bits.g;
+                else if (channel == 2)
+                  b = bits.b;
+                else
+                  b = bits.a;
+                float v = (b & (uint)mask) ? 1.0f : 0.0f;
+                return float4(v);
+              }
+            ''')
+            self.dumpProg.slices = self.slices
+
+        with ctx(self.dumpFBO, self.vpCtx, self.dumpProg):
+            for sl in xrange(self.sliceNum):
+                self.dumpProg.slice = sl
+                for ch in xrange(4):
+                    self.dumpProg.channel = ch
+                    for bit in xrange(32):
+                        self.dumpProg.mask = 1<<bit
+                        layer = sl * 128 + ch * 32 + bit
+                        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, self.dumpTex, 0, layer)
+                        drawQuad()
+        return self.dumpTex
 
 
 def drawBox(lo = (0, 0, 0), hi = (1, 1, 1)):
@@ -169,8 +213,7 @@ class App(ZglAppWX):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
 
-        n = 512
-        self.voxelizer = Voxelizer(512)
+        self.voxelizer = Voxelizer(256)
         
         (v, f) = load_obj("data/bunny/bunny.obj")
         v = fit_box(v)
@@ -183,22 +226,33 @@ class App(ZglAppWX):
         self.idxNum = len(f) * 3
 
         with self.voxelizer:
-            with self.vertBuf.array:
-                glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, None)
-            with ctx(self.idxBuf.elementArray, vattr(0)):
-                glDrawElements(GL_TRIANGLES, self.idxNum, GL_UNSIGNED_INT, None)
-                
-            d = 1.0 / n
-            drawBox((0, 0, 0), (1, 1, 1))
-            drawBox((d, d, 0), (1-d, 1-d, 1))
-            drawBox((d, 0, d), (1-d, 1, 1-d))
-            drawBox((0, d, d), (1, 1-d, 1-d))
+            self.draw()
         
-        a = self.voxelizer.dump()
-        self.volumeRender = VolumeRenderer(Texture3D(img=a))
+        #a = self.voxelizer.dump()
+        #self.volumeRender = VolumeRenderer(Texture3D(img=a))
+        self.volumeRender = VolumeRenderer(self.voxelizer.dumpToTex())
+        
+    def draw(self):
+        with self.vertBuf.array:
+            glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, None)
+        with ctx(self.idxBuf.elementArray, vattr(0)):
+            glDrawElements(GL_TRIANGLES, self.idxNum, GL_UNSIGNED_INT, None)
+        #d = 1.0 / self.voxelizer.size
+        #drawBox((0, 0, 0), (1, 1, 1))
+        #drawBox((d, d, 0), (1-d, 1-d, 1))
+        #drawBox((d, 0, d), (1-d, 1, 1-d))
+        #drawBox((0, d, d), (1, 1-d, 1-d))
 
     def display(self):
         clearGLBuffers()
+        
+        self.voxelizer.clear()
+        with self.voxelizer:
+            glLoadIdentity()
+            glRotate(self.time*10, 1, 1, 1)            
+            self.draw()
+        self.volumeRender.volumeTex = self.voxelizer.dumpToTex()
+        
         with ctx(self.viewControl.with_vp):
             self.volumeRender.render()
 
