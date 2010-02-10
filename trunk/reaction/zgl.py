@@ -70,6 +70,9 @@ cgGLSetParameter3f.argtypes = [c_int, c_float, c_float, c_float]
 cgGLSetParameter4f = cggl.cgGLSetParameter4f
 cgGLSetParameter4f.argtypes = [c_int, c_float, c_float, c_float, c_float]
 
+cgSetParameter1i = cg.cgSetParameter1i
+cgSetParameter1i.argtypes = [c_int, c_int]
+
 cgGLSetTextureParameter = cggl.cgGLSetTextureParameter
 cgGLSetTextureParameter.argtypes = [c_int, c_uint]
 
@@ -84,6 +87,7 @@ cgProfiles = {"fp30"  : 6149,
 
 cgParamSetters = {
   cg.cgGetType("float")     : lambda p, v : cgGLSetParameter1f(p, v),
+  cg.cgGetType("int")       : lambda p, v : cgSetParameter1i(p, v),
   cg.cgGetType("float2")    : lambda p, v : cgGLSetParameter2f(p, v[0], v[1]),
   cg.cgGetType("float3")    : lambda p, v : cgGLSetParameter3f(p, v[0], v[1], v[2]),
   cg.cgGetType("float4")    : lambda p, v : cgGLSetParameter4f(p, v[0], v[1], v[2], v[3]),
