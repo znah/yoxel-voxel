@@ -1,9 +1,6 @@
 from __future__ import with_statement
 from numpy import *
-#import pyximport; pyximport.install()
-#import cmesh
-
-#cmesh.test()
+import _coralmesh
 
 class Pool:
     def __init__(self, dtype_):
@@ -198,18 +195,38 @@ if __name__ == '__main__':
             mesh.build_edges()
             mesh.calc_normals()
 
+            self.mesh2 = mesh2 = _coralmesh.CoralMesh()
+            for v in verts:
+                mesh2.add_vert(*v.tolist())
+            for f in idxs:
+                mesh2.add_face(*f.tolist())
+            mesh2.update_normals()
+            self.verts = self.mesh2.get_positions()
+            self.faces = self.mesh2.get_faces()
+            self.normals = self.mesh2.get_normals()
+
+
+
         def draw(self):
-            glVertexPointer(3, GL_FLOAT, 0, self.mesh.verts.view)
+            #verts = self.mesh.verts.view
+            #faces = self.mesh.faces.view
+            verts = self.verts
+            faces = self.faces
+
+            glVertexPointer(3, GL_FLOAT, 0, verts)
             with glstate(GL_VERTEX_ARRAY):
-                glDrawElements(GL_TRIANGLES, len(self.mesh.faces)*3, 
-                    GL_UNSIGNED_INT, self.mesh.faces.view)
+                glDrawElements(GL_TRIANGLES, len(faces)*3, 
+                    GL_UNSIGNED_INT, faces)
 
         def drawNormals(self):
-            n = len(self.mesh.verts)
+            verts = self.verts
+            normals = self.normals
+
+            n = len(verts)
             v = zeros((2*n, 3), float32)
-            v[::2] = self.mesh.verts[:]
+            v[::2] = verts
             glColor3f(1, 0, 0)
-            v[1::2] = self.mesh.verts[:] + self.mesh.normals[:] * self.growStep
+            v[1::2] = verts + normals * self.growStep
             glVertexPointer(3, GL_FLOAT, 0, v)
             with glstate(GL_VERTEX_ARRAY):
                 glDrawArrays(GL_LINES, 0, 2*n)
@@ -221,6 +238,17 @@ if __name__ == '__main__':
         growStep = Float(0.05)
 
         def _growBtn_fired(self):
+            n = self.mesh2.get_vert_num()
+            amounts = zeros((n,), float32)
+            amounts[:] = self.growStep
+
+            self.mesh2.grow(0.25, 1.0, amounts)
+            self.verts = self.mesh2.get_positions()
+            self.faces = self.mesh2.get_faces()
+            self.normals = self.mesh2.get_normals()
+            print len(self.verts), len(self.faces)
+
+            '''
             self.mesh.verts[:] += self.mesh.normals * self.growStep
             self.mesh.verts[:,2] += self.growStep * sin(self.mesh.verts[:,1])
             while self.mesh.shrink_edges(0.25):
@@ -229,13 +257,18 @@ if __name__ == '__main__':
                 pass
             self.mesh.calc_normals()
             print len(self.mesh.verts), len(self.mesh.faces)
+            '''
             
-        def _optimBtn_fired(self):
-            self.mesh.optimize()
-
         def _saveBtn_fired(self):
             self.mesh.save('tmp.obj')
-        
+    
+        def OnKeyDown(self, evt):
+            key = evt.GetKeyCode()
+            if key == ord(' '):
+                self._growBtn_fired()
+            else:
+                ZglAppWX.OnKeyDown(self, evt)
+
 
         def display(self):
             clearGLBuffers()
