@@ -185,6 +185,9 @@ class Texture(object):
     Clamp  = [(GL_TEXTURE_WRAP_S, GL_CLAMP), (GL_TEXTURE_WRAP_T, GL_CLAMP), (GL_TEXTURE_WRAP_R, GL_CLAMP)]
     ClampToEdge  = [(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE), (GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE), (GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE)]
 
+    def __init__(self):
+        self._as_parameter_ = glGenTextures(1)
+
     def filterNearest(self):
         self.setParams(*self.Nearest)
     def filterLinear(self):
@@ -209,6 +212,12 @@ class Texture(object):
 
     def __exit__(self, *args):
         glBindTexture(self.Target, 0)
+    
+    def __del__(self):
+        self.free()
+    def free(self):
+        glDeleteTextures([self._as_parameter_])
+
 
 
 class Texture1D(Texture):
@@ -216,7 +225,6 @@ class Texture1D(Texture):
 
     def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = None, srcType = None):
         Texture.__init__(self)
-        self._as_parameter_ = glGenTextures(1)
         self.setParams( *(self.Nearest + self.Repeat) )
         if img != None:
             with self:
@@ -244,7 +252,6 @@ class Texture2D(Texture):
 
     def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = GL_RGBA, srcType = GL_FLOAT):
         Texture.__init__(self)
-        self._as_parameter_ = glGenTextures(1)
         self.setParams( *(self.Nearest + self.Repeat) )
         if img != None:
             with self:
@@ -266,7 +273,6 @@ class Texture3D(Texture):
 
     def __init__(self, img = None, size = None, format = GL_RGBA8, srcFormat = GL_RGBA, srcType = GL_FLOAT):
         Texture.__init__(self)
-        self._as_parameter_ = glGenTextures(1)
         self.setParams( *(self.Nearest + self.Repeat) )
         if img != None:
             with self:

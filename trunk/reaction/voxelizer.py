@@ -105,7 +105,7 @@ class Voxelizer:
             out float4 tc   : TEXCOORD0) 
           { 
             oPos = mul(glstate.matrix.mvp, pos);
-            tc = pos;
+            tc = mul(glstate.matrix.modelview[0], pos);
           }
         ''')
         
@@ -152,28 +152,27 @@ class Voxelizer:
         if not hasattr(self, "dumpTex"):
             self.dumpTex = Texture3D(size = (self.size,)*3, )
             self.dumpFBO = Framebuffer()
+            with self.dumpFBO:
+                glDrawBuffers(4, GL_COLOR_ATTACHMENT0+arange(4))
             self.dumpProg = CGShader('gp4fp', '''
               typedef unsigned int uint;
 
               uniform usampler2DARRAY slices;
               uniform float slice;
-              uniform int channel;
               uniform int mask;
               
-              float4 main(float2 pos: TEXCOORD0) : COLOR
+              void main(float2 pos: TEXCOORD0,
+                out float layer0: COLOR0,
+                out float layer1: COLOR1,
+                out float layer2: COLOR2,
+                out float layer3: COLOR3
+              )
               {
                 uint4 bits = tex2DARRAY(slices, float3(pos, slice));
-                uint b;
-                if (channel == 0)
-                  b = bits.r;
-                else if (channel == 1)
-                  b = bits.g;
-                else if (channel == 2)
-                  b = bits.b;
-                else
-                  b = bits.a;
-                float v = (b & (uint)mask) ? 1.0f : 0.0f;
-                return float4(v);
+                layer0 = (bits.r & mask) ? 1.0f : 0.0f;
+                layer1 = (bits.g & mask) ? 1.0f : 0.0f;
+                layer2 = (bits.b & mask) ? 1.0f : 0.0f;
+                layer3 = (bits.a & mask) ? 1.0f : 0.0f;
               }
             ''')
             self.dumpProg.slices = self.slices
@@ -181,13 +180,12 @@ class Voxelizer:
         with ctx(self.dumpFBO, self.vpCtx, self.dumpProg):
             for sl in xrange(self.sliceNum):
                 self.dumpProg.slice = sl
-                for ch in xrange(4):
-                    self.dumpProg.channel = ch
-                    for bit in xrange(32):
-                        self.dumpProg.mask = 1<<bit
-                        layer = sl * 128 + ch * 32 + bit
-                        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, self.dumpTex, 0, layer)
-                        drawQuad()
+                for bit in xrange(32):
+                    self.dumpProg.mask = 1<<bit
+                    layer = sl * 128 + bit
+                    for ch in xrange(4):
+                        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + ch, self.dumpTex, 0, layer + ch*32)
+                    drawQuad()
         return self.dumpTex
 
 
@@ -225,34 +223,32 @@ class App(ZglAppWX):
         self.idxBuf = BufferObject(f)
         self.idxNum = len(f) * 3
 
-        with self.voxelizer:
-            self.draw()
-        
-        #a = self.voxelizer.dump()
-        #self.volumeRender = VolumeRenderer(Texture3D(img=a))
         self.volumeRender = VolumeRenderer(self.voxelizer.dumpToTex())
         
-    def draw(self):
+    def drawMesh(self):
         with self.vertBuf.array:
             glVertexAttribPointer(0, 3, GL_FLOAT, False, 0, None)
         with ctx(self.idxBuf.elementArray, vattr(0)):
             glDrawElements(GL_TRIANGLES, self.idxNum, GL_UNSIGNED_INT, None)
-        #d = 1.0 / self.voxelizer.size
-        #drawBox((0, 0, 0), (1, 1, 1))
-        #drawBox((d, d, 0), (1-d, 1-d, 1))
-        #drawBox((d, 0, d), (1-d, 1, 1-d))
-        #drawBox((0, d, d), (1, 1-d, 1-d))
+    def drawFrame(self):
+        d = 1.0 / self.voxelizer.size
+        drawBox((0, 0, 0), (1, 1, 1))
+        drawBox((d, d, 0), (1-d, 1-d, 1))
+        drawBox((d, 0, d), (1-d, 1, 1-d))
+        drawBox((0, d, d), (1, 1-d, 1-d))
 
     def display(self):
         clearGLBuffers()
         
-        self.voxelizer.clear()
         with self.voxelizer:
-            glLoadIdentity()
-            glRotate(self.time*10, 1, 1, 1)            
-            self.draw()
+            clearGLBuffers()
+            self.drawFrame()
+            glTranslate(0.5, 0.5, 0)
+            glRotate(self.time*30, 0, 0, 1)            
+            glTranslate(-0.5, -0.5, 0)
+            self.drawMesh()
         self.volumeRender.volumeTex = self.voxelizer.dumpToTex()
-        
+
         with ctx(self.viewControl.with_vp):
             self.volumeRender.render()
 
