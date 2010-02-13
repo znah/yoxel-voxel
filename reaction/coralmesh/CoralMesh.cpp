@@ -20,12 +20,9 @@ void CoralMesh::setFace(int fid, int a, int b, int c)
 {
   m_faces[fid] = face_t(a, b, c);
   edge_t e1(a, b), e2(b, c), e3(c, a);
-  m_edgeNext[e1] = e2;
-  m_edgeNext[e2] = e3;
-  m_edgeNext[e3] = e1;
-  m_edgeFace[e1] = fid;
-  m_edgeFace[e2] = fid;
-  m_edgeFace[e3] = fid;
+  m_edges[e1] = EdgeData(fid, e2);
+  m_edges[e2] = EdgeData(fid, e3);
+  m_edges[e3] = EdgeData(fid, e1);
 }
 
 void CoralMesh::UpdateNormals()
@@ -46,30 +43,32 @@ void CoralMesh::UpdateNormals()
     m_normal[i] = normalize(m_normal[i]);
 }
 
-float CoralMesh::edgeLen(const edge_t & e)
+float CoralMesh::edgeLen2(const edge_t & e)
 {
-  return length(m_pos[e.b] - m_pos[e.a]);
+  return square_norm(m_pos[e.b] - m_pos[e.a]);
 }
 
 void CoralMesh::Grow(float mergeDist, float splitDist, const float * amounts)
 {
+  float mergeDist2 = mergeDist * mergeDist;
+  float splitDist2 = splitDist * splitDist;
   for (int i = 0; i < m_pos.size(); ++i)
-    m_pos[i] += m_normal[i] * amounts[i];
-  
+  m_pos[i] += m_normal[i] * amounts[i];
+ 
   int shrinkCount = 0;
   while (true)
   {
     std::vector<edge_t> toShrink;
-    for (EDGE_ITER iter = m_edgeNext.begin(); iter != m_edgeNext.end(); ++iter)
+    for (EDGE_ITER iter = m_edges.begin(); iter != m_edges.end(); ++iter)
     {
       edge_t e = iter->first;
-      if (e.a < e.b && edgeLen(iter->first) < mergeDist)
+      if (e.a < e.b && edgeLen2(iter->first) < mergeDist2)
         toShrink.push_back(e);
     }
     if (toShrink.empty())
       break;
     for (int i = 0; i < toShrink.size(); ++i )
-      if (m_edgeNext.find(toShrink[i]) != m_edgeNext.end())
+      if (m_edges.find(toShrink[i]) != m_edges.end())
       {
         shrinkEdge(toShrink[i]);
         ++shrinkCount;
@@ -80,10 +79,10 @@ void CoralMesh::Grow(float mergeDist, float splitDist, const float * amounts)
   while (true)
   {
     std::vector<edge_t> toSplit;
-    for (EDGE_ITER iter = m_edgeNext.begin(); iter != m_edgeNext.end(); ++iter)
+    for (EDGE_ITER iter = m_edges.begin(); iter != m_edges.end(); ++iter)
     {
       edge_t e = iter->first;
-      if (e.a < e.b && edgeLen(iter->first) > splitDist)
+      if (e.a < e.b && edgeLen2(iter->first) > splitDist2)
         toSplit.push_back(e);
     }
     if (toSplit.empty())
@@ -112,18 +111,13 @@ point_3f CoralMesh::interpolateVertex(int a, int b)
   return 0.5f * (m_pos[a] + m_pos[b]);
 }
 
-void CoralMesh::removeEdge(const edge_t & e)
-{
-  m_edgeNext.erase(e);
-  m_edgeFace.erase(e);
-}
-
 void CoralMesh::splitEdgeFace(const edge_t & e, int vid)
 {
-  int a = e.a, b = e.b, c = m_edgeNext[e].b;
-  setFace(m_edgeFace[e], vid, b, c);
+  const EdgeData & edata = m_edges[e];
+  int a = e.a, b = e.b, c = edata.next.b;
+  setFace(edata.face, vid, b, c);
   AddFace(vid, c, a);
-  removeEdge(e);
+  m_edges.erase(e);
 }
 
 void CoralMesh::shrinkEdge(const edge_t & edge)
@@ -131,13 +125,13 @@ void CoralMesh::shrinkEdge(const edge_t & edge)
   m_pos[edge.b] = interpolateVertex(edge.a, edge.b);
   std::vector<int> holeBorder;
   holeBorder.push_back(edge.b);
-  for (edge_t e = m_edgeNext[edge.flip()]; e != edge; e = m_edgeNext[e.flip()] )
+  for (edge_t e = m_edges[edge.flip()].next; e != edge; e = m_edges[e.flip()].next )
   {
     assert(e.valid());
     holeBorder.push_back(e.b);
   }
   for (int i = 0; i < holeBorder.size(); ++i)
-    removeFace( m_edgeFace[ edge_t(edge.a, holeBorder[i]) ] );
+    removeFace( m_edges[ edge_t(edge.a, holeBorder[i]) ].face );
   for (int i = 1; i < holeBorder.size() - 1; ++i)
     AddFace(edge.b, holeBorder[i+1], holeBorder[i]);
 }
@@ -145,9 +139,9 @@ void CoralMesh::shrinkEdge(const edge_t & edge)
 void CoralMesh::removeFace(int fid)
 {
   face_t f = m_faces[fid];
-  removeEdge(edge_t(f.a, f.b));
-  removeEdge(edge_t(f.b, f.c));
-  removeEdge(edge_t(f.c, f.a));
+  m_edges.erase(edge_t(f.a, f.b));
+  m_edges.erase(edge_t(f.b, f.c));
+  m_edges.erase(edge_t(f.c, f.a));
   if (fid != m_faces.size() - 1)
   {
     face_t last = m_faces.back();
