@@ -57,18 +57,23 @@ private:
   std::vector<point_3f>    m_pos;
   std::vector<point_3f>    m_normal;
   std::vector<face_t>      m_faces;
-  typedef stdext::hash_map<edge_t, edge_t> EDGE_NEXT_MAP;
-  typedef stdext::hash_map<edge_t, int>    EDGE_FACE_MAP;
-  typedef EDGE_NEXT_MAP::const_iterator EDGE_ITER;
-  EDGE_NEXT_MAP m_edgeNext;
-  EDGE_FACE_MAP m_edgeFace;
+
+  struct EdgeData
+  {
+    int face;
+    edge_t next;
+    EdgeData() : face(-1) {}
+    EdgeData(int face_, const edge_t & next_) : face(face_), next(next_) {}
+  };
+  typedef stdext::hash_map<edge_t, EdgeData> EDGE_MAP;
+  typedef EDGE_MAP::const_iterator EDGE_ITER;
+  EDGE_MAP m_edges;
 
   void setFace(int fid, int a, int b, int c);
-  float edgeLen(const edge_t & e);
+  float edgeLen2(const edge_t & e);
   void splitEdge(const edge_t & e);
   point_3f interpolateVertex(int a, int b);
   void splitEdgeFace(const edge_t & e, int vid);
-  void removeEdge(const edge_t & e);
   void shrinkEdge(const edge_t & e);
   void removeFace(int fid);
 };

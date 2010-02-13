@@ -20,9 +20,16 @@ def create_box_mesh():
     for f in idxs:
         mesh.add_face(*f.tolist())
     mesh.update_normals()
-
     return mesh
 
+def save_mesh(fn, verts, faces):
+    f = file(fn, 'w')
+    f.write("# verts: %d\n# faces: %d\n\n" % (len(verts), len(faces)))
+    for v in verts:
+        f.write("v %f %f %f\n" % tuple(v))
+    for face in faces:
+        f.write("f %d %d %d\n" % tuple(face+1))
+    f.close()
 
 
 class MeshTestApp(ZglAppWX):
@@ -101,7 +108,7 @@ if __name__ == '__main__':
     #MeshTestApp().run()
 
     mesh = create_box_mesh()
-    n = 300
+    n = 400
     amounts = empty((1000,), float32)
     amounts[:] = 0.05
     times = zeros((n,))
@@ -117,8 +124,9 @@ if __name__ == '__main__':
         times[i] = clock()
     dt = diff(times)
     print times[-1] - times[0]
+    save_mesh('t.obj', mesh.get_positions(), mesh.get_faces())
 
     import pylab
     pylab.plot(dt)
-    pylab.plot(verts)
+    #pylab.plot(verts)
     pylab.show()
