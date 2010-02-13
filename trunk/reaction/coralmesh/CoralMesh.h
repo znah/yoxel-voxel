@@ -1,13 +1,16 @@
 #include <cmath>
 #include <vector>
 #include <map>
+#include <hash_map>
 
 struct edge_t
 {
   int a, b;
-  edge_t() : a(0), b(0) {}
+  edge_t() : a(-1), b(-1) {}
   edge_t(int a_, int b_) : a(a_), b(b_) {}
   edge_t flip() const { return edge_t(b, a); }
+  bool valid() const { return a >= 0 && b >=0 && a != b; }
+  operator size_t() const { return (a<<16) + b; }
 };
 
 struct face_t
@@ -54,8 +57,8 @@ private:
   std::vector<point_3f>    m_pos;
   std::vector<point_3f>    m_normal;
   std::vector<face_t>      m_faces;
-  typedef std::map<edge_t, edge_t> EDGE_NEXT_MAP;
-  typedef std::map<edge_t, int>    EDGE_FACE_MAP;
+  typedef stdext::hash_map<edge_t, edge_t> EDGE_NEXT_MAP;
+  typedef stdext::hash_map<edge_t, int>    EDGE_FACE_MAP;
   typedef EDGE_NEXT_MAP::const_iterator EDGE_ITER;
   EDGE_NEXT_MAP m_edgeNext;
   EDGE_FACE_MAP m_edgeFace;

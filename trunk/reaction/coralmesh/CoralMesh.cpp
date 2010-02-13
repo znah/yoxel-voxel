@@ -56,8 +56,8 @@ void CoralMesh::Grow(float mergeDist, float splitDist, const float * amounts)
   for (int i = 0; i < m_pos.size(); ++i)
     m_pos[i] += m_normal[i] * amounts[i];
   
-  bool modified = true;
-  while (modified)
+  int shrinkCount = 0;
+  while (true)
   {
     std::vector<edge_t> toShrink;
     for (EDGE_ITER iter = m_edgeNext.begin(); iter != m_edgeNext.end(); ++iter)
@@ -66,13 +66,18 @@ void CoralMesh::Grow(float mergeDist, float splitDist, const float * amounts)
       if (e.a < e.b && edgeLen(iter->first) < mergeDist)
         toShrink.push_back(e);
     }
+    if (toShrink.empty())
+      break;
     for (int i = 0; i < toShrink.size(); ++i )
-      shrinkEdge(toShrink[i]);
-    modified = !toShrink.empty();
+      if (m_edgeNext.find(toShrink[i]) != m_edgeNext.end())
+      {
+        shrinkEdge(toShrink[i]);
+        ++shrinkCount;
+      }
   }
 
-  modified = true;
-  while (modified)
+  int splitCount = 0;
+  while (true)
   {
     std::vector<edge_t> toSplit;
     for (EDGE_ITER iter = m_edgeNext.begin(); iter != m_edgeNext.end(); ++iter)
@@ -81,12 +86,17 @@ void CoralMesh::Grow(float mergeDist, float splitDist, const float * amounts)
       if (e.a < e.b && edgeLen(iter->first) > splitDist)
         toSplit.push_back(e);
     }
+    if (toSplit.empty())
+      break;
     for (int i = 0; i < toSplit.size(); ++i )
+    {
       splitEdge(toSplit[i]);
-    modified = !toSplit.empty();
+      ++splitCount;
+    }
   }
 
   UpdateNormals();
+  //printf("splits: %d,  shrinks: %d\n", splitCount, shrinkCount);
 }
 
 void CoralMesh::splitEdge(const edge_t & e)
@@ -122,12 +132,14 @@ void CoralMesh::shrinkEdge(const edge_t & edge)
   std::vector<int> holeBorder;
   holeBorder.push_back(edge.b);
   for (edge_t e = m_edgeNext[edge.flip()]; e != edge; e = m_edgeNext[e.flip()] )
-    holeBorder.push_back(edge.b);
-  for (int i = 0; i < holeBorder.size(); ++i)
   {
-    int borderVert = holeBorder[i];
-    removeFace( m_edgeFace[ edge_t(edge.a, borderVert) ] );
+    assert(e.valid());
+    holeBorder.push_back(e.b);
   }
+  for (int i = 0; i < holeBorder.size(); ++i)
+    removeFace( m_edgeFace[ edge_t(edge.a, holeBorder[i]) ] );
+  for (int i = 1; i < holeBorder.size() - 1; ++i)
+    AddFace(edge.b, holeBorder[i+1], holeBorder[i]);
 }
 
 void CoralMesh::removeFace(int fid)
