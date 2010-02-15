@@ -37,11 +37,6 @@ class ReactDiff(HasTraits):
         code = cu_header + '''
           texture<float2, 3> srcTex;
 
-          __device__ float wrap(float x, float sz) 
-          { 
-            return fmodf(x + sz, sz);
-          }
-
           extern "C"
           __global__ void RDKernel(float f, float k, float scale, int sz, float2 * dstBuf)
           {
@@ -54,16 +49,17 @@ class ReactDiff(HasTraits):
             int y = threadIdx.y + by * blockDim.y;
             int z = threadIdx.z + bz * blockDim.z;
 
-            float szf = sz;
+            float dp = 1.0f / sz;
+            float3 p = make_float3(x, y, z) * dp;
 
-            float2 v = tex3D(srcTex, x, y, z);
+            float2 v = tex3D(srcTex, p.x, p.y, p.z);
             float2 l = -6.0f * v;
-            l += tex3D(srcTex, wrap(x+1.0f, szf), y, z);
-            l += tex3D(srcTex, wrap(x-1.0f, szf), y, z);
-            l += tex3D(srcTex, x, wrap(y+1.0f, szf), z);
-            l += tex3D(srcTex, x, wrap(y-1.0f, szf), z);
-            l += tex3D(srcTex, x, y, wrap(z+1.0f, szf));
-            l += tex3D(srcTex, x, y, wrap(z-1.0f, szf));
+            l += tex3D(srcTex, p.x+dp, p.y,    p.z);
+            l += tex3D(srcTex, p.x-dp, p.y,    p.z);
+            l += tex3D(srcTex, p.x,    p.y+dp, p.z);
+            l += tex3D(srcTex, p.x,    p.y-dp, p.z);
+            l += tex3D(srcTex, p.x,    p.y,    p.z+dp);
+            l += tex3D(srcTex, p.x,    p.y,    p.z-dp);
 
             l *= scale;
 
@@ -111,9 +107,10 @@ class ReactDiff(HasTraits):
 
         self.d_srcTex = self.mod.get_texref('srcTex')
         self.d_srcTex.set_array(self.d_srcArray)
-        #self.d_srcTex.set_address_mode(0, cu.address_mode.WRAP)
-        #self.d_srcTex.set_address_mode(1, cu.address_mode.WRAP)
-        #self.d_srcTex.set_address_mode(2, cu.address_mode.WRAP)
+        self.d_srcTex.set_flags(cu.TRSF_NORMALIZED_COORDINATES)
+        self.d_srcTex.set_address_mode(0, cu.address_mode.WRAP)
+        self.d_srcTex.set_address_mode(1, cu.address_mode.WRAP)
+        self.d_srcTex.set_address_mode(2, cu.address_mode.WRAP)
 
         self.RDKernel = self.mod.get_function('RDKernel')
 
