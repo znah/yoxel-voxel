@@ -65,13 +65,14 @@ class MeshTestApp(ZglAppWX):
     
     growBtn = Button(label = "Grow")
     saveBtn = Button(label = "Save tmp.obj")
-    view = View(Item('growBtn'), Item('saveBtn'))
+    view = View(Item('growBtn'), Item('saveBtn'), Item('growStep'))
     growStep = Float(0.05)
 
     def _growBtn_fired(self):
         n = self.mesh.get_vert_num()
         amounts = zeros((n,), float32)
         amounts[:] = self.growStep
+        amounts += random.rand(n)*self.growStep
 
         self.mesh.grow(0.25, 1.0, amounts)
         self.verts = self.mesh.get_positions()
@@ -105,10 +106,10 @@ class MeshTestApp(ZglAppWX):
 
 
 if __name__ == '__main__':
-    #MeshTestApp().run()
-
+    MeshTestApp().run()
+    '''
     mesh = create_box_mesh()
-    n = 400
+    n = 300
     amounts = empty((1000,), float32)
     amounts[:] = 0.05
     times = zeros((n,))
@@ -130,3 +131,4 @@ if __name__ == '__main__':
     pylab.plot(dt / verts[1:])
     #pylab.plot(verts)
     pylab.show()
+    '''
