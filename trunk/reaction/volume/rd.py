@@ -1,17 +1,11 @@
 from __future__ import with_statement
 import sys
 sys.path.append('..')
+
 from zgl import *
 from volvis import VolumeRenderer
-
-import pycuda.driver as cu
-import pycuda.gpuarray as ga
-import pycuda.tools
-import pycuda.autoinit
-from pycuda.compiler import SourceModule
-from cutypes import *
+from cutools import *
 import os
-from time import clock
 
 from enthought.traits.ui.api import *
 class ReactDiff(HasTraits):
@@ -83,12 +77,11 @@ class ReactDiff(HasTraits):
             v += dt * dv;
 
             int ofs = x + (y + z * sz) * sz;
-            //v = make_float2(1, x + y + z);
             dstBuf[ofs] = v;
           }
 
         '''
-        self.mod = SourceModule(code, include_dirs = [os.getcwd()], no_extern_c = True)
+        self.mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd()+'/../include'], no_extern_c = True)
         
 
         descr = cu.ArrayDescriptor3D()
@@ -163,6 +156,7 @@ class App(ZglAppWX):
 
 
 if __name__ == "__main__":
+    import pycuda.autoinit
     App().run()
 
 

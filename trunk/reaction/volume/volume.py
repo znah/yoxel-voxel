@@ -1,4 +1,6 @@
 from __future__ import with_statement
+import sys
+sys.path.append('..')
 
 from numpy import *
 import pycuda.driver as cu
@@ -7,7 +9,7 @@ import pycuda.tools
 import pycuda.autoinit
 from pycuda.compiler import SourceModule
 
-from cutypes import *
+from cutools import *
 from string import Template
 import os
 
@@ -279,7 +281,7 @@ class Tests(unittest.TestCase):
 
 
         '''
-        self.mod = SourceModule(code, include_dirs = [os.getcwd()], no_extern_c = True)
+        self.mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd() + '\\..\\include'], no_extern_c = True)
 
     def testSetGet(self):
         vol = CuSparseVolume()

@@ -2,16 +2,6 @@ from __future__ import with_statement
 from zgl import *
 from volvis import VolumeRenderer
 
-from StringIO import StringIO
-
-def load_obj(fn):
-    ss = file(fn).readlines()
-    vs = [s[1:] for s in ss if s[0] == 'v']
-    fs = [s[1:] for s in ss if s[0] == 'f']
-    verts = loadtxt( StringIO("".join(vs)), float32 )
-    faces = loadtxt( StringIO("".join(fs)), int32 ) - 1
-    return (verts, faces)
-
 def fit_box(v):
     lo = v.min(0)
     hi = v.max(0)

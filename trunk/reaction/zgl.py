@@ -12,6 +12,7 @@ from time import clock
 import PIL.Image
 from enthought.traits.api import *
 from enthought.traits.ui.api import *
+from StringIO import StringIO
 
 from ctypes import cdll, c_int, c_uint, c_float, c_char_p, c_long
 
@@ -808,6 +809,13 @@ def clearGLBuffers(color = (0, 0, 0, 0), colorBit = True, depthBit = True):
        mask |= GL_DEPTH_BUFFER_BIT
     glClear(mask)
         
+def load_obj(fn):
+    ss = file(fn).readlines()
+    vs = [s[1:] for s in ss if s[0] == 'v']
+    fs = [s[1:] for s in ss if s[0] == 'f']
+    verts = loadtxt( StringIO("".join(vs)), float32 )
+    faces = loadtxt( StringIO("".join(fs)), int32 ) - 1
+    return (verts, faces)
     
 
 TestShaders = '''
