@@ -127,6 +127,6 @@ if __name__ == '__main__':
     save_mesh('t.obj', mesh.get_positions(), mesh.get_faces())
 
     import pylab
-    pylab.plot(dt)
+    pylab.plot(dt / verts[1:])
     #pylab.plot(verts)
     pylab.show()

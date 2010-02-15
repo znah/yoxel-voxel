@@ -1,6 +1,11 @@
 from ctypes import c_uint32, c_int32, c_float, Structure, addressof, sizeof
 import numpy as np
 
+import pycuda.driver as cu
+import pycuda.gpuarray as ga
+import pycuda.tools
+from pycuda.compiler import SourceModule
+
 def CU_PTR(ref_type):
     class cu_ptr(c_uint32):
         _ref_type_ = ref_type
