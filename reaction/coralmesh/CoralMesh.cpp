@@ -53,7 +53,7 @@ void CoralMesh::Grow(float mergeDist, float splitDist, const float * amounts)
   float mergeDist2 = mergeDist * mergeDist;
   float splitDist2 = splitDist * splitDist;
   for (int i = 0; i < m_pos.size(); ++i)
-  m_pos[i] += m_normal[i] * amounts[i];
+    m_pos[i] += m_normal[i] * amounts[i];
  
   int shrinkCount = 0;
   while (true)
