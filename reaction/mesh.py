@@ -22,16 +22,6 @@ def create_box_mesh():
     mesh.update_normals()
     return mesh
 
-def save_mesh(fn, verts, faces):
-    f = file(fn, 'w')
-    f.write("# verts: %d\n# faces: %d\n\n" % (len(verts), len(faces)))
-    for v in verts:
-        f.write("v %f %f %f\n" % tuple(v))
-    for face in faces:
-        f.write("f %d %d %d\n" % tuple(face+1))
-    f.close()
-
-
 class MeshTestApp(ZglAppWX):
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
@@ -45,10 +35,7 @@ class MeshTestApp(ZglAppWX):
         self.normals = self.mesh.get_normals()
 
     def draw(self):
-        glVertexPointer(3, GL_FLOAT, 0, self.verts)
-        with glstate(GL_VERTEX_ARRAY):
-            glDrawElements(GL_TRIANGLES, len(self.faces)*3, 
-                GL_UNSIGNED_INT, self.faces)
+        drawArrays(GL_TRIANGLES, verts = self.verts, indices = self.faces)
 
     def drawNormals(self):
         verts = self.verts
@@ -58,10 +45,7 @@ class MeshTestApp(ZglAppWX):
         v[::2] = verts
         glColor3f(1, 0, 0)
         v[1::2] = verts + normals * self.growStep
-        glVertexPointer(3, GL_FLOAT, 0, v)
-        with glstate(GL_VERTEX_ARRAY):
-            glDrawArrays(GL_LINES, 0, 2*n)
-        
+        drawArrays(GL_LINES, verts=v)
     
     growBtn = Button(label = "Grow")
     saveBtn = Button(label = "Save tmp.obj")
@@ -125,7 +109,7 @@ if __name__ == '__main__':
         times[i] = clock()
     dt = diff(times)
     print times[-1] - times[0]
-    save_mesh('t.obj', mesh.get_positions(), mesh.get_faces())
+    save_obj('t.obj', mesh.get_positions(), mesh.get_faces())
 
     import pylab
     pylab.plot(dt / verts[1:])
