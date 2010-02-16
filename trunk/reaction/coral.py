@@ -1,6 +1,7 @@
 from zgl import *
 from cutools import *
 import os
+import _coralmesh
 
 class Diffusion:
     def __init__(self, sz = 256):
@@ -50,6 +51,35 @@ class Diffusion:
         '''
         self.mod = mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd()+'/include'], no_extern_c = True)
         self.prepareFunc = mod.get_function("PrepareDiffusion")
+
+
+
+class Coral:
+    def __init__(self):
+        self.gridSize = gridSize = 256
+        self.coralliteSpacing = spacing = 1.8
+
+        verts, idxs = load_obj('data/icosahedron.obj')
+        verts *= spacing / 2.0
+        verts += (gridSize/2, gridSize/2, spacing*2)
+        self.mesh = _coralmesh.CoralMesh()
+        for v in verts:
+            mesh.add_vert(*v.tolist())
+        for f in idxs:
+            mesh.add_face(*f.tolist())
+        mesh.update_normals()
+
+        self.voxelizer = Voxelizer(gridSize)
+        self.diffusion = accretive.Diffusion(gridSize)
+
+    def grow(self):
+        pass
+
+
+
+
+
+        
         
         
         

@@ -98,6 +98,12 @@ cgParamSetters = {
   cg.cgGetType("sampler2DARRAY") : lambda p, v : cgGLSetTextureParameter(p, v)
 }
 
+def arrayToGLType(a):
+    if a.dtype.char == 'l':
+        return GL_INT
+    elif a.dtype.char == 'L':
+        return GL_UNSIGNED_INT
+    return arrays.ArrayDatatype.arrayToGLType(a)
 
 def InitCG():
     global cgContext
@@ -233,7 +239,7 @@ class Texture1D(Texture):
                 if srcFormat is None:
                     srcFormat = self.ChNum2Format[img.shape[1]]
                 if srcType is None:
-                    srcType = arrays.ArrayDatatype.getHandler(img).arrayToGLType(img)
+                    srcType = arrayToGLType(img)
                 glPixelStorei(GL_PACK_ALIGNMENT, 1);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
                 glTexImage1D(self.Target, 0, format, img.shape[0], 0, srcFormat, srcType, img)
@@ -258,7 +264,7 @@ class Texture2D(Texture):
             with self:
                 img = atleast_3d(ascontiguousarray(img))
                 srcFormat = self.ChNum2Format[img.shape[2]]
-                srcType = arrays.ArrayDatatype.getHandler(img).arrayToGLType(img)
+                srcType = arrayToGLType(img)
                 glPixelStorei(GL_PACK_ALIGNMENT, 1);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
                 glTexImage2D(self.Target, 0, format, img.shape[1], img.shape[0], 0, srcFormat, srcType, img)
@@ -283,7 +289,7 @@ class Texture3D(Texture):
                 else:
                     ch = img.shape[3]
                 srcFormat = self.ChNum2Format[ch]
-                srcType = arrays.ArrayDatatype.getHandler(img).arrayToGLType(img)
+                srcType = arrayToGLType(img)
                 glPixelStorei(GL_PACK_ALIGNMENT, 1);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
                 glTexImage3D(self.Target, 0, format, img.shape[2], img.shape[1], img.shape[0], 0, srcFormat, srcType, img)
@@ -816,7 +822,29 @@ def load_obj(fn):
     verts = loadtxt( StringIO("".join(vs)), float32 )
     faces = loadtxt( StringIO("".join(fs)), int32 ) - 1
     return (verts, faces)
+
+def save_obj(fn, verts, faces):
+    f = file(fn, 'w')
+    f.write("# verts: %d\n# faces: %d\n\n" % (len(verts), len(faces)))
+    for v in verts:
+        f.write("v %f %f %f\n" % tuple(v))
+    for face in faces:
+        f.write("f %d %d %d\n" % tuple(face+1))
+    f.close()
+
     
+def drawArrays(primitive, verts = None, indices = None):
+    states = []
+    if verts is not None:
+        glVertexPointer( verts.shape[-1], arrayToGLType(verts), verts.strides[-2], verts)
+        states.append( GL_VERTEX_ARRAY )
+    with glstate(*states):
+        if indices is not None:
+            # TODO: index types
+            glDrawElements(primitive, indices.size, GL_UNSIGNED_INT, indices)
+        else:
+            glDrawArrays( primitive, 0, prod(verts.shape[:-1]) )
+
 
 TestShaders = '''
   uniform sampler2D tex;
