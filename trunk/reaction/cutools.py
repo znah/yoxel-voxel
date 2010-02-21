@@ -1,5 +1,6 @@
 from ctypes import c_uint32, c_int32, c_float, Structure, addressof, sizeof
 import numpy as np
+from jinja2 import Template
 
 import pycuda.driver as cu
 import pycuda.gpuarray as ga
