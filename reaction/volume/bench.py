@@ -55,42 +55,44 @@ src = ga.to_gpu( arange(n, dtype = src_t) )
 dst = ga.zeros((n,), float32)
 src.bind_to_texref(tex)
 
-def runKernel(bsize = 256, ofs = 0, func = ReadTest):
-    bnum = divUp(n, bsize)
-    func(int32(n), src, dst, int32(ofs), block = (bsize, 1, 1), grid = (1024, divUp(bnum, 1024)), texrefs = [tex])
+def runKernel(blockSize = 256, ofs = 0, func = ReadTest):
+    bnum = divUp(n, blockSize)
+    func(int32(n), src, dst, int32(ofs), block = (blockSize, 1, 1), grid = (1024, divUp(bnum, 1024)), texrefs = [tex])
 
 runKernel(func = ReadTest)
 print dst
 runKernel(func = ReadTestTex)
 print dst
 
-def run(bsize = 256, ofs = 0, func = ReadTest):
+def run(**args):
+    runKernel(**args) # warming up
     cuda.Context.synchronize()
     start = clock()
     for i in xrange(10):
-        runKernel(bsize, ofs, func)
+        runKernel(**args)
     cuda.Context.synchronize()
     stop = clock()
 
     return (stop - start) / 10 * 1000
 
 
-blockSize = range(32, 512+1, 32)
+blockSizes = xrange(64, 512+1, 32)
 
-def run2(ofs = 0, func = ReadTest):
+def run2(**args):
     tt = []
-    for bsize in blockSize:
-        t = run(bsize, ofs, func)
+    for bsize in blockSizes:
+        t = run(blockSize = bsize, **args)
         tt.append(t)
         print bsize, t
     return tt
 
 import pylab
 
-pylab.plot(blockSize, run2(0))
-pylab.plot(blockSize, run2(1))
-pylab.plot(blockSize, run2(0, ReadTestTex), '--')
-pylab.plot(blockSize, run2(1, ReadTestTex), '--')
+pylab.plot(blockSizes, run2(ofs = 0))
+pylab.plot(blockSizes, run2(ofs = 1))
+pylab.plot(blockSizes, run2(ofs = 0,  func = ReadTestTex), '--')
+pylab.plot(blockSizes, run2(ofs = 1,  func = ReadTestTex), '--')
+pylab.plot(blockSizes, run2(ofs = -4, func = ReadTestTex), '--')
 pylab.plot([0])
 pylab.savefig("t.png")
 pylab.show()
