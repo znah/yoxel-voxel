@@ -89,10 +89,10 @@ def run2(**args):
 import pylab
 
 pylab.plot(blockSizes, run2(ofs = 0))
-pylab.plot(blockSizes, run2(ofs = 1))
+#pylab.plot(blockSizes, run2(ofs = 1))
 pylab.plot(blockSizes, run2(ofs = 0,  func = ReadTestTex), '--')
-pylab.plot(blockSizes, run2(ofs = 1,  func = ReadTestTex), '--')
-pylab.plot(blockSizes, run2(ofs = -4, func = ReadTestTex), '--')
+#pylab.plot(blockSizes, run2(ofs = 1,  func = ReadTestTex), '--')
+#pylab.plot(blockSizes, run2(ofs = -4, func = ReadTestTex), '--')
 pylab.plot([0])
 pylab.savefig("t.png")
 pylab.show()

@@ -4,6 +4,9 @@ from volvis import VolumeRenderer
 import os
 
 class Diffusion:
+    OBSTACLE = -1.0
+    SINK = -2.0
+    
     def __init__(self, size = 256):
         self.size = size
         shape = (size,)*3
@@ -24,7 +27,7 @@ class Diffusion:
                 
         self.Ctx = Ctx = struct('Ctx', 
             ( 'size', c_int32))
-
+            
         code = Template('''
           {{g.cu_header}}
           {{g.gen_code(v.Ctx)}}
@@ -47,7 +50,7 @@ class Diffusion:
             float v = tex1Dfetch(srcTex, cell_ofs(x, y, z));
             if (v >= 0)
               return v;
-            else if (v == -1.0f)
+            else if (v == {{v.self.OBSTACLE}}f)
               return self;
             else 
               return 0.0f;
@@ -67,6 +70,12 @@ class Diffusion:
             uint ofs = cell_ofs(x, y, z);
             
             float self = tex1Dfetch(srcTex, ofs);
+            if (self < 0 || z == 0 || z == ctx.size-1)
+            {
+              dst[ofs] = self;
+              return;
+            }
+            
             float acc = self / 3.0f;\
             {% for dx, dy, dz, w in v.neibs %}
               acc += {{w}}f * fetchNeib(self, x + ({{dx}}), y + ({{dy}}), z + ({{dz}}));\
@@ -83,6 +92,9 @@ class Diffusion:
     def step(self):
         self.src.bind_to_texref(self.srcTexRef)
         self.DiffKernel(self.dst, block = self.block, grid = self.grid)
+        self.flipBuffers()
+
+    def flipBuffers(self):
         self.src, self.dst = self.dst, self.src
         
 if __name__ == '__main__':
@@ -91,7 +103,12 @@ if __name__ == '__main__':
             ZglAppWX.__init__(self, viewControl = FlyCamera())
             self.diffusion = Diffusion(64)
             a = zeros((64,)*3, float32)
+            
+            a[9:,19:,29:][:3,:3,:3] = Diffusion.SINK
+            a[11, 20, 30] = Diffusion.OBSTACLE
             a[10, 20, 30] = 1.0
+            a[10, 21, 30] = 0.0
+            
             self.diffusion.src.set(a)
             self.diffusion.step()
             a = self.diffusion.src.get()
