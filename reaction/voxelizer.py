@@ -204,10 +204,7 @@ class App(ZglAppWX):
         self.voxelizer = Voxelizer(256)
         
         (v, f) = load_obj("data/bunny/bunny.obj")
-        v = fit_box(v)
-        z = v[:,2].copy()
-        v[:,2] = v[:,1]
-        v[:,1] = z
+        v = fit_box(v)[:,[0, 2, 1]]
 
         self.vertBuf = BufferObject(v)
         self.idxBuf = BufferObject(f)
