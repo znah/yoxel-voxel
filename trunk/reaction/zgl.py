@@ -549,7 +549,9 @@ class FlyCamera(WXAdapter):
 
 class BufferObject:
     def __init__(self, data = None, use = GL_STATIC_DRAW):
-        self._as_parameter_ = glGenBuffers(1)
+        self.handle = int(glGenBuffers(1))
+        self._as_parameter_ = self.handle
+
         class Binder:
             def __init__(self, parent, target):
                 self.parent = parent
@@ -567,7 +569,8 @@ class BufferObject:
             with self.array:
                 glBufferData(GL_ARRAY_BUFFER, data, use)
                 
-
+    def __del__(self):
+        glDeleteBuffers([self._as_parameter_])
 
 class OrthoCamera(WXAdapter):
     def __init__(self):

@@ -138,6 +138,14 @@ class Voxelizer:
                 dst[:] = src
         return res
 
+    def dumpToPBO(self):
+        if not hasattr(self, "dumpPBO"):
+            bits = zeros( (self.sliceNum, self.size, self.size, 4), uint32 )
+            self.dumpPBO = BufferObject(data = bits, use = GL_STREAM_COPY)
+        with ctx(self.dumpPBO.pixelPack, self.slices):
+            OpenGL.raw.GL.glGetTexImage(GL_TEXTURE_2D_ARRAY_EXT, 0, GL_RGBA_INTEGER_EXT, GL_UNSIGNED_INT, None)
+        return self.dumpPBO
+
     def dumpToTex(self):
         if not hasattr(self, "dumpTex"):
             self.dumpTex = Texture3D(size = (self.size,)*3, )
