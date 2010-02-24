@@ -50,7 +50,7 @@ class MeshTestApp(ZglAppWX):
     growBtn = Button(label = "Grow")
     saveBtn = Button(label = "Save tmp.obj")
     view = View(Item('growBtn'), Item('saveBtn'), Item('growStep'))
-    growStep = Float(0.05)
+    growStep = Float(0.5)
 
     def _growBtn_fired(self):
         n = self.mesh.get_vert_num()
@@ -58,7 +58,7 @@ class MeshTestApp(ZglAppWX):
         amounts[:] = self.growStep
         amounts += random.rand(n)*self.growStep
 
-        self.mesh.grow(0.25, 1.0, amounts)
+        self.mesh.grow(0.75, 1.5, amounts)
         self.verts = self.mesh.get_positions()
         self.faces = self.mesh.get_faces()
         self.normals = self.mesh.get_normals()
@@ -75,8 +75,10 @@ class MeshTestApp(ZglAppWX):
 
 
     def display(self):
+        #self._growBtn_fired()
+
         clearGLBuffers()
-        with ctx(self.viewControl.with_vp, glstate(GL_DEPTH_TEST, GL_DEPTH_CLAMP_NV)):
+        with ctx(self.viewControl.with_vp, glstate(GL_DEPTH_TEST, GL_DEPTH_CLAMP_NV, GL_CULL_FACE)):
             glColor3f(0.5, 0.5, 0.5)
             self.draw()
 
