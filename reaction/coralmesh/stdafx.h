@@ -22,4 +22,5 @@
 
 #include "nvVector.h"
 typedef nv::vec3<float> point_3f;
+typedef nv::vec2<float> point_2f;
 

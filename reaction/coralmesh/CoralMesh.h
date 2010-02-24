@@ -42,6 +42,8 @@ inline bool operator!= (const edge_t & e1, const edge_t & e2)
 class CoralMesh
 {
 public:
+  CoralMesh();
+
   int AddVert(const point_3f & p);
   int AddFace(int a, int b, int c);
 
@@ -69,11 +71,15 @@ private:
   typedef EDGE_MAP::const_iterator EDGE_ITER;
   EDGE_MAP m_edges;
 
+  int m_totalMergeCount;
+
   void setFace(int fid, int a, int b, int c);
   float edgeLen2(const edge_t & e);
   void splitEdge(const edge_t & e);
-  point_3f interpolateVertex(int a, int b);
+  point_3f interpolateVertex(int a, int b, point_3f & n);
   void splitEdgeFace(const edge_t & e, int vid);
   void shrinkEdge(const edge_t & e);
   void removeFace(int fid);
+
+  int vertDegree(const edge_t & edge);
 };
