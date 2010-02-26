@@ -161,14 +161,6 @@ void CoralMesh::splitEdgeFace(const edge_t & e, int vid)
 
 void CoralMesh::shrinkEdge(const edge_t & edge)
 {
-  int d1 = vertDegree(edge);
-  int d2 = vertDegree(edge.flip());
-  if (d1 + d2 <= 7)
-    return;
-  //int v = m_pos.size() - 1;
-  //int f = m_faces.size() - 2;
-  //int e = m_edges.size() / 2;
-
   m_pos[edge.b] = interpolateVertex(edge.a, edge.b, m_normal[edge.b]);
   std::vector<int> holeBorder;
   holeBorder.push_back(edge.b);
@@ -182,10 +174,23 @@ void CoralMesh::shrinkEdge(const edge_t & edge)
       return;
     }
   }
+  for (int i = 0; i < holeBorder.size()-1; ++i)
+    verifyVertex(edge_t(holeBorder[i+1], holeBorder[i]));
+
+  printf("shrink: %d : ", edge.a);
   for (int i = 0; i < holeBorder.size(); ++i)
+  {
     removeFace( m_edges[ edge_t(edge.a, holeBorder[i]) ].face );
+    printf("%d ", holeBorder[i]);
+  }
+  printf("\n");
   for (int i = 1; i < holeBorder.size() - 1; ++i)
+  {
     AddFace(edge.b, holeBorder[i+1], holeBorder[i]);
+  }
+
+  for (int i = 0; i < holeBorder.size()-1; ++i)
+    verifyVertex(edge_t(holeBorder[i+1], holeBorder[i]));
 }
 
 void CoralMesh::removeFace(int fid)
@@ -205,6 +210,16 @@ void CoralMesh::removeFace(int fid)
 int CoralMesh::vertDegree(const edge_t & edge)
 {
   int count = 1;
-  for (edge_t e = m_edges[edge.flip()].next; e != edge, count < 50; e = m_edges[e.flip()].next, ++count );
+  for (edge_t e = m_edges[edge.flip()].next; e != edge && count < 50; e = m_edges[e.flip()].next, ++count )
+    printf("%d -> %d\n", e.a, e.b);
   return count;
+}
+
+bool CoralMesh::verifyVertex(const edge_t & edge)
+{
+  if (vertDegree(edge) > 50)
+  {
+    __asm {int 3};
+  }
+  return true;
 }

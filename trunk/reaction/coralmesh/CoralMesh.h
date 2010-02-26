@@ -82,4 +82,5 @@ private:
   void removeFace(int fid);
 
   int vertDegree(const edge_t & edge);
+  bool verifyVertex(const edge_t & edge);
 };

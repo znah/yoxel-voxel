@@ -50,7 +50,7 @@ class MeshTestApp(ZglAppWX):
     growBtn = Button(label = "Grow")
     saveBtn = Button(label = "Save tmp.obj")
     view = View(Item('growBtn'), Item('saveBtn'), Item('growStep'))
-    growStep = Float(0.5)
+    growStep = Float(0.1)
 
     def _growBtn_fired(self):
         n = self.mesh.get_vert_num()
