@@ -16,7 +16,7 @@ class Coral:
         self.mergeDist = 0.75 * self.coralliteSpacing
         self.splitDist = 1.5  * self.coralliteSpacing
         self.mouthDist = 3.0
-        self.growCoef = 0.5
+        self.growCoef = 0.2
         self.diffuseStepNum = 40
 
         self.initMesh()
