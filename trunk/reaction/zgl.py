@@ -804,7 +804,7 @@ def drawGrid(w, h = None):
 
     (vertBuf, idxBuf, idxNum) = _ObejctPool[objName]
     with vertBuf.array:
-        glVertexAttribPointer(0, 2, GL_FLOAT, False, 0, 0)
+        glVertexAttribPointer(0, 2, GL_FLOAT, False, 0, None)
     with ctx(idxBuf.elementArray, vattr(0)):
         glDrawElements(GL_QUADS, idxNum, GL_UNSIGNED_INT, None)
    
