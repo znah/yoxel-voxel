@@ -83,6 +83,7 @@ void CoralMesh::Grow(float mergeDist, float splitDist, const float * amounts)
         ++m_totalMergeCount;
       }
     }
+    //printf(".");
     if (shrinkCount > 100)
         break;
   }
@@ -104,18 +105,12 @@ void CoralMesh::Grow(float mergeDist, float splitDist, const float * amounts)
       splitEdge(toSplit[i]);
       ++splitCount;
     }
-    if (splitCount > 100)
-      break;
+    //printf(".");
+    //if (splitCount > 100)
+    //  break;
   }
   
   UpdateNormals();
-  //printf("splits: %d,  shrinks: %d\n", splitCount, shrinkCount);
-  
-  if (m_pos.size() - m_edges.size()/2 + m_faces.size() - m_totalMergeCount != 2)
-  {
-    //__asm {int 3};
-  }
-  
 }
 
 void CoralMesh::splitEdge(const edge_t & e)
@@ -145,9 +140,15 @@ point_3f CoralMesh::interpolateVertex(int a, int b, point_3f & n)
   const float x = 0.5f, x2 = x*x, x3 = x*x2;
   float y = (k1+k2)*x3 + (-2*k1-k2)*x2 + k1*x;
 
+  point_3f interpPos = m_pos[a] + u*x + v*y;;
+  point_3f avgPos = 0.5f*(m_pos[a] + m_pos[b]);
+
   n = avgNorm;
-  return m_pos[a] + u*x + v*y;
-  //return 0.5f*(m_pos[a] + m_pos[b]);
+  // UGLY fix
+  if (length(avgPos - interpPos) < len)
+    return interpPos;
+  else
+    return avgPos;
 }
 
 void CoralMesh::splitEdgeFace(const edge_t & e, int vid)
@@ -161,36 +162,35 @@ void CoralMesh::splitEdgeFace(const edge_t & e, int vid)
 
 void CoralMesh::shrinkEdge(const edge_t & edge)
 {
-  m_pos[edge.b] = interpolateVertex(edge.a, edge.b, m_normal[edge.b]);
+  std::vector<int> neibA, neibB;
+  getAdjacentVerts(edge, neibA);
+  getAdjacentVerts(edge.flip(), neibB);
+
   std::vector<int> holeBorder;
-  holeBorder.push_back(edge.b);
-  for (edge_t e = m_edges[edge.flip()].next; e != edge; e = m_edges[e.flip()].next )
+  edge_t shrinked;
+  if (neibA.size() < neibB.size())
   {
-    assert(e.valid());
-    holeBorder.push_back(e.b);
-    if (holeBorder.size() > 100)
-    {
-      printf("too large hole!!!\n");
-      return;
-    }
+    holeBorder = neibA;
+    shrinked = edge;
   }
-  for (int i = 0; i < holeBorder.size()-1; ++i)
-    verifyVertex(edge_t(holeBorder[i+1], holeBorder[i]));
+  else
+  {
+    holeBorder = neibB;
+    shrinked = edge.flip();
+  }
 
-  printf("shrink: %d : ", edge.a);
+  std::sort(neibA.begin(), neibA.end());
+  std::sort(neibB.begin(), neibB.end());
+  std::vector<int> shared;
+  std::set_intersection(neibA.begin(), neibA.end(), neibB.begin(), neibB.end(), std::back_inserter(shared));
+  if (shared.size() > 2)
+    return;
+  
+  m_pos[shrinked.b] = interpolateVertex(shrinked.a, shrinked.b, m_normal[shrinked.b]);
   for (int i = 0; i < holeBorder.size(); ++i)
-  {
-    removeFace( m_edges[ edge_t(edge.a, holeBorder[i]) ].face );
-    printf("%d ", holeBorder[i]);
-  }
-  printf("\n");
+    removeFace( m_edges[ edge_t(shrinked.a, holeBorder[i]) ].face );
   for (int i = 1; i < holeBorder.size() - 1; ++i)
-  {
-    AddFace(edge.b, holeBorder[i+1], holeBorder[i]);
-  }
-
-  for (int i = 0; i < holeBorder.size()-1; ++i)
-    verifyVertex(edge_t(holeBorder[i+1], holeBorder[i]));
+    AddFace(shrinked.b, holeBorder[i+1], holeBorder[i]);
 }
 
 void CoralMesh::removeFace(int fid)
@@ -207,19 +207,17 @@ void CoralMesh::removeFace(int fid)
   m_faces.pop_back();
 }
 
-int CoralMesh::vertDegree(const edge_t & edge)
+void CoralMesh::getAdjacentVerts(const edge_t & edge, std::vector<int> & res)
 {
-  int count = 1;
-  for (edge_t e = m_edges[edge.flip()].next; e != edge && count < 50; e = m_edges[e.flip()].next, ++count )
-    printf("%d -> %d\n", e.a, e.b);
-  return count;
-}
-
-bool CoralMesh::verifyVertex(const edge_t & edge)
-{
-  if (vertDegree(edge) > 50)
+  res.push_back(edge.b);
+  for (edge_t e = m_edges[edge.flip()].next; e != edge; e = m_edges[e.flip()].next )
   {
-    __asm {int 3};
+    assert(e.valid());
+    res.push_back(e.b);
+    if (res.size() > 100)
+    {
+      printf("too large nhood!\n");
+      break;
+    }
   }
-  return true;
 }

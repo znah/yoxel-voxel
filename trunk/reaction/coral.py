@@ -11,13 +11,13 @@ from voxelizer import Voxelizer
 
 class Coral:
     def __init__(self):
-        self.gridSize = gridSize = 128
+        self.gridSize = gridSize = 256
         self.coralliteSpacing = 1.8
         self.mergeDist = 0.75 * self.coralliteSpacing
         self.splitDist = 1.5  * self.coralliteSpacing
         self.mouthDist = 3.0
-        self.growCoef = 0.2
-        self.diffuseStepNum = 40
+        self.growCoef = 1.0
+        self.diffuseStepNum = 10
 
         self.initMesh()
         self.voxelizer = Voxelizer(gridSize)
