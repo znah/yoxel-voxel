@@ -1,8 +1,3 @@
-#include <cmath>
-#include <vector>
-#include <map>
-#include <hash_map>
-
 struct edge_t
 {
   int a, b;
@@ -81,6 +76,5 @@ private:
   void shrinkEdge(const edge_t & e);
   void removeFace(int fid);
 
-  int vertDegree(const edge_t & edge);
-  bool verifyVertex(const edge_t & edge);
+  void getAdjacentVerts(const edge_t & edre, std::vector<int> & res);
 };

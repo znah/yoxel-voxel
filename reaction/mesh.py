@@ -54,9 +54,7 @@ class MeshTestApp(ZglAppWX):
 
     def _growBtn_fired(self):
         n = self.mesh.get_vert_num()
-        amounts = zeros((n,), float32)
-        amounts[:] = self.growStep
-        amounts += random.rand(n)*self.growStep
+        amounts = (random.rand(n)*self.growStep).astype(float32)
 
         self.mesh.grow(0.75, 1.5, amounts)
         self.verts = self.mesh.get_positions()

@@ -10,6 +10,11 @@
 #include <cmath>
 #include <cassert>
 #include <ctime>
+#include <cmath>
+#include <map>
+#include <set>
+#include <hash_map>
+
 
 #pragma warning( push )
   #pragma warning (disable : 4267 4244 )
