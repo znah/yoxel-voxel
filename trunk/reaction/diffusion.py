@@ -17,14 +17,6 @@ class Diffusion:
         self.src = ga.zeros(shape, float32)
         self.dst = ga.zeros(shape, float32)
         
-        neibs = []
-        weights = [1.0 / 3.0, 1.0 / 18.0, 1.0 / 36.0, 0.0]
-        for z, y, x in ndindex(3, 3, 3):
-            x, y, z = x-1, y-1, z-1
-            adj = abs(x) + abs(y) + abs(z)
-            if adj in [1, 2]:
-                neibs.append((x, y, z, weights[adj]))
-                
         self.Ctx = Ctx = struct('Ctx', 
             ( 'size', c_int32))
             
@@ -75,11 +67,33 @@ class Diffusion:
               dst[ofs] = self;
               return;
             }
-            
-            float acc = self / 3.0f;\
-            {% for dx, dy, dz, w in v.neibs %}
-              acc += {{w}}f * fetchNeib(self, x + ({{dx}}), y + ({{dy}}), z + ({{dz}}));\
-            {% endfor %}
+
+            const float c0 = 1.0f / 3.0f, c1 = 1.0f / 18.0f, c2 = 1.0f / 36.0f;
+            float acc = c0 * self;
+            float adj1 = 0.0f;
+            adj1 += fetchNeib(self, x+1, y,   z  );
+            adj1 += fetchNeib(self, x,   y+1, z  );
+            adj1 += fetchNeib(self, x,   y,   z+1);
+            adj1 += fetchNeib(self, x-1, y,   z  );
+            adj1 += fetchNeib(self, x,   y-1, z  );
+            adj1 += fetchNeib(self, x,   y,   z-1);
+            acc += c1 * adj1;
+
+            float adj2 = 0.0f;
+            adj2 += fetchNeib(self, x+1, y+1, z  );
+            adj2 += fetchNeib(self, x-1, y+1, z  );
+            adj2 += fetchNeib(self, x+1, y-1, z  );
+            adj2 += fetchNeib(self, x-1, y-1, z  );
+            adj2 += fetchNeib(self, x+1, y, z+1  );
+            adj2 += fetchNeib(self, x-1, y, z+1  );
+            adj2 += fetchNeib(self, x+1, y, z-1  );
+            adj2 += fetchNeib(self, x-1, y, z-1  );
+            adj2 += fetchNeib(self, x, y+1, z+1  );
+            adj2 += fetchNeib(self, x, y-1, z+1  );
+            adj2 += fetchNeib(self, x, y+1, z-1  );
+            adj2 += fetchNeib(self, x, y-1, z-1  );
+            acc += c2 * adj2;
+
             dst[ofs] = acc;
         }''').render(v = vars(), g = globals())
         self.mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd()+'/include'], no_extern_c = True)
@@ -89,10 +103,11 @@ class Diffusion:
         self.srcTexRef = self.mod.get_texref('srcTex')
         self.DiffKernel = self.mod.get_function('Diffusion')
         
-    def step(self):
+    def step(self, time_kernel = False):
         self.src.bind_to_texref(self.srcTexRef)
-        self.DiffKernel(self.dst, block = self.block, grid = self.grid)
+        t = self.DiffKernel(self.dst, block = self.block, grid = self.grid, time_kernel = time_kernel)
         self.flipBuffers()
+        return t
 
     def flipBuffers(self):
         self.src, self.dst = self.dst, self.src
@@ -110,7 +125,7 @@ if __name__ == '__main__':
             a[10, 21, 30] = 0.0
             
             self.diffusion.src.set(a)
-            self.diffusion.step()
+            print self.diffusion.step(time_kernel = True)
             a = self.diffusion.src.get()
             print a[9:,19:,29:][:3,:3,:3]
         

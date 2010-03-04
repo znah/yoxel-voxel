@@ -849,6 +849,33 @@ def drawArrays(primitive, verts = None, indices = None):
             glDrawArrays( primitive, 0, prod(verts.shape[:-1]) )
 
 
+
+_profileNodes = {}
+_profileCurNodeName = "root."            
+
+class profile:
+    def __init__(self, nodeName):
+        self.nodeName = nodeName
+    def __enter__(self):
+        self.fullName = _profileCurNodeName + "." + self.nodeName
+        self.startTime = clock()
+    def __exit__(self, *args):
+        endTime = clock()
+        node_data = _profileNodes.get(self.fullName, [0, 0.0])
+        node_data[0] += 1
+        node_data[0] += endTime - self.startTime
+
+class glprofile(profile):
+    def __init__(self, name):
+        profile.__init__(self, name)
+    def __enter__(self):
+        glFinish()
+        profile.__enter__()
+    def __exit__(self, *argd):
+        glFinish()
+        profile.__exit__(*argd)
+
+
 TestShaders = '''
   uniform sampler2D tex;
 
