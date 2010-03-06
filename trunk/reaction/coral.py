@@ -17,7 +17,7 @@ class Coral:
         self.splitDist = 1.5  * self.coralliteSpacing
         self.mouthDist = 3.0
         self.growCoef = 1.0
-        self.diffuseStepNum = 10
+        self.diffuseStepNum = 40
 
         self.initMesh()
         self.voxelizer = Voxelizer(gridSize)
@@ -173,31 +173,38 @@ class Coral:
         self.faces = self.mesh.get_faces()
         
     def grow(self):
-        with self.voxelizer:
-            clearGLBuffers()
-            s = 1.0 / self.gridSize
-            glScale(s, s, s)
-            drawArrays(GL_TRIANGLES, verts = self.positions, indices = self.faces)
-        self.voxelizer.dumpToPBO()
-        gl2cudaMap = self.gl2cudaBuf.map()
-        self.PrepareDiffusionVolume(gl2cudaMap.device_ptr(), gl2cudaMap.size())
-        gl2cudaMap.unmap()
-        
-        
-        d_sinks = ga.to_gpu(self.positions + self.normals * self.mouthDist)
-        self.MarkSinks(d_sinks, Diffusion.SINK)
-        for i in xrange(self.diffuseStepNum):
-            self.diffusion.step()
-            if (i+1) % 10 == 0:
-                print ga.sum(abs(self.diffusion.src - self.diffusion.dst)  )
-        self.MarkSinks(d_sinks, 0.0)
-        self.diffusion.step()
-        d_absorb = ga.zeros(len(d_sinks), float32)
-        self.FetchSinks(d_sinks, d_absorb)
-        absorb = d_absorb.get()
-        absorb /= absorb.max()
-        self.mesh.grow(self.mergeDist, self.splitDist, absorb*self.growCoef)
-        self.getMeshArrays()
+        with profile("grow"):
+            with glprofile('voxelize_gl'):
+                with self.voxelizer:
+                    clearGLBuffers()
+                    s = 1.0 / self.gridSize
+                    glScale(s, s, s)
+                    drawArrays(GL_TRIANGLES, verts = self.positions, indices = self.faces)
+                self.voxelizer.dumpToPBO()
+
+            with cuprofile("PrepareDiffusionVolume_cu"):
+                gl2cudaMap = self.gl2cudaBuf.map()
+                self.PrepareDiffusionVolume(gl2cudaMap.device_ptr(), gl2cudaMap.size())
+                gl2cudaMap.unmap()
+            
+            with cuprofile("Diffusion"):
+                d_sinks = ga.to_gpu(self.positions + self.normals * self.mouthDist)
+                self.MarkSinks(d_sinks, Diffusion.SINK)
+                for i in xrange(self.diffuseStepNum):
+                    self.diffusion.step()
+                    if (i+1) % 10 == 0:
+                        with cuprofile("DiffusionConvergence"):
+                            print ga.sum(abs(self.diffusion.src - self.diffusion.dst)  )
+                self.MarkSinks(d_sinks, 0.0)
+                self.diffusion.step()
+                d_absorb = ga.zeros(len(d_sinks), float32)
+                self.FetchSinks(d_sinks, d_absorb)
+                absorb = d_absorb.get()
+            
+            with profile("GrowMesh"):
+                absorb /= absorb.max()
+                self.mesh.grow(self.mergeDist, self.splitDist, absorb*self.growCoef)
+                self.getMeshArrays()
         
 if __name__ == '__main__':
     class App(ZglAppWX):
@@ -219,6 +226,8 @@ if __name__ == '__main__':
             if key == ord('2'):
                 for i in xrange(10):
                     self.coral.grow()
+            if key == ord('3'):
+                print dumpProfile()
             else:
                 ZglAppWX.OnKeyDown(self, evt)
                 
