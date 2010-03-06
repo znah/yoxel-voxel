@@ -851,30 +851,56 @@ def drawArrays(primitive, verts = None, indices = None):
 
 
 _profileNodes = {}
-_profileCurNodeName = "root."            
+_profileCurNodeName = ""            
 
 class profile:
     def __init__(self, nodeName):
         self.nodeName = nodeName
     def __enter__(self):
-        self.fullName = _profileCurNodeName + "." + self.nodeName
+        global _profileCurNodeName
+        self.prevNodeName = _profileCurNodeName
+        if _profileCurNodeName == "":
+            self.fullName = self.nodeName
+        else:
+            self.fullName = _profileCurNodeName + "." + self.nodeName
+        _profileCurNodeName = self.fullName
         self.startTime = clock()
     def __exit__(self, *args):
-        endTime = clock()
-        node_data = _profileNodes.get(self.fullName, [0, 0.0])
-        node_data[0] += 1
-        node_data[0] += endTime - self.startTime
+        global _profileCurNodeName
+        dt = (clock() - self.startTime) * 1000.0
+        node_data = _profileNodes.get( self.fullName, dict(ncalls=0, total = 0.0, max = 0.0) )
+        node_data['ncalls'] += 1
+        node_data['total']  += dt
+        node_data['max']    = max(dt, node_data['max'])
+        _profileNodes[self.fullName] = node_data
+        _profileCurNodeName = self.prevNodeName 
 
 class glprofile(profile):
     def __init__(self, name):
         profile.__init__(self, name)
     def __enter__(self):
         glFinish()
-        profile.__enter__()
+        profile.__enter__(self)
     def __exit__(self, *argd):
         glFinish()
-        profile.__exit__(*argd)
+        profile.__exit__(self, *argd)
 
+def dumpProfile():
+    templ = " %-40s | %8d | %8.2f | %8.2f | %8.2f\n"
+    res  = " node name                                | ncalls   | avg time | total    | max time\n"
+    res += "-------------------------------------------------------------------------------------\n"
+    names = _profileNodes.keys()
+    names.sort()
+    for name in names:
+        node_data = _profileNodes[name]
+        level = name.count('.')
+        name = "  " * level + name.split('.')[-1]
+        total = node_data['total']
+        ncalls = node_data['ncalls']
+        max_ = node_data['max']
+        avg = total / ncalls
+        res += templ % (name, ncalls, avg, total, max_)
+    return res
 
 TestShaders = '''
   uniform sampler2D tex;

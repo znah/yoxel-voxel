@@ -104,9 +104,10 @@ class Diffusion:
         self.DiffKernel = self.mod.get_function('Diffusion')
         
     def step(self, time_kernel = False):
-        self.src.bind_to_texref(self.srcTexRef)
-        t = self.DiffKernel(self.dst, block = self.block, grid = self.grid, time_kernel = time_kernel)
-        self.flipBuffers()
+        with cuprofile("DiffusionStep"):
+            self.src.bind_to_texref(self.srcTexRef)
+            t = self.DiffKernel(self.dst, block = self.block, grid = self.grid, time_kernel = time_kernel)
+            self.flipBuffers()
         return t
 
     def flipBuffers(self):

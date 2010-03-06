@@ -1,3 +1,4 @@
+import zgl
 from ctypes import c_uint32, c_int32, c_float, Structure, addressof, sizeof
 import numpy as np
 from jinja2 import Template
@@ -91,6 +92,17 @@ __device__ int gettid()
 }
 
 '''
+
+class cuprofile(zgl.profile):
+    def __init__(self, name):
+        zgl.profile.__init__(self, name)
+    def __enter__(self):
+        cu.Context.synchronize()
+        zgl.profile.__enter__(self)
+    def __exit__(self, *argd):
+        cu.Context.synchronize()
+        zgl.profile.__exit__(self, *argd)
+
 
 if __name__ == '__main__':
     print gen_code(float4)
