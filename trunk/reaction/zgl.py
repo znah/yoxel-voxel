@@ -848,11 +848,15 @@ def save_obj(fn, verts, faces):
     f.close()
 
     
-def drawArrays(primitive, verts = None, indices = None):
+def drawArrays(primitive, verts = None, indices = None, tc = None):
     states = []
     if verts is not None:
         glVertexPointer( verts.shape[-1], arrayToGLType(verts), verts.strides[-2], verts)
         states.append( GL_VERTEX_ARRAY )
+    if tc is not None:
+       glClientActiveTexture(GL_TEXTURE0) 
+       glTexCoordPointer(tc.shape[-1], arrayToGLType(tc), tc.strides[-2], tc)
+       states.append(GL_TEXTURE_COORD_ARRAY)
     with glstate(*states):
         if indices is not None:
             # TODO: index types
