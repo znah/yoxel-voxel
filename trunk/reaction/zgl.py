@@ -3,7 +3,9 @@ import sys
 import wx
 from wx import glcanvas
 from OpenGL.GL import *
+from OpenGL.extensions import alternate
 from OpenGL.GLU import *
+from OpenGL.GL.EXT.framebuffer_object import *
 from OpenGL.GL.ARB.framebuffer_object import *
 from OpenGL.GL.EXT.texture_integer import *
 from OpenGL.GL.EXT.texture_array import *
@@ -16,7 +18,8 @@ from StringIO import StringIO
 
 from ctypes import cdll, c_int, c_uint, c_float, c_char_p, c_long
 
-############### ARBframebuffer_object wrappers ##############
+
+############### framebuffer_object wrappers ##############
 glGenFramebuffers = wrapper.wrapper(glGenFramebuffers).setOutput(
                 'framebuffers', 
                 lambda x: (x,), 
@@ -27,6 +30,13 @@ glGenRenderbuffers = wrapper.wrapper(glGenRenderbuffers).setOutput(
                 lambda x: (x,), 
                 'n')
 #############################################################
+
+def FixFramebufferAPI():
+    if not glInitFramebufferObjectARB():
+        import OpenGL.GL.EXT.framebuffer_object as ext
+        names = [s for s in dir(ext) if s[:2] == 'gl' and s[-3:] == 'EXT']
+        for name in names:
+            globals()[ name[:-3] ] = getattr(ext, name)
 
 ############### wglSwapIntervalEXT workaround ###############
 import OpenGL.platform
@@ -689,6 +699,8 @@ class ZglAppWX(HasTraits):
         frame.Show(True)
         canvas.SetCurrent()
         InitCG()
+
+        FixFramebufferAPI()
         
         wglSwapIntervalEXT(vsync)
 
