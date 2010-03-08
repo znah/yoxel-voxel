@@ -7,6 +7,16 @@ class App(ZglAppWX):
 
         self.viewControl.rect = (-2, -1, 2, 1)
 
+        self.textFrag = CGShader('fp40', '''
+          uniform sampler2D fontTex;
+          float4 main(float2 pos : TEXCOORD0) : COLOR
+          {
+            float c = tex2D(fontTex, pos*0.1);
+            return float4(0, c, 0, c);
+          }
+        ''')
+        self.textFrag.fontTex = Texture2D(PIL.Image.open("img/font.png"))
+
         self.tex = {}
         self.tex['1'] = loadTex("img/fung.png")
         self.tex['2'] = loadTex("img/lines.png")
@@ -81,8 +91,18 @@ class App(ZglAppWX):
     def display(self):
         clearGLBuffers()
         self.fragProg.time = clock()
-        with ctx(self.viewControl.with_vp, self.fragProg):
-            drawQuad(self.viewControl.rect)
+        with ctx( glprofile('frame'), self.viewControl.with_vp ):
+            with self.fragProg:
+                drawQuad(self.viewControl.rect)
+            sx, sy = self.viewControl.vp.size
+            rect = (0, sy, sx, 0)
+            with ctx( self.textFrag, glstate(GL_BLEND), Ortho(rect) ):
+                #glBlendFunc(GL_ONE, GL_ONE);
+                #glBlendEquation(GL_FUNC_ADD);
+                v = array([[0, 0], [1, 0], [1, 1], [0, 1] ], float32)
+                for i in xrange(20):
+                    pos = (v + (i, i//2)) * 16
+                    drawArrays(GL_QUADS, verts = pos, tc = v)
 
     def OnMouse(self, evt):
         if self.viewControl.mButtons[2]:
@@ -103,6 +123,8 @@ class App(ZglAppWX):
                 self.screenshot()
             if key == 'S':
                 self.renderShot()
+            if key == ' ':
+                print dumpProfile()
         ZglAppWX.OnKeyDown(self, evt)
 
     def screenshot(self):
@@ -115,16 +137,17 @@ class App(ZglAppWX):
         self.shotn += 1
     
     def renderShot(self):
-        sz = self.largeBuf.size()
-        #self.fragProg.time = clock()
-        with ctx(self.largeBuf, self.fragProg, Ortho(self.viewControl.rect)):
-            drawQuad(self.viewControl.rect)
-            pixels = glReadPixels(0, 0, sz[0], sz[1], GL_RGB, GL_UNSIGNED_BYTE, 'array')
-        pixels.shape = (sz[1], sz[0], 3) # !!! bug
-        pixels = flipud(pixels)
-        img = PIL.Image.fromarray(pixels)
-        img.save("shot_%02d.jpg" % (self.shotn,))
-        self.shotn += 1
+        with glprofile("renderShot"):
+            sz = self.largeBuf.size()
+            #self.fragProg.time = clock()
+            with ctx(self.largeBuf, self.fragProg, Ortho(self.viewControl.rect)):
+                drawQuad(self.viewControl.rect)
+                pixels = glReadPixels(0, 0, sz[0], sz[1], GL_RGB, GL_UNSIGNED_BYTE, 'array')
+            pixels.shape = (sz[1], sz[0], 3) # !!! bug
+            pixels = flipud(pixels)
+            img = PIL.Image.fromarray(pixels)
+            img.save("shot_%02d.jpg" % (self.shotn,))
+            self.shotn += 1
     
 
 if __name__ == "__main__":
