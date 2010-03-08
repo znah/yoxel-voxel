@@ -110,7 +110,7 @@ class App(ZglAppWX):
         pixels = glReadPixels(0, 0, sz[0], sz[1], GL_RGB, GL_UNSIGNED_BYTE, 'array')
         pixels.shape = (sz[1], sz[0], 3) # !!! bug
         pixels = flipud(pixels)
-        img = Image.fromarray(pixels)
+        img = PIL.Image.fromarray(pixels)
         img.save("shot_%02d.jpg" % (self.shotn,))
         self.shotn += 1
     
@@ -122,7 +122,7 @@ class App(ZglAppWX):
             pixels = glReadPixels(0, 0, sz[0], sz[1], GL_RGB, GL_UNSIGNED_BYTE, 'array')
         pixels.shape = (sz[1], sz[0], 3) # !!! bug
         pixels = flipud(pixels)
-        img = Image.fromarray(pixels)
+        img = PIL.Image.fromarray(pixels)
         img.save("shot_%02d.jpg" % (self.shotn,))
         self.shotn += 1
     
