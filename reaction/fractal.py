@@ -108,17 +108,18 @@ class App(ZglAppWX):
         tc[..., 1] += cy[:,newaxis]
         drawArrays(GL_QUADS, verts = pos, tc0 = tc/(128, 256))
 
+    @with_(glprofile('drawText_gl'))
     def drawText(self, pos, s):
         x, y = pos
         for s in s.splitlines():
             self.drawTextLine((x, y), s)
             y += 16
         
-    
+    @with_(glprofile('frame_gl'))
     def display(self):
         clearGLBuffers()
         self.fragProg.time = clock()
-        with ctx( glprofile('frame_gl'), self.viewControl.with_vp ):
+        with self.viewControl.with_vp:
             with ctx(glprofile('fractal_gl'), self.fragProg):
                 drawQuad(self.viewControl.rect)
             sx, sy = self.viewControl.vp.size
@@ -128,8 +129,7 @@ class App(ZglAppWX):
                 glBlendEquation(GL_FUNC_ADD);
                 with profile("dumpProfile"):
                     s = dumpProfile()
-                with glprofile("drawText_gl"):
-                    self.drawText((50, 100), s)
+                self.drawText((50, 100), s)
 
     def OnMouse(self, evt):
         if self.viewControl.mButtons[2]:
