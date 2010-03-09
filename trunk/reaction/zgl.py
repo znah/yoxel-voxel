@@ -941,6 +941,15 @@ def dumpProfile():
         res += templ % (name, ncalls, avg, total, max_)
     return res
 
+def with_(*context):
+    def wrap(func):
+        def f(*args, **kargs):
+            with ctx(*context):
+                return func(*args, **kargs)
+        return f
+    return wrap
+
+
 TestShaders = '''
   uniform sampler2D tex;
 
