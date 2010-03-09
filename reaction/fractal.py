@@ -9,13 +9,17 @@ class App(ZglAppWX):
 
         self.textFrag = CGShader('fp40', '''
           uniform sampler2D fontTex;
+          uniform float2 dp;
           float4 main(float2 pos : TEXCOORD0) : COLOR
           {
-            float c = tex2D(fontTex, pos*0.1);
+            float c = tex2D(fontTex, pos);
             return float4(0, c, 0, c);
           }
         ''')
-        self.textFrag.fontTex = Texture2D(PIL.Image.open("img/font.png"))
+        font = asarray(PIL.Image.open("img/font.gif")).copy()
+        font *= 17
+        self.textFrag.fontTex = fontTex = Texture2D(font)
+        self.textFrag.dp = 1.0 / fontTex.size
 
         self.tex = {}
         self.tex['1'] = loadTex("img/fung.png")
@@ -87,22 +91,48 @@ class App(ZglAppWX):
 
         self.shotn = 0
 
+
+    def drawTextLine(self, pos, s):
+        w, h = 9, 16
+        wo = (16 - w)/2
+        ch = fromstring(s, uint8)
+        n = len(s)
+        cx = (ch % 16) * 16 + wo
+        cy = (ch / 16) * 16
+        px = arange(n)*w + pos[0]
+        py = pos[1]
+        
+        v = array([[0, 0], [w, 0], [w, h], [0, h]], float32)
+        pos = tile(v, (n, 1, 1))
+        pos[...,0] += px[:,newaxis]
+        pos[...,1] += py
+        tc = tile(v, (n, 1, 1))
+        tc[..., 0] += cx[:,newaxis]
+        tc[..., 1] += cy[:,newaxis]
+        drawArrays(GL_QUADS, verts = pos, tc0 = tc/256)
+
+    def drawText(self, pos, s):
+        x, y = pos
+        for s in s.splitlines():
+            self.drawTextLine((x, y), s)
+            y += 16
+        
     
     def display(self):
         clearGLBuffers()
         self.fragProg.time = clock()
-        with ctx( glprofile('frame'), self.viewControl.with_vp ):
-            with self.fragProg:
+        with ctx( glprofile('frame_gl'), self.viewControl.with_vp ):
+            with ctx(glprofile('fractal_gl'), self.fragProg):
                 drawQuad(self.viewControl.rect)
             sx, sy = self.viewControl.vp.size
             rect = (0, sy, sx, 0)
             with ctx( self.textFrag, glstate(GL_BLEND), Ortho(rect) ):
-                #glBlendFunc(GL_ONE, GL_ONE);
-                #glBlendEquation(GL_FUNC_ADD);
-                v = array([[0, 0], [1, 0], [1, 1], [0, 1] ], float32)
-                for i in xrange(20):
-                    pos = (v + (i, i//2)) * 16
-                    drawArrays(GL_QUADS, verts = pos, tc = v)
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                glBlendEquation(GL_FUNC_ADD);
+                with profile("dumpProfile"):
+                    s = dumpProfile()
+                with glprofile("drawText_gl"):
+                    self.drawText((50, 100), s)
 
     def OnMouse(self, evt):
         if self.viewControl.mButtons[2]:
