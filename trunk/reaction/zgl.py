@@ -765,19 +765,37 @@ class vattr:
         [glDisableVertexAttribArray(idx)  for idx in self.idxs]
 
 class glstate:
-    ClientState = set([GL_VERTEX_ARRAY])
+    ClientState = set([
+      GL_VERTEX_ARRAY, 
+      GL_TEXTURE_COORD_ARRAY, 
+      GL_COLOR_ARRAY, 
+      GL_NORMAL_ARRAY, 
+      GL_SECONDARY_COLOR_ARRAY, 
+      GL_EDGE_FLAG_ARRAY])
 
     def __init__(self, *state):
         self.state = state
     def __enter__(self):
         for idx in self.state:
+            texuint = 0
+            if hasattr(idx, "__len__"):
+                texunit = idx[1]
+                idx = idx[0]
             if idx in self.ClientState:
+                if idx == GL_TEXTURE_COORD_ARRAY:
+                    glClientActiveTexture(GL_TEXTURE0 + texunit)
                 glEnableClientState(idx)
             else:
                 glEnable(idx)
     def __exit__(self, *args):
         for idx in self.state:
+            texuint = 0
+            if hasattr(idx, "__len__"):
+                texunit = idx[1]
+                idx = idx[0]
             if idx in self.ClientState:
+                if idx == GL_TEXTURE_COORD_ARRAY:
+                    glClientActiveTexture(GL_TEXTURE0 + texunit)
                 glDisableClientState(idx)
             else:
                 glDisable(idx)
@@ -848,18 +866,18 @@ def save_obj(fn, verts, faces):
     f.close()
 
     
-def drawArrays(primitive, verts = None, indices = None, tc = None):
+def drawArrays(primitive, verts = None, indices = None, tc0 = None):
     states = []
     if verts is not None:
         glVertexPointer( verts.shape[-1], arrayToGLType(verts), verts.strides[-2], verts)
         states.append( GL_VERTEX_ARRAY )
-    if tc is not None:
+    if tc0 is not None:
        glClientActiveTexture(GL_TEXTURE0) 
-       glTexCoordPointer(tc.shape[-1], arrayToGLType(tc), tc.strides[-2], tc)
-       states.append(GL_TEXTURE_COORD_ARRAY)
+       glTexCoordPointer(tc0.shape[-1], arrayToGLType(tc0), tc0.strides[-2], tc0)
+       states.append( (GL_TEXTURE_COORD_ARRAY, 0) )
     with glstate(*states):
         if indices is not None:
-            # TODO: index types
+            # TODO: index types other that uint32
             glDrawElements(primitive, indices.size, GL_UNSIGNED_INT, indices)
         else:
             glDrawArrays( primitive, 0, prod(verts.shape[:-1]) )
