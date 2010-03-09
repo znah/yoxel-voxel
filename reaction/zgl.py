@@ -888,8 +888,9 @@ _profileNodes = {}
 _profileCurNodeName = ""            
 
 class profile:
-    def __init__(self, nodeName):
-        self.nodeName = nodeName
+    def __init__(self, node):
+        self.nodeName = node
+            
     def __enter__(self):
         global _profileCurNodeName
         self.prevNodeName = _profileCurNodeName
@@ -902,10 +903,14 @@ class profile:
     def __exit__(self, *args):
         global _profileCurNodeName
         dt = (clock() - self.startTime) * 1000.0
-        node_data = _profileNodes.get( self.fullName, dict(ncalls=0, total = 0.0, max = 0.0) )
+        node_data = _profileNodes.get( self.fullName, dict(ncalls=0, total = 0.0, max = 0.0, avg = 0.0) )
         node_data['ncalls'] += 1
         node_data['total']  += dt
         node_data['max']    = max(dt, node_data['max'])
+        
+        relaxCoef = 0.05#min(0.5, dt / 50.0)
+        node_data['avg']    = (1.0 - relaxCoef) * node_data['avg'] + relaxCoef * dt
+
         _profileNodes[self.fullName] = node_data
         _profileCurNodeName = self.prevNodeName 
 
@@ -922,7 +927,7 @@ class glprofile(profile):
 def dumpProfile():
     templ = " %-40s | %8d | %8.2f | %8.2f | %8.2f\n"
     res  = " node name                                | ncalls   | avg time | total    | max time\n"
-    res += "-------------------------------------------------------------------------------------\n"
+    res += "------------------------------------------+----------+----------+----------+---------\n"
     names = _profileNodes.keys()
     names.sort()
     for name in names:
@@ -932,7 +937,7 @@ def dumpProfile():
         total = node_data['total']
         ncalls = node_data['ncalls']
         max_ = node_data['max']
-        avg = total / ncalls
+        avg = node_data['avg']
         res += templ % (name, ncalls, avg, total, max_)
     return res
 

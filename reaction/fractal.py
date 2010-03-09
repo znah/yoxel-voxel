@@ -16,8 +16,7 @@ class App(ZglAppWX):
             return float4(0, c, 0, c);
           }
         ''')
-        font = asarray(PIL.Image.open("img/font.gif")).copy()
-        font *= 17
+        font = asarray(PIL.Image.open("img/font.png").convert('L')).copy()
         self.textFrag.fontTex = fontTex = Texture2D(font)
         self.textFrag.dp = 1.0 / fontTex.size
 
@@ -91,14 +90,12 @@ class App(ZglAppWX):
 
         self.shotn = 0
 
-
     def drawTextLine(self, pos, s):
-        w, h = 9, 16
-        wo = (16 - w)/2
+        w, h = 8, 16
         ch = fromstring(s, uint8)
         n = len(s)
-        cx = (ch % 16) * 16 + wo
-        cy = (ch / 16) * 16
+        cx = (ch % 16) * w
+        cy = (ch / 16) * h
         px = arange(n)*w + pos[0]
         py = pos[1]
         
@@ -109,7 +106,7 @@ class App(ZglAppWX):
         tc = tile(v, (n, 1, 1))
         tc[..., 0] += cx[:,newaxis]
         tc[..., 1] += cy[:,newaxis]
-        drawArrays(GL_QUADS, verts = pos, tc0 = tc/256)
+        drawArrays(GL_QUADS, verts = pos, tc0 = tc/(128, 256))
 
     def drawText(self, pos, s):
         x, y = pos
