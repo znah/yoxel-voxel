@@ -95,11 +95,15 @@ __device__ int gettid()
 
 class cuprofile(zgl.profile):
     def __init__(self, name):
-        zgl.profile.__init__(self, name)
+        zgl.profile.__init__(self, name + '_cu')
     def __enter__(self):
+        if not zgl.g_profileEnable:
+            return
         cu.Context.synchronize()
         zgl.profile.__enter__(self)
     def __exit__(self, *argd):
+        if not zgl.g_profileEnable:
+            return
         cu.Context.synchronize()
         zgl.profile.__exit__(self, *argd)
 

@@ -704,6 +704,36 @@ class ZglAppWX(HasTraits):
         
         wglSwapIntervalEXT(vsync)
 
+        self._textFrag = CGShader('fp40', '''
+          uniform sampler2D fontTex;
+          uniform float4 color;
+          uniform float2 dp;
+          float4 main(float2 pos : TEXCOORD0) : COLOR
+          {
+            float c = tex2D(fontTex, pos);
+            return color * c;
+          }
+        ''')
+        font = asarray(PIL.Image.open("img/font.png").convert('L')).copy()
+        self._textFrag.fontTex = fontTex = Texture2D(font)
+        self._textFrag.dp = 1.0 / fontTex.size
+
+        def debugNone(reset):
+            global g_profileEnable
+            if reset:
+                g_profileEnable = False
+        def debugProfile(reset):
+            global g_profileEnable, _profileNodes
+            if reset:
+                g_profileEnable = True
+                _profileNodes = {}
+            else:
+                self.drawText((50, 50), dumpProfile())
+        import itertools
+        self.debugFuncIter = itertools.cycle( [debugNone, debugProfile] )
+        self.debugFunc = self.debugFuncIter.next()
+        self.debugFunc(True)
+
     def run(self):
         self.canvas.Bind(wx.EVT_SIZE, self.OnSize)
         self.frame.SetClientSize(self.initSize)
@@ -727,9 +757,11 @@ class ZglAppWX(HasTraits):
     def OnEraseBackground(self, event):
         pass # Do nothing, to avoid flashing on MSW.
 
+    
     def OnPaint(self, event):
         dc = wx.PaintDC(self.canvas)
         safe_call(self, "display")
+        self.debugFunc(False)
         self.canvas.SwapBuffers()
 
     def display(self):
@@ -742,6 +774,9 @@ class ZglAppWX(HasTraits):
             self.frame.Close(True)
         if keycode == wx.WXK_F2:
             self.edit_traits() 
+        if keycode == wx.WXK_F1:
+            self.debugFunc = self.debugFuncIter.next()
+            self.debugFunc(True)
         safe_call(self.viewControl, 'OnKeyDown', event)
 
     def OnKeyUp(self, event):
@@ -754,6 +789,44 @@ class ZglAppWX(HasTraits):
         x, y = self.canvas.GetClientSize()
         safe_call(self.viewControl, 'resize', x, y)
         self.canvas.Refresh(False)
+
+    def drawText(self, pos, s, color = (0.5, 1, 0.5, 1)):
+        sx, sy = self.viewControl.vp.size
+        rect = (0, sy, sx, 0)
+        with ctx( self._textFrag(color = color), glstate(GL_BLEND), Ortho(rect) ):
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glBlendEquation(GL_FUNC_ADD);
+
+            w, h = 8, 16
+            x, y = pos
+            v = array([[0, 0], [w, 0], [w, h], [0, h]], float32)
+            ss = s.splitlines()
+            total = sum(map(len, ss))
+            max_n = max(map(len, ss))
+            px = arange(max_n)*w + x
+            pos = tile(v, (total, 1, 1))
+            tc  = tile(v, (total, 1, 1))
+            ofs = 0
+            for s in ss:
+                ch = fromstring(s, uint8)
+                n = len(s)
+                cx = (ch % 16) * w
+                cy = (ch / 16) * h
+
+                linePos = pos[ofs:][:n]
+                linePos[...,0] += px[:n,newaxis]
+                linePos[...,1] += y
+                lineTC = tc[ofs:][:n]
+                lineTC[..., 0] += cx[:,newaxis]
+                lineTC[..., 1] += cy[:,newaxis]
+
+                y += h
+                ofs += n
+            tc /= (128, 256)
+            drawArrays(GL_QUADS, verts = pos, tc0 = tc)    
+
+
+
 
 
 class vattr:
@@ -885,13 +958,16 @@ def drawArrays(primitive, verts = None, indices = None, tc0 = None):
 
 
 _profileNodes = {}
-_profileCurNodeName = ""            
+_profileCurNodeName = ""
+g_profileEnable = False           
 
 class profile:
     def __init__(self, node):
         self.nodeName = node
             
     def __enter__(self):
+        if not g_profileEnable:
+            return
         global _profileCurNodeName
         self.prevNodeName = _profileCurNodeName
         if _profileCurNodeName == "":
@@ -901,6 +977,8 @@ class profile:
         _profileCurNodeName = self.fullName
         self.startTime = clock()
     def __exit__(self, *args):
+        if not g_profileEnable:
+            return
         global _profileCurNodeName
         dt = (clock() - self.startTime) * 1000.0
         node_data = _profileNodes.get( self.fullName, dict(ncalls=0, total = 0.0, max = 0.0, avg = 0.0) )
@@ -916,11 +994,15 @@ class profile:
 
 class glprofile(profile):
     def __init__(self, name):
-        profile.__init__(self, name)
+        profile.__init__(self, name + '_gl')
     def __enter__(self):
+        if not g_profileEnable:
+            return
         glFinish()
         profile.__enter__(self)
     def __exit__(self, *argd):
+        if not g_profileEnable:
+            return
         glFinish()
         profile.__exit__(self, *argd)
 
