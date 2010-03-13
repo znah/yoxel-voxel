@@ -102,18 +102,62 @@ class Diffusion:
         cu.memcpy_htod(d_ctx[0], ctx)
         self.srcTexRef = self.mod.get_texref('srcTex')
         self.DiffKernel = self.mod.get_function('Diffusion')
-        
+
+    @with_( cuprofile("DiffusionStep") )
     def step(self, time_kernel = False):
-        with cuprofile("DiffusionStep"):
-            self.src.bind_to_texref(self.srcTexRef)
-            t = self.DiffKernel(self.dst, block = self.block, grid = self.grid, time_kernel = time_kernel)
-            self.flipBuffers()
+        self.src.bind_to_texref(self.srcTexRef)
+        t = self.DiffKernel(self.dst, block = self.block, grid = self.grid, time_kernel = time_kernel)
+        self.flipBuffers()
         return t
 
     def flipBuffers(self):
         self.src, self.dst = self.dst, self.src
+
         
 if __name__ == '__main__':
+    class App(ZglAppWX):
+        volumeRender = Instance(VolumeRenderer)
+
+        def __init__(self):
+            ZglAppWX.__init__(self, viewControl = FlyCamera())
+
+            gridSize = 256
+            
+            a = zeros([gridSize]*3, float32)
+            col = linspace(0.0, 1.0, gridSize).astype(float32)
+            a[:] = col[...,newaxis, newaxis]
+            
+            sinks = (random.rand(10000, 3)*(gridSize, gridSize/2, gridSize/4)).astype(int32)
+            for x, y, z in sinks:
+                a[z, y, x] = Diffusion.SINK
+            a[:, gridSize/2 + 1, :gridSize/2] = Diffusion.OBSTACLE
+            
+            self.diffusion = Diffusion(gridSize)
+            self.diffusion.src.set(a)
+                        
+            volumeTex = Texture3D( size = [gridSize]*3, format = GL_LUMINANCE_FLOAT32_ATI )
+            self.volumeRender = VolumeRenderer(volumeTex)
+            self.step()
+
+        def step(self):
+            for i in xrange(50):
+                self.diffusion.step()
+                print '.',
+            print
+            a = self.diffusion.src.get()
+            with self.volumeRender.volumeTex:
+                glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, a.shape[0], a.shape[1], a.shape[2], GL_LUMINANCE, GL_FLOAT, a)
+
+        def key_SPACE(self):
+            self.step()
+
+        def display(self):
+            clearGLBuffers()
+            
+            with ctx(self.viewControl.with_vp):
+                self.volumeRender.render()
+
+    '''
     class App(ZglAppWX):
         def __init__(self):
             ZglAppWX.__init__(self, viewControl = FlyCamera())
@@ -129,8 +173,8 @@ if __name__ == '__main__':
             print self.diffusion.step(time_kernel = True)
             a = self.diffusion.src.get()
             print a[9:,19:,29:][:3,:3,:3]
-        
+    '''    
     import pycuda.autoinit
-    App()#.run()
+    App().run()
     
 
