@@ -11,14 +11,17 @@ class Diffusion:
         self.size = size
         shape = (size,)*3
         
-        self.block = (8, 8, 4)
+        self.block = block = (16, 16, 4)
         self.grid = (size / self.block[0], size / self.block[1] * size / self.block[2])
+        self.cublock = (16, 4, 1)
         
         self.src = ga.zeros(shape, float32)
         self.dst = ga.zeros(shape, float32)
         
         self.Ctx = Ctx = struct('Ctx', 
-            ( 'size', c_int32))
+            ( 'size'    , c_int32)
+            ( 'stride_y', c_int32 )
+            ( 'stride_z', c_int32 ))
             
         code = Template('''
           {{g.cu_header}}
@@ -95,13 +98,75 @@ class Diffusion:
             acc += c2 * adj2;
 
             dst[ofs] = acc;
-        }''').render(v = vars(), g = globals())
+        }
+
+        const int3 blockSize = { {{v.block[0]}}, {{v.block[1]}}, {{v.block[2]}} };
+        __shared__ float shared[3][{{v.block[1]}}+2][{{v.block[0]}}+2];
+
+
+        __device__ int3 getBrickIdx(int3 gridSize)
+        {
+          int bid = getbid();
+          int x = bid % gridSize.x; bid /= gridSize.x;
+          int y = bid % gridSize.y; bid /= gridSize.y;
+          int z = bid;
+          return make_int3(x, y, z);
+        }
+          
+        __device__ fetchSlice(int layer, int ofs, int tx, int ty)
+        {
+          shared[layer][ty][tx] = 
+
+        }
+        
+        extern "C"
+        __global__ void DiffusionShared(float * dst, int3 gridSize)
+        {
+          int3 p = getBrickIdx(gridSize);
+          int tx = threadIdx.x;
+          int ty = threadIdx.y;
+          p.x = p.x * blockSize.x + tx;
+          p.y = p.y * blockSize.y + ty;
+          p.z = p.z * blockSize.z;
+          int ofs = cell_ofs(p.x, p.y, p.z);
+
+          for (int z = 0; z < blockSize; ++z)
+          {
+            if (z == 0)
+            {
+              shared[0][ty][tx] = tex1Dfetch(srcTex, ofs - stride_z);
+              shared[1][ty][tx] = tex1Dfetch(srcTex, ofs);
+              shared[2][ty][tx] = tex1Dfetch(srcTex, ofs + stride_z);
+              if ()
+            }
+            else
+            {
+              shared[0][ty][tx] 
+              
+
+
+            }
+            __syncthreads();
+
+
+          }
+
+
+          
+       
+          
+
+
+        }
+        
+        ''').render(v = vars(), g = globals())
         self.mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd()+'/include'], no_extern_c = True)
         ctx = Ctx(size = size)
         d_ctx = self.mod.get_global('ctx')
         cu.memcpy_htod(d_ctx[0], ctx)
         self.srcTexRef = self.mod.get_texref('srcTex')
         self.DiffKernel = self.mod.get_function('Diffusion')
+        print self.DiffKernel.num_regs
 
     @with_( cuprofile("DiffusionStep") )
     def step(self, time_kernel = False):
