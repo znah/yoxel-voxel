@@ -91,7 +91,20 @@ __device__ int gettid()
   return (threadIdx.z * blockDim.y + threadIdx.y) * blockDim.x + threadIdx.x;
 }
 
+
 '''
+
+def divUp(a, b):
+    return (a + b - 1) // b
+
+def make_grid3d(space_size, block_size):
+    grid_size = [0] * 3
+    for i, (a, b) in emumerate( zip(space_size, block_size) ):
+        assert a % b != 0
+        grid_size[i] = a / b
+    cu_grid_size = (grid_size[0], grid_size[1] * grid_size[2])
+    return grid_size, cu_grid_size
+
 
 class cuprofile(zgl.profile):
     def __init__(self, name):

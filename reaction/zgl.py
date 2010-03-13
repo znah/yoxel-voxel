@@ -734,6 +734,14 @@ class ZglAppWX(HasTraits):
         self.debugFunc = self.debugFuncIter.next()
         self.debugFunc(True)
 
+        self.initKeyTable()
+
+    def initKeyTable(self):
+        codes =  [(getattr(wx, s), s[4:]) for s in dir(wx) if s[:4] == 'WXK_']
+        codes += [ (code, chr(code)) for code in xrange( ord('A'), ord('Z')+1 )]
+        codes += [ (code, chr(code)) for code in xrange( ord('0'), ord('9')+1 )]
+        self.key2name = dict(codes)
+
     def run(self):
         self.canvas.Bind(wx.EVT_SIZE, self.OnSize)
         self.frame.SetClientSize(self.initSize)
@@ -767,16 +775,21 @@ class ZglAppWX(HasTraits):
     def display(self):
         glClearColor(0, 0.5, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-         
+
+    def key_ESCAPE(self):
+        self.frame.Close(True)
+    
+    def key_F1(self):
+        self.debugFunc = self.debugFuncIter.next()
+        self.debugFunc(True)
+
+    def key_F2(self):
+        self.edit_traits() 
+    
     def OnKeyDown(self, event):
-        keycode = event.GetKeyCode()
-        if keycode == wx.WXK_ESCAPE:
-            self.frame.Close(True)
-        if keycode == wx.WXK_F2:
-            self.edit_traits() 
-        if keycode == wx.WXK_F1:
-            self.debugFunc = self.debugFuncIter.next()
-            self.debugFunc(True)
+        code = event.GetKeyCode()
+        if code in self.key2name:
+            safe_call(self, 'key_' + self.key2name[code])
         safe_call(self.viewControl, 'OnKeyDown', event)
 
     def OnKeyUp(self, event):

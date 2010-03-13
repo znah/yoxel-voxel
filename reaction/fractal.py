@@ -92,7 +92,6 @@ class App(ZglAppWX):
             self.fragProg.juliaSeed = self.juliaSeed
         ZglAppWX.OnMouse(self, evt)
         
-
     def OnKeyDown(self, evt):
         code = evt.GetKeyCode()
         if code < 256:
