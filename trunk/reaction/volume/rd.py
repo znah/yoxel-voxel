@@ -114,6 +114,7 @@ class ReactDiff(HasTraits):
 
         self.RDKernel = self.mod.get_function('RDKernel')
 
+    @with_(cuprofile("RDStep"))
     def iterate(self):
         self.RDKernel(float32(self.f), float32(self.k), float32(self.scale), int32(self.volSize), self.d_dst, 
           block = self.block, grid = self.grid, texrefs = [self.d_srcTex])
@@ -132,7 +133,7 @@ class App(ZglAppWX):
     iterPerFrame = Int(20)
     
     def __init__(self):
-        ZglAppWX.__init__(self, viewControl = FlyCamera())
+        ZglAppWX.__init__(self, viewControl = FlyCamera(), zglpath='..')
         
         self.rd = ReactDiff(64)
         a = self.rd.d_dst.get()

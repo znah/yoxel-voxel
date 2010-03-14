@@ -677,7 +677,7 @@ def safe_call(obj, method, *l, **d):
 class ZglAppWX(HasTraits):
     _ = Python(editable = False)
 
-    def __init__(self, title = "ZglAppWX", size = (800, 600), viewControl = None, vsync = 0):
+    def __init__(self, title = "ZglAppWX", size = (800, 600), viewControl = None, vsync = 0, zglpath = '.'):
         HasTraits.__init__(self)
         self.app = wx.PySimpleApp()
         self.frame = frame = wx.Frame(None, wx.ID_ANY, title)
@@ -714,7 +714,7 @@ class ZglAppWX(HasTraits):
             return color * c;
           }
         ''')
-        font = asarray(PIL.Image.open("img/font.png").convert('L')).copy()
+        font = asarray(PIL.Image.open(zglpath + "/img/font.png").convert('L')).copy()
         self._textFrag.fontTex = fontTex = Texture2D(font)
         self._textFrag.dp = 1.0 / fontTex.size
 
