@@ -9,6 +9,7 @@ class App(ZglAppWX):
         ZglAppWX.__init__(self, size = size, viewControl = OrthoCamera())
 
         noiseTex = Texture2D(random.rand(size[1], size[0], 4).astype(float32))
+        noiseTex.filterLinear()
         
         vortexFP = CGShader('fp40', '''
           uniform float2 gridSize;
@@ -44,11 +45,14 @@ class App(ZglAppWX):
 
                 if self.viewControl.mButtons[0]:
                     emit = 0.5
+                    turn = 10.0
                 elif self.viewControl.mButtons[2]:
                     emit = -0.5
+                    turn = -10.0
                 else:
                     emit = 0
-                vortexFP(turn = -10.0, emit = emit, fade = 10)
+                    turn = 5.0
+                vortexFP(turn = turn, emit = emit, fade = 10)
                 pos = self.viewControl.mPos
                 pos = (pos[0], size[1]-pos[1])
                 vortexFP(center = pos)
@@ -66,8 +70,9 @@ class App(ZglAppWX):
             float2 sp = p * gridSize - vel;
             
             float a = tex2D(src, sp / gridSize).r;
-            float b = tex2D(noise, p).r;
-            b = frac(b + time);
+            float b = tex2D(noise, p*0.25).r;
+            float timeshift = tex2D(noise, p).r;
+            b = frac(b + time + p.x);
             b = lerp(0.5, b, length(vel)*10);
             return float4(float3(lerp(a, b, 0.01)), 1.0);
           }
