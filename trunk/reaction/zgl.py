@@ -1045,6 +1045,21 @@ def with_(*context):
     return wrap
 
 
+def genericFP(inline_code, profile = 'fp40'):
+    if 'return' not in inline_code:
+        inline_code = 'return ' + inline_code
+    code = '''
+      uniform sampler2D texture;
+
+      float4 main( 
+        float4 tc0: TEXCOORD0,
+        float4 tc1: TEXCOORD1) : COLOR 
+      { 
+        %s; 
+      }
+    ''' % (inline_code,)
+    return CGShader(profile, code)
+
 TestShaders = '''
   uniform sampler2D tex;
 
@@ -1063,9 +1078,8 @@ TestShaders = '''
     return tex2D(tex, tc);
   }
 '''
-
-
 """
+
 from __future__ import with_statement
 from zgl import *
     
