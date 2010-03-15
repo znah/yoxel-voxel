@@ -11,35 +11,38 @@ class Diffusion:
         self.size = size
         shape = (size,)*3
         
-        self.block = block = (16, 4, 4)
-        self.grid = (size / self.block[0], size / self.block[1] * size / self.block[2])
-        
         self.src = ga.zeros(shape, float32)
         self.dst = ga.zeros(shape, float32)
         
-        self.Ctx = Ctx = struct('Ctx', 
+        block = (16, 4, 4)
+        grid, cu_grid = make_grid3d(shape, block)
+        
+        Ctx = struct('Ctx', 
             ( 'size'    , c_int32 ),
-            ( 'stride_y', c_int32 ),
-            ( 'stride_z', c_int32 ))
+            ( 'strideY' , c_int32 ),
+            ( 'strideZ' , c_int32 ),
+            ( 'gridSize', int3    ))
+        ctx = Ctx()
+        ctx.size = size
+        ctx.strideY = size
+        ctx.strideZ = size * size
+        ctx.gridSize = int3(*grid)
+
+        domain = array(block) + 2
+        dz, dy, dx = ogrid[-1:domain[2]-1, -1:domain[1]-1, -1:domain[0]-1]
+        fetch_reqs = (dz*size*size + dy*size + dx).astype(int32)
+        fetch_reqs = fetch_reqs.ravel()
+        print fetch_reqs
+
             
         code = Template('''
           {{g.cu_header}}
           {{g.gen_code(v.Ctx)}}
           __constant__ Ctx ctx;
         
-          #line 31
+          #line 37
           texture<float, 1> srcTex;
           
-          __device__ uint cell_ofs(int x, int y, int z)
-          {
-            return x + (y + z * ctx.size) * ctx.size;
-          }
-
-          __device__ float fetch(int x, int y, int z)
-          {
-            return tex1Dfetch(srcTex, cell_ofs(x, y, z));
-          }
-
           __device__ float getflux(float self, float neib)
           {
             if (neib >= 0)
@@ -49,93 +52,70 @@ class Diffusion:
             else 
               return 0.0f;
           }
-          
-          __device__ float fetchNeib(float self, int x, int y, int z)
-          {
-            float v = fetch(x, y, z);
-            return getflux(self, v);
-          }
 
-          const int BLOCK_SIZE_X = {{v.block[0]}};
-          const int BLOCK_SIZE_Y = {{v.block[1]}};
-          const int BLOCK_SIZE_Z = {{v.block[2]}};
+          const int BLOCK_DIM_X = {{v.block[0]}};
+          const int BLOCK_DIM_Y = {{v.block[1]}};
+          const int BLOCK_DIM_Z = {{v.block[2]}};
+          const int BLOCK_SIZE = BLOCK_DIM_X*BLOCK_DIM_Y*BLOCK_DIM_Z;
 
-          __shared__ float smem[BLOCK_SIZE_Z+2][BLOCK_SIZE_Y+2][BLOCK_SIZE_X+2];
-          #define SMEM(x, y, z) (smem[(z)+1][(y)+1][(x)+1])
+          const int DOM_DIM_X = {{v.block[0]}} + 2;
+          const int DOM_DIM_Y = {{v.block[1]}} + 2;
+          const int DOM_DIM_Z = {{v.block[2]}} + 2;
+          const int DOM_SIZE = DOM_DIM_X*DOM_DIM_Y*DOM_DIM_Z;
+
+          __shared__ float smem      [DOM_SIZE];
+          #define SMEM(x, y, z)   smem[ (x)+1 + ((y)+1)*DOM_DIM_X + ((z)+1)*DOM_DIM_X*DOM_DIM_Y ]
+          __constant__ int fetch_reqs[DOM_SIZE];
+          const int REQ_OFS_MASK = 0x8fffffff;
+          const int REQ_WRAP_X = 1<<30;
+          const int REQ_WRAP_Y = 1<<29;
+          const int REQ_WRAP_Z = 1<<28;
+
 
           extern "C"
           __global__ void Diffusion(float * dst)
           {
-            int  gridSizeY = (ctx.size / blockDim.y);
-            int3 gridSize = make_int3(gridDim.x, gridSizeY, gridDim.y / gridSizeY);
             int bx = blockIdx.x;
-            int by = blockIdx.y % gridSizeY;
-            int bz = blockIdx.y / gridSizeY;
-            
+            int by = blockIdx.y % ctx.gridSize.y;
+            int bz = blockIdx.y / ctx.gridSize.y;
             int tx = threadIdx.x;
             int ty = threadIdx.y;
             int tz = threadIdx.z;
-            const int SX = BLOCK_SIZE_X, SY = BLOCK_SIZE_Y, SZ = BLOCK_SIZE_Z;
-            int tid = tx + (ty + tz * SY) * SZ;
+            int x0 = bx * BLOCK_DIM_X;
+            int y0 = by * BLOCK_DIM_Y;
+            int z0 = bz * BLOCK_DIM_Z;
+            int blockBaseOfs = x0 + y0 * ctx.strideY + z0 * ctx.strideZ;
+            int x = x0 + tx;
+            int y = y0 + ty;
+            int z = z0 + tz;
 
-            int x0 = bx * blockDim.x;
-            int y0 = by * blockDim.y;
-            int z0 = bz * blockDim.z;
-            int x = tx + x0;
-            int y = ty + y0;
-            int z = tz + z0;
-            int ofs = cell_ofs(x, y, z);
-            
-            float self = tex1Dfetch(srcTex, ofs);
-            SMEM(tx, ty, tz) = self;
-
-            const int size = ctx.size;
-            int xL = (x0 + size - 1) % size;
-            int yL = (y0 + size - 1) % size;
-            int zL = (z0 + size - 1) % size;
-            int xH = (x0 + SX) % size;
-            int yH = (y0 + SY) % size;
-            int zH = (z0 + SZ) % size;
-            
-            if (tx == 0)
+            int tid = tx + (ty + tz * BLOCK_DIM_Y) * BLOCK_DIM_X;
+            for (int i = tid; i < DOM_SIZE; i += BLOCK_SIZE)
             {
-              SMEM(-1, ty, tz)           = fetch(xL, y, z);
-              SMEM(SX, ty, tz) = fetch(xH, y, z);
+              int req = fetch_reqs[i];
+              int ofs = blockBaseOfs + (req/* & REQ_OFS_MASK*/);
+              if (req & REQ_WRAP_X)
+              {
+                if (x == 0) ofs += ctx.strideY;
+                if (x == ctx.size-1) ofs -= ctx.strideY;
+              }
+              if (req & REQ_WRAP_Y)
+              {
+                if (y == 0) ofs += ctx.strideZ;
+                if (y == ctx.size-1) ofs -= ctx.strideZ;
+              }
+              if (req & REQ_WRAP_Z)
+              {
+                if (z == 0) ofs += ctx.strideZ * ctx.size;
+                if (z == ctx.size-1) ofs -= ctx.strideZ * ctx.size;
+              }
+              smem[i] = tex1Dfetch(srcTex, ofs);
             }
-            if (ty == 0)
-            {
-              SMEM(tx, -1, tz)            = fetch(x, yL, z);
-              SMEM(tx, SY, tz) = fetch(x, yH, z);
-            }
-            if (tz == 0)
-            {
-              SMEM(tx, ty, -1)            = fetch(x, y, zL);
-              SMEM(tx, ty, SZ) = fetch(x, y, zH);
-            }
-            if (tid < SZ)
-            {
-              SMEM(-1, -1, tid)           = fetch(xL, yL, z0 + tid);
-              SMEM(SX, -1, tid)           = fetch(xH, yL, z0 + tid);
-              SMEM(-1, SY, tid)           = fetch(xL, yH, z0 + tid);
-              SMEM(SX, SY, tid)           = fetch(xH, yH, z0 + tid);
-            }
-            if (tid < SY)
-            {
-              SMEM(-1, tid, -1)           = fetch(xL, y0 + tid, zL);
-              SMEM(SX, tid, -1)           = fetch(xH, y0 + tid, zL);
-              SMEM(-1, tid, SZ)           = fetch(xL, y0 + tid, zH);
-              SMEM(SX, tid, SZ)           = fetch(xH, y0 + tid, zH);
-            }
-            if (tid < SX)
-            {
-              SMEM(tid, -1, -1)           = fetch(x0 + tid, yL, zL);
-              SMEM(tid, SY, -1)           = fetch(x0 + tid, yH, zL);
-              SMEM(tid, -1, SZ)           = fetch(x0 + tid, yL, zH);
-              SMEM(tid, SY, SZ)           = fetch(x0 + tid, yH, zH);
-            }
-            
             __syncthreads();
+
+            int ofs = x + y * ctx.strideY + z * ctx.strideZ;
             
+            float self = SMEM(0, 0, 0);
             if (self < 0 || z == 0 || z == ctx.size-1)
             {
               dst[ofs] = self;
@@ -170,127 +150,25 @@ class Diffusion:
             adj2 += getflux(self, SMEM(  tx, ty-1, tz-1) );
             acc += c2 * adj2;
 
-
-            /*
-            float adj1 = 0.0f;
-            adj1 += fetchNeib(self, x1, y , z  );
-            adj1 += fetchNeib(self, x , y1, z  );
-            adj1 += fetchNeib(self, x , y , z1 );
-            adj1 += fetchNeib(self, x0, y , z  );
-            adj1 += fetchNeib(self, x , y0, z  );
-            adj1 += fetchNeib(self, x , y , z0 );
-            acc += c1 * adj1;
-
-            float adj2 = 0.0f;
-            adj2 += fetchNeib(self, x1, y1,  z );
-            adj2 += fetchNeib(self, x0, y1,  z );
-            adj2 += fetchNeib(self, x1, y0,  z );
-            adj2 += fetchNeib(self, x0, y0,  z );
-            adj2 += fetchNeib(self, x1,  y, z1 );
-            adj2 += fetchNeib(self, x0,  y, z1 );
-            adj2 += fetchNeib(self, x1,  y, z0 );
-            adj2 += fetchNeib(self, x0,  y, z0 );
-            adj2 += fetchNeib(self,  x, y1, z1 );
-            adj2 += fetchNeib(self,  x, y0, z1 );
-            adj2 += fetchNeib(self,  x, y1, z0 );
-            adj2 += fetchNeib(self,  x, y0, z0 );
-            acc += c2 * adj2;*/
-
             dst[ofs] = acc;
         }
-        /*
-        const int3 blockSize = { {{v.block[0]}}, {{v.block[1]}}, {{v.block[2]}} };
-        __shared__ float shared[3][{{v.block[1]}}+2][{{v.block[0]}}+2];
-
-
-        __device__ int3 getBrickIdx(int3 gridSize)
-        {
-          int bid = getbid();
-          int x = bid % gridSize.x; bid /= gridSize.x;
-          int y = bid % gridSize.y; bid /= gridSize.y;
-          int z = bid;
-          return make_int3(x, y, z);
-        }
-          
-        __device__ fetchSlice(int layer, int ofs, int tx, int ty)
-        {
-          tx += 1; ty += 1;
-          const int SX = blockSize.x, SY = blockSize.y; 
-          const int STEPY = ctx.stride_y;
-
-          shared[layer][ty][tx] = tex1Dfetch(srcTex, ofs); 
-          if (tx == 1)
-          {
-            shared[layer][ty][ 0    ] = tex1Dfetch(srcTex, ofs - 1); 
-            shared[layer][ty][ SX+1 ] = tex1Dfetch(srcTex, ofs + SX); 
-          }
-          if (ty == 1)
-          {
-            shared[layer][ 0    ][tx] = tex1Dfetch(srcTex, ofs - STEPY); 
-            shared[layer][ SY+1 ][tx] = tex1Dfetch(srcTex, ofs + SY * STEPY); 
-          }
-          if (tx == 1 && ty == 1)
-          {
-            shared[layer][ 0 ][ 0   ] = tex1Dfetch(srcTex, ofs - 1 - STEPY); 
-            shared[layer][ty][ SX+1 ] = tex1Dfetch(srcTex, ofs + SX); 
-
-
-          }
-        }
-        
-        extern "C"
-        __global__ void DiffusionShared(float * dst, int3 gridSize)
-        {
-          int3 p = getBrickIdx(gridSize);
-          int tx = threadIdx.x;
-          int ty = threadIdx.y;
-          p.x = p.x * blockSize.x + tx;
-          p.y = p.y * blockSize.y + ty;
-          p.z = p.z * blockSize.z;
-          int ofs = cell_ofs(p.x, p.y, p.z);
-
-          for (int z = 0; z < blockSize; ++z)
-          {
-            if (z == 0)
-            {
-              //shared[0][ty][tx] = tex1Dfetch(srcTex, ofs - stride_z);
-              //shared[1][ty][tx] = tex1Dfetch(srcTex, ofs);
-              //shared[2][ty][tx] = tex1Dfetch(srcTex, ofs + stride_z);
-              if ()
-            }
-            else
-            {
-              shared[0][ty][tx] 
-              
-
-
-            }
-            __syncthreads();
-
-
-          } 
-
-        } */
-        
         ''').render(v = vars(), g = globals())
-        self.mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd()+'/include'], no_extern_c = True)
-          #options = ['--maxrregcount=16'])
-        ctx = Ctx(size = size)
-        d_ctx = self.mod.get_global('ctx')
+        mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd()+'/include'], no_extern_c = True) #options = ['--maxrregcount=16'])
+        d_ctx        = mod.get_global('ctx')
+        d_fetch_reqs = mod.get_global('fetch_reqs')
         cu.memcpy_htod(d_ctx[0], ctx)
-        self.srcTexRef = self.mod.get_texref('srcTex')
-        self.DiffKernel = self.mod.get_function('Diffusion')
-        print self.DiffKernel.num_regs
+        cu.memcpy_htod(d_fetch_reqs[0], fetch_reqs)
+        srcTexRef = mod.get_texref('srcTex')
+        DiffKernel = mod.get_function('Diffusion')
+        print DiffKernel.num_regs
 
-    @with_( cuprofile("DiffusionStep") )
-    def step(self, time_kernel = False):
-        self.src.bind_to_texref(self.srcTexRef)
-        t = self.DiffKernel(self.dst, block = self.block, grid = self.grid, time_kernel = time_kernel)
-        self.flipBuffers()
-        return t
+        @with_( cuprofile("DiffusionStep") )
+        def step():
+            self.src.bind_to_texref(srcTexRef)
+            DiffKernel(self.dst, block = block, grid = cu_grid)
+            self.src, self.dst = self.dst, self.src
 
-    def flipBuffers(self):
-        self.src, self.dst = self.dst, self.src
+        self.step = step
 
         
 if __name__ == '__main__':
