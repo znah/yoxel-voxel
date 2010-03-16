@@ -11,14 +11,13 @@ def create_box():
              1, 3, 7, 5,
              0, 4, 6, 2,
              2, 6, 7, 3]
-    idxs = array(idxs, uint32).reshape(-1,4)
-    idxs = idxs[:,(0, 1, 2, 0, 2, 3)]  # quads -> triangles
-    idxs = idxs.reshape((-1,3))
-    return verts, idxs
+    quad_idxs = array(idxs, uint32).reshape(-1,4)
+    trg_idxs = quad_idxs[:,(0, 1, 2, 0, 2, 3)].reshape((-1,3))  # quads -> triangles
+    return verts, trg_idxs, quad_idxs
 
 
 def create_box_mesh():
-    verts, idxs = create_box()
+    verts, idxs, qidxs = create_box()
     
     mesh = _coralmesh.CoralMesh()
     for v in verts:

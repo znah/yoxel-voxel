@@ -10,15 +10,21 @@ from mesh import create_box
 
 
 
-class Coral:
-    def __init__(self):
-        self.gridSize = gridSize = 256
-        self.coralliteSpacing = 1.8
-        self.mergeDist = 0.75 * self.coralliteSpacing
-        self.splitDist = 1.5  * self.coralliteSpacing
-        self.mouthDist = 3.0
-        self.growCoef = 1.0
-        self.diffuseStepNum = 40
+class Coral(HasTraits):
+    gridSize         = ReadOnly()
+    diffuseStepNum   = Float(50) 
+    growCoef         = Float(1.0)
+    mouthDist        = Float(3.0)
+    coralliteSpacing = Float(1.3)
+
+    curDiffusionErr = Float(0.0)
+
+    _ = Python(editable = False)
+
+    def __init__(self, gridSize = 128, coralliteSpacing = None):
+        self.gridSize = gridSize
+        if coralliteSpacing is not None:
+           self.coralliteSpacing = coralliteSpacing
 
         self.initMesh()
         self.voxelizer = Voxelizer(gridSize)
@@ -195,7 +201,9 @@ class Coral:
                 self.diffusion.step()
                 if (i+1) % 10 == 0:
                     with cuprofile("DiffusionConvergence"):
-                        print ga.sum(abs(self.diffusion.src - self.diffusion.dst)  )
+                        curDiffusionErr = ga.sum(abs(self.diffusion.src - self.diffusion.dst))
+                        print '.',
+            print
             self.MarkSinks(d_sinks, 0.0)
             self.diffusion.step()
             d_absorb = ga.zeros(len(d_sinks), float32)
@@ -204,43 +212,70 @@ class Coral:
         
         with profile("GrowMesh"):
             absorb /= absorb.max()
-            self.mesh.grow(self.mergeDist, self.splitDist, absorb*self.growCoef)
+            mergeDist = 0.75 * self.coralliteSpacing
+            splitDist = 1.5  * self.coralliteSpacing
+            self.mesh.grow(mergeDist, splitDist, absorb*self.growCoef)
             self.getMeshArrays()
         
 if __name__ == '__main__':
     class App(ZglAppWX):
+        coral          = Instance(Coral)
+        batchIters     = Int(10)
+        iterCount      = Int(0)
+        saveGrowIters  = Bool(False)
+        
+        traits_view = View(Item(name='iterCount', style='readonly'),
+                           Item(name='batchIters'),
+                           Item(name='coral'),
+                           Item(name='saveGrowIters'),
+                           resizable = True,
+                           buttons = ["OK"],
+                           title='Coral')
+
         def __init__(self):
             ZglAppWX.__init__(self, viewControl = FlyCamera())
             import pycuda.gl.autoinit
             
-            self.viewControl.speed = 10
-            
             self.coral = Coral()
-            self.coral.grow()
+
+            self.viewControl.speed = self.coral.gridSize / 5.0
 
             self.growLeft = 0
 
-            verts, idxs = create_box()
+            verts, idxs, quads = create_box()
             verts *= self.coral.gridSize
             def drawBox():
                 glColor(0.5, 0.5, 0.5)
                 glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-                drawArrays(GL_TRIANGLES, verts = verts, indices = idxs)
+                drawArrays(GL_QUADS, verts = verts, indices = quads)
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
             self.drawBox = drawBox
 
         def key_SPACE(self):
-            self.growLeft = 1
+            if self.growLeft == 0:
+                self.growLeft = self.batchIters
+            else:
+                self.growLeft = 0
         def key_1(self):
             save_obj("t.obj", self.coral.positions, self.coral.faces)
-        def key_2(self):
-            self.growLeft = 10
+
+        def save_coral(self):
+            fname = "coral_%03d" % (self.iterCount,)
+            print "saving '%s' ..." % (fname,),
+            savez(fname, 
+              positions = self.coral.positions, 
+              faces     = self.coral.faces,
+              normals   = self.coral.normals)
+            print 'ok'
             
         def display(self):
             clearGLBuffers()
             if self.growLeft > 0:
                 self.coral.grow()
+                self.iterCount += 1
                 self.growLeft -= 1
+                if self.saveGrowIters:
+                    self.save_coral()
 
             with ctx(self.viewControl.with_vp, glstate(GL_DEPTH_TEST, GL_DEPTH_CLAMP_NV)):
                 glColor3f(0.5, 0.5, 0.5)
