@@ -2,7 +2,8 @@ from __future__ import with_statement
 from zgl import *
 import _coralmesh
 
-def create_box_mesh():
+
+def create_box():
     verts = indices((2, 2, 2), float32).T.reshape(-1,3)
     idxs = [ 0, 2, 3, 1,
              0, 1, 5, 4, 
@@ -13,6 +14,11 @@ def create_box_mesh():
     idxs = array(idxs, uint32).reshape(-1,4)
     idxs = idxs[:,(0, 1, 2, 0, 2, 3)]  # quads -> triangles
     idxs = idxs.reshape((-1,3))
+    return verts, idxs
+
+
+def create_box_mesh():
+    verts, idxs = create_box()
     
     mesh = _coralmesh.CoralMesh()
     for v in verts:

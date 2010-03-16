@@ -13,7 +13,7 @@ def divUp(a, b):
 
 
 mod = SourceModule('''
-  typedef char data_t;
+  typedef float data_t;
 
   texture<data_t, 1, cudaReadModeElementType> tex;
 
@@ -42,7 +42,7 @@ mod = SourceModule('''
     dst[tid] = tex1Dfetch(tex, i);
   }
 ''')
-src_t = uint8
+src_t = float32
 
 ReadTest = mod.get_function("ReadTest")
 ReadTestTex = mod.get_function("ReadTestTex")
@@ -50,7 +50,7 @@ tex = mod.get_texref("tex")
 
 print "reg: %d,  lmem: %d " % (ReadTest.num_regs, ReadTest.local_size_bytes)
 
-n = 16 * 2**20
+n = 256**3
 src = ga.to_gpu( arange(n, dtype = src_t) )
 dst = ga.zeros((n,), float32)
 src.bind_to_texref(tex)
@@ -79,19 +79,20 @@ def run(**args):
 blockSizes = xrange(64, 512+1, 32)
 
 def run2(**args):
-    tt = []
+    bws = []
     for bsize in blockSizes:
         t = run(blockSize = bsize, **args)
-        tt.append(t)
-        print bsize, t
-    return tt
+        bw = src.nbytes / t * 1000 / 2.0**30
+        bws.append(bw)
+        print bsize, t, bw
+    return bws
 
 import pylab
 
 pylab.plot(blockSizes, run2(ofs = 0))
-#pylab.plot(blockSizes, run2(ofs = 1))
+pylab.plot(blockSizes, run2(ofs = 1))
 pylab.plot(blockSizes, run2(ofs = 0,  func = ReadTestTex), '--')
-#pylab.plot(blockSizes, run2(ofs = 1,  func = ReadTestTex), '--')
+pylab.plot(blockSizes, run2(ofs = 1,  func = ReadTestTex), '--')
 #pylab.plot(blockSizes, run2(ofs = -4, func = ReadTestTex), '--')
 pylab.plot([0])
 pylab.savefig("t.png")

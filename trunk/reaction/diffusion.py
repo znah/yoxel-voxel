@@ -32,143 +32,138 @@ class Diffusion:
         dz, dy, dx = ogrid[-1:domain[2]-1, -1:domain[1]-1, -1:domain[0]-1]
         fetch_reqs = (dz*size*size + dy*size + dx).astype(int32)
         fetch_reqs = fetch_reqs.ravel()
-        print fetch_reqs
-
             
         code = Template('''
           {{g.cu_header}}
           {{g.gen_code(v.Ctx)}}
-          __constant__ Ctx ctx;
+          //__constant__ Ctx ctx;
         
-          #line 37
+          #line 44
           texture<float, 1> srcTex;
-          
-          __device__ float getflux(float self, float neib)
-          {
-            if (neib >= 0)
-              return neib;
-            else if (neib == {{v.self.OBSTACLE}}f)
-              return self;
-            else 
-              return 0.0f;
-          }
 
+          #define OBSTACLE {{v.self.OBSTACLE}}f 
+          #define SINK     {{v.self.SINK}}f
+          
           const int BLOCK_DIM_X = {{v.block[0]}};
           const int BLOCK_DIM_Y = {{v.block[1]}};
           const int BLOCK_DIM_Z = {{v.block[2]}};
-          const int BLOCK_SIZE = BLOCK_DIM_X*BLOCK_DIM_Y*BLOCK_DIM_Z;
+          const int BLOCK_SIZE  = BLOCK_DIM_X*BLOCK_DIM_Y*BLOCK_DIM_Z;
 
-          const int DOM_DIM_X = {{v.block[0]}} + 2;
-          const int DOM_DIM_Y = {{v.block[1]}} + 2;
-          const int DOM_DIM_Z = {{v.block[2]}} + 2;
-          const int DOM_SIZE = DOM_DIM_X*DOM_DIM_Y*DOM_DIM_Z;
+          const int SHRD_DIM_X = {{v.block[0]}} + 2;
+          const int SHRD_DIM_Y = {{v.block[1]}} + 2;
+          const int SHRD_DIM_Z = {{v.block[2]}} + 2;
+          const int SHRD_SIZE  = SHRD_DIM_X*SHRD_DIM_Y*SHRD_DIM_Z;
 
-          __shared__ float smem      [DOM_SIZE];
-          #define SMEM(x, y, z)   smem[ (x)+1 + ((y)+1)*DOM_DIM_X + ((z)+1)*DOM_DIM_X*DOM_DIM_Y ]
-          __constant__ int fetch_reqs[DOM_SIZE];
-          const int REQ_OFS_MASK = 0x8fffffff;
-          const int REQ_WRAP_X = 1<<30;
-          const int REQ_WRAP_Y = 1<<29;
-          const int REQ_WRAP_Z = 1<<28;
+          const int GRID_DIM_X = {{v.grid[0]}};
+          const int GRID_DIM_Y = {{v.grid[1]}};
+          const int GRID_DIM_Z = {{v.grid[2]}};
 
+          const int VOL_DIM_X = GRID_DIM_X * BLOCK_DIM_X;
+          const int VOL_DIM_Y = GRID_DIM_Y * BLOCK_DIM_Y;
+          const int VOL_DIM_Z = GRID_DIM_Z * BLOCK_DIM_Z;
+          const int VOL_SIZE  = VOL_DIM_X*VOL_DIM_Y*VOL_DIM_Z;
+
+          __device__ float getflux(float self, float neib)
+          {
+            if (neib == SINK)
+              neib = 0.0f;
+            if (neib == OBSTACLE)
+              neib = self;
+            return neib;
+          }
+
+          
+          __shared__ float smem      [SHRD_SIZE];
+          __constant__ int fetch_reqs[SHRD_SIZE];
 
           extern "C"
-          __global__ void Diffusion(float * dst)
+          __global__ void Diffusion(const float * src, float * dst)
           {
             int bx = blockIdx.x;
-            int by = blockIdx.y % ctx.gridSize.y;
-            int bz = blockIdx.y / ctx.gridSize.y;
+            int by = blockIdx.y % GRID_DIM_Y;
+            int bz = blockIdx.y / GRID_DIM_Y;
             int tx = threadIdx.x;
             int ty = threadIdx.y;
             int tz = threadIdx.z;
             int x0 = bx * BLOCK_DIM_X;
             int y0 = by * BLOCK_DIM_Y;
             int z0 = bz * BLOCK_DIM_Z;
-            int blockBaseOfs = x0 + y0 * ctx.strideY + z0 * ctx.strideZ;
+            int blockBaseOfs = x0 + y0*VOL_DIM_X + z0*VOL_DIM_X*VOL_DIM_Y;
             int x = x0 + tx;
             int y = y0 + ty;
             int z = z0 + tz;
 
-            int tid = tx + (ty + tz * BLOCK_DIM_Y) * BLOCK_DIM_X;
-            for (int i = tid; i < DOM_SIZE; i += BLOCK_SIZE)
+            int tid = tx + ty*BLOCK_DIM_X + tz*BLOCK_DIM_X*BLOCK_DIM_Y;
+            for (int i = tid; i < SHRD_SIZE; i += BLOCK_SIZE)
             {
               int req = fetch_reqs[i];
-              int ofs = blockBaseOfs + (req/* & REQ_OFS_MASK*/);
-              if (req & REQ_WRAP_X)
-              {
-                if (x == 0) ofs += ctx.strideY;
-                if (x == ctx.size-1) ofs -= ctx.strideY;
-              }
-              if (req & REQ_WRAP_Y)
-              {
-                if (y == 0) ofs += ctx.strideZ;
-                if (y == ctx.size-1) ofs -= ctx.strideZ;
-              }
-              if (req & REQ_WRAP_Z)
-              {
-                if (z == 0) ofs += ctx.strideZ * ctx.size;
-                if (z == ctx.size-1) ofs -= ctx.strideZ * ctx.size;
-              }
+              int ofs = blockBaseOfs + req;
               smem[i] = tex1Dfetch(srcTex, ofs);
             }
+
             __syncthreads();
 
-            int ofs = x + y * ctx.strideY + z * ctx.strideZ;
+            int ofs = x + y*VOL_DIM_X + z*VOL_DIM_X*VOL_DIM_Y;
             
-            float self = SMEM(0, 0, 0);
-            if (self < 0 || z == 0 || z == ctx.size-1)
+            const int SX = 1, SY = SHRD_DIM_X, SZ = SHRD_DIM_X * SHRD_DIM_Y;
+            int sofs = (tx+1) + (ty+1)*SY + (tz+1)*SZ;
+            
+            float self = smem[sofs];
+            if (self < 0 || z == 0 || z == VOL_DIM_Z-1)
             {
               dst[ofs] = self;
               return;
             }
 
-
             const float c0 = 1.0f / 3.0f, c1 = 1.0f / 18.0f, c2 = 1.0f / 36.0f;
             float acc = c0 * self;
 
             float adj1 = 0.0f;
-            adj1 += getflux(self, SMEM( tx+1, ty , tz ) );
-            adj1 += getflux(self, SMEM( tx , ty+1, tz ) );
-            adj1 += getflux(self, SMEM( tx , ty , tz+1) );
-            adj1 += getflux(self, SMEM( tx-1, ty , tz ) );
-            adj1 += getflux(self, SMEM( tx , ty-1, tz ) );
-            adj1 += getflux(self, SMEM( tx , ty , tz-1) );
+            adj1 += getflux(self, smem[sofs + SX] );
+            adj1 += getflux(self, smem[sofs - SX] );
+            adj1 += getflux(self, smem[sofs + SY] );
+            adj1 += getflux(self, smem[sofs - SY] );
+            adj1 += getflux(self, smem[sofs + SZ] );
+            adj1 += getflux(self, smem[sofs - SZ] );
             acc += c1 * adj1;
 
             float adj2 = 0.0f;
-            adj2 += getflux(self, SMEM( tx+1, ty+1,  tz) );
-            adj2 += getflux(self, SMEM( tx-1, ty+1,  tz) );
-            adj2 += getflux(self, SMEM( tx+1, ty-1,  tz) );
-            adj2 += getflux(self, SMEM( tx-1, ty-1,  tz) );
-            adj2 += getflux(self, SMEM( tx+1,  ty, tz+1) );
-            adj2 += getflux(self, SMEM( tx-1,  ty, tz+1) );
-            adj2 += getflux(self, SMEM( tx+1,  ty, tz-1) );
-            adj2 += getflux(self, SMEM( tx-1,  ty, tz-1) );
-            adj2 += getflux(self, SMEM(  tx, ty+1, tz+1) );
-            adj2 += getflux(self, SMEM(  tx, ty-1, tz+1) );
-            adj2 += getflux(self, SMEM(  tx, ty+1, tz-1) );
-            adj2 += getflux(self, SMEM(  tx, ty-1, tz-1) );
+            adj2 += getflux(self, smem[sofs + SX + SY] );
+            adj2 += getflux(self, smem[sofs - SX + SY] );
+            adj2 += getflux(self, smem[sofs + SX - SY] );
+            adj2 += getflux(self, smem[sofs - SX - SY] );
+
+            adj2 += getflux(self, smem[sofs + SX + SZ] );
+            adj2 += getflux(self, smem[sofs - SX + SZ] );
+            adj2 += getflux(self, smem[sofs + SX - SZ] );
+            adj2 += getflux(self, smem[sofs - SX - SZ] );
+
+            adj2 += getflux(self, smem[sofs + SY + SZ] );
+            adj2 += getflux(self, smem[sofs - SY + SZ] );
+            adj2 += getflux(self, smem[sofs + SY - SZ] );
+            adj2 += getflux(self, smem[sofs - SY - SZ] );
             acc += c2 * adj2;
 
             dst[ofs] = acc;
         }
         ''').render(v = vars(), g = globals())
         mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd()+'/include'], no_extern_c = True) #options = ['--maxrregcount=16'])
-        d_ctx        = mod.get_global('ctx')
+        #d_ctx        = mod.get_global('ctx')
         d_fetch_reqs = mod.get_global('fetch_reqs')
-        cu.memcpy_htod(d_ctx[0], ctx)
+        #cu.memcpy_htod(d_ctx[0], ctx)
         cu.memcpy_htod(d_fetch_reqs[0], fetch_reqs)
         srcTexRef = mod.get_texref('srcTex')
         DiffKernel = mod.get_function('Diffusion')
-        print DiffKernel.num_regs
 
         @with_( cuprofile("DiffusionStep") )
         def step():
             self.src.bind_to_texref(srcTexRef)
-            DiffKernel(self.dst, block = block, grid = cu_grid)
-            self.src, self.dst = self.dst, self.src
-
+            DiffKernel(self.src, self.dst, block = block, grid = cu_grid)
+            self.flipBuffers()
         self.step = step
+    
+    def flipBuffers(self):
+        self.src, self.dst = self.dst, self.src
 
         
 if __name__ == '__main__':
@@ -184,7 +179,7 @@ if __name__ == '__main__':
             col = linspace(0.0, 1.0, gridSize).astype(float32)
             a[:] = col[...,newaxis, newaxis]
             
-            sinks = (random.rand(10000, 3)*(gridSize, gridSize/2, gridSize/4)).astype(int32)
+            sinks = (random.rand(10000, 3)*(gridSize, gridSize/2, gridSize/2)).astype(int32)
             for x, y, z in sinks:
                 a[z, y, x] = Diffusion.SINK
             a[:, gridSize/2 + 1, :gridSize/2] = Diffusion.OBSTACLE

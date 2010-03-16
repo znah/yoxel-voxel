@@ -5,6 +5,7 @@ import _coralmesh
 import pycuda.gl as cuda_gl
 from diffusion import Diffusion
 from voxelizer import Voxelizer
+from mesh import create_box
 
 
 
@@ -29,13 +30,13 @@ class Coral:
         
         self.setupKernels()
         self.getMeshArrays()
-        
+
     def initMesh(self):
         spacing = self.coralliteSpacing
-        verts, idxs = load_obj('data/icosahedron.obj')
-        verts *= spacing / 2.0
-        #erts, idxs = load_obj('data/shpere_642.obj')
-        #verts *= spacing / 0.14
+        #verts, idxs = load_obj('data/icosahedron.obj')
+        #verts *= spacing / 2.0
+        verts, idxs = load_obj('data/shere_162.obj')
+        verts *= spacing / 0.566
         
         verts += (self.gridSize/2, self.gridSize/2, spacing*2)
         self.mesh = mesh = _coralmesh.CoralMesh()
@@ -216,21 +217,31 @@ if __name__ == '__main__':
             
             self.coral = Coral()
             self.coral.grow()
+
+            self.growLeft = 0
+
+            verts, idxs = create_box()
+            verts *= self.coral.gridSize
+            def drawBox():
+                glColor(0.5, 0.5, 0.5)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+                drawArrays(GL_TRIANGLES, verts = verts, indices = idxs)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+            self.drawBox = drawBox
+
+        def key_SPACE(self):
+            self.growLeft = 1
+        def key_1(self):
+            save_obj("t.obj", self.coral.positions, self.coral.faces)
+        def key_2(self):
+            self.growLeft = 10
             
-        def OnKeyDown(self, evt):
-            key = evt.GetKeyCode()
-            if key == ord(' '):
-                self.coral.grow()
-            if key == ord('1'):
-                save_obj("t.obj", self.coral.positions, self.coral.faces)
-            if key == ord('2'):
-                for i in xrange(10):
-                    self.coral.grow()
-            else:
-                ZglAppWX.OnKeyDown(self, evt)
-                
         def display(self):
             clearGLBuffers()
+            if self.growLeft > 0:
+                self.coral.grow()
+                self.growLeft -= 1
+
             with ctx(self.viewControl.with_vp, glstate(GL_DEPTH_TEST, GL_DEPTH_CLAMP_NV)):
                 glColor3f(0.5, 0.5, 0.5)
                 drawArrays(GL_TRIANGLES, verts = self.coral.positions, indices = self.coral.faces)
@@ -241,7 +252,6 @@ if __name__ == '__main__':
                     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
                     drawArrays(GL_TRIANGLES, verts = self.coral.positions, indices = self.coral.faces)
                     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-                
-        
+                self.drawBox()
     
     App().run()
