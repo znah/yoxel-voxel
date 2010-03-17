@@ -27,6 +27,15 @@ def create_box_mesh():
     mesh.update_normals()
     return mesh
 
+def filterUnusedVerts(verts, faces):
+    mark = zeros(len(verts), int32)
+    mark[faces] = 1
+    ofs = cumsum(mark)-1
+    verts = verts[mark==1].copy()
+    faces = ofs[faces]
+    return verts, faces
+
+
 class MeshTestApp(ZglAppWX):
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
