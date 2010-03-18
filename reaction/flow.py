@@ -5,7 +5,7 @@ class App(ZglAppWX):
     
     
     def __init__(self):
-        size = V(1920, 1000)
+        size = V(1024, 768)
         ZglAppWX.__init__(self, size = size, viewControl = OrthoCamera())
 
         vortexFP = CGShader('fp40', '''
@@ -25,7 +25,7 @@ class App(ZglAppWX):
             float2 t = float2(-r.y, r.x);
             
             t *= turn*d * exp(-d*d*fade);
-            return float4(t + emit*r/d, 0, 0);
+            return float4(t + emit*r, 0, 0);
           }
         ''')
         vortexFP.gridSize = size
@@ -37,14 +37,14 @@ class App(ZglAppWX):
                 glBlendFunc(GL_ONE, GL_ONE);
                 glBlendEquation(GL_FUNC_ADD);
                 clearGLBuffers()
-                vortexFP(turn = 30.0, emit = 0.0, fade = 30, center = size*(0.3, 0.3))
+                vortexFP(turn = 30.0, emit = 0.0, fade = 50, center = size*(0.3, 0.3))
                 drawQuad()
 
                 if self.viewControl.mButtons[0]:
-                    emit = 0.005
+                    emit = 0.5
                     turn = 30.0
                 elif self.viewControl.mButtons[2]:
-                    emit = -0.005
+                    emit = -0.5
                     turn = -30.0
                 else:
                     emit = 0
@@ -58,6 +58,7 @@ class App(ZglAppWX):
         noiseTex = Texture2D(random.rand(size[1], size[0], 4).astype(float32))
         #noiseTex.filterLinear()
         flowVisFP = CGShader('fp40', '''
+          #line 62
           uniform sampler2D flow;
           uniform sampler2D src;
           uniform sampler2D noise;
@@ -70,7 +71,7 @@ class App(ZglAppWX):
           {
             float4 rnd = tex2D(noise, p);
             float v = frac(rnd.r + time);//sin(2*pi*rnd.r + time * 10.0)*0.5 + 0.5;
-            return pow(v, 4.0);
+            return v;
           }
 
           float4 main(float2 p : TEXCOORD0) : COLOR
@@ -80,15 +81,15 @@ class App(ZglAppWX):
             
             float a = tex2D(src, sp / gridSize).r;
             float b = getnoise(p);
-
-            b = lerp(0.0, b, length(vel)*1);
-            return float4(float3(lerp(a, b, 0.05)), 1.0);
+            float v = lerp(a, b, 0.05);
+            float speed = length(vel);
+            return float4(v, speed, 0, 0);
           }
         ''')
         flowVisFP.noise = noiseTex
         flowVisFP.flow = flowBuf.tex
         flowVisFP.gridSize = size
-        visBuf = PingPong(size = size)#, format = GL_RGBA_FLOAT16_ATI)
+        visBuf = PingPong(size = size, format = GL_RGBA_FLOAT16_ATI)
         visBuf.texparams(*Texture2D.Linear)
         with visBuf.src:
             clearGLBuffers()
@@ -100,7 +101,18 @@ class App(ZglAppWX):
                 drawQuad()
             visBuf.flip()
 
-        texlookupFP = genericFP('tex2D(texture, tc0.xy)')
+        texlookupFP = genericFP('''
+          #line 104
+          float4 data = tex2D(texture, tc0.xy);
+          float v = data.r;
+          float speed = data.g;
+
+          float4 c1 = float4(0.5, 0.5, 0.5, 1.0);
+          float4 c2 = float4(v, v, v, 1.0);
+          float4 c = lerp(c1, c2, 2.0*speed);
+
+          return c;
+        ''' )
         def display():
             updateFlow()
             updateFlowVis()
