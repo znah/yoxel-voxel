@@ -1,3 +1,4 @@
+//
 
 void VertexProg(float4 position : POSITION,
                 float3 normal   : NORMAL,
@@ -26,7 +27,8 @@ void FragmentProg(float4 position  : TEXCOORD0,
               uniform float3 Ka,
               uniform float3 Kd,
               uniform float3 Ks,
-              uniform float  shininess)
+              uniform float  shininess,
+              uniform float  lambertWrap)
 {
   float3 P = position.xyz;
   float3 N = normalize(normal);
@@ -39,7 +41,8 @@ void FragmentProg(float4 position  : TEXCOORD0,
 
   // Compute the diffuse term
   float3 L = normalize(lightPosition - P);
-  float diffuseLight = max(dot(L, N), 0);
+  float diffuseLight = (dot(L, N) + lambertWrap) / (1.0 + lambertWrap);
+  diffuseLight = max(diffuseLight, 0.0);
   float3 diffuse = Kd * lightColor * diffuseLight;
 
   // Compute the specular term

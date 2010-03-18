@@ -6,10 +6,11 @@ class App(ZglAppWX):
     dataDir = String('coral_gen/13')
     generation = Range(1, 120, 1, mode='slider')
 
-    Ka            = Color((128, 128, 128))
+    Ka            = Color((0, 0, 0))
     Kd            = Color((208, 166, 252))
     Ks            = Color((183, 183, 183))
-    shininess     = Float(100.0) 
+    shininess     = Range(1.0, 200.0, 100.0, mode='slider') 
+    lambertWrap   = Range(0.0, 1.0, 1.0)
 
     animate       = Bool(False)
     growthRate    = Float(20)
@@ -20,6 +21,7 @@ class App(ZglAppWX):
                         Item(name='Kd', style='text'),
                         Item(name='Ks', style='text'),
                         Item(name='shininess'),
+                        Item(name='lambertWrap'),
                         resizable = True)
 
 
@@ -43,9 +45,11 @@ class App(ZglAppWX):
         code = file('data/cg/fragment_light.cg').read()
         vertProg = CGShader('vp40', code, entry = 'VertexProg')
         fragProg = CGShader('fp40', code, entry = 'FragmentProg')
-        fragProg.globalAmbient = (0.1, 0.1, 0.1)
+        fragProg.globalAmbient = (1.0, 1.0, 1.0)
         fragProg.lightColor    = (1.0, 1.0, 1.0)
         fragProg.Ke            = (0.0, 0.0, 0.0)
+
+        fragProg.lightPosition = (64, 64, 128)
 
         def draw():
             if self.animate:
@@ -54,13 +58,14 @@ class App(ZglAppWX):
                   if self.generation < 120:
                       self.generation += 1
 
-            fragProg.lightPosition = self.viewControl.eye
+            #fragProg.lightPosition = self.viewControl.eye
             fragProg.eyePosition   = self.viewControl.eye
             fragProg.Ka            = V(self.Ka[:3]) / 255.0
             fragProg.Kd            = V(self.Kd[:3]) / 255.0
             fragProg.Ks            = V(self.Ks[:3]) / 255.0
             fragProg.shininess     = self.shininess
-            with ctx(self.viewControl.with_vp, vertProg, fragProg, glstate(GL_DEPTH_TEST)):
+            fragProg.lambertWrap   = self.lambertWrap 
+            with ctx(self.viewControl.with_vp, vertProg, fragProg, glstate(GL_DEPTH_TEST, GL_DEPTH_CLAMP_NV)):
                 drawArrays(GL_TRIANGLES, 
                   verts   = self.mesh['positions'], 
                   indices = self.mesh['faces'],
