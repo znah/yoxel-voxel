@@ -954,11 +954,14 @@ def save_obj(fn, verts, faces):
     f.close()
 
     
-def drawArrays(primitive, verts = None, indices = None, tc0 = None):
+def drawArrays(primitive, verts = None, indices = None, tc0 = None, normals = None):
     states = []
     if verts is not None:
         glVertexPointer( verts.shape[-1], arrayToGLType(verts), verts.strides[-2], verts)
         states.append( GL_VERTEX_ARRAY )
+    if normals is not None:
+        glNormalPointer( arrayToGLType(verts), verts.strides[-2], normals)
+        states.append( GL_NORMAL_ARRAY )
     if tc0 is not None:
        glClientActiveTexture(GL_TEXTURE0) 
        glTexCoordPointer(tc0.shape[-1], arrayToGLType(tc0), tc0.strides[-2], tc0)
@@ -1088,7 +1091,7 @@ from zgl import *
 class App(ZglAppWX):
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = OrthoCamera())
-        self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
+        self.fragProg = genericFP('tc0')
     
     def display(self):
         clearGLBuffers()
