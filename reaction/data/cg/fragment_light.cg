@@ -28,7 +28,7 @@ void FragmentProg(float4 position  : TEXCOORD0,
               uniform float3 Kd,
               uniform float3 Ks,
               uniform float  shininess,
-              uniform float  lambertWrap)
+              uniform float3 lambertWrap)
 {
   float3 P = position.xyz;
   float3 N = normalize(normal);
@@ -41,7 +41,8 @@ void FragmentProg(float4 position  : TEXCOORD0,
 
   // Compute the diffuse term
   float3 L = normalize(lightPosition - P);
-  float diffuseLight = (dot(L, N) + lambertWrap) / (1.0 + lambertWrap);
+  float dotLN = dot(L, N);
+  float3 diffuseLight = (dotLN + lambertWrap) / (1.0 + lambertWrap);
   diffuseLight = max(diffuseLight, 0.0);
   float3 diffuse = Kd * lightColor * diffuseLight;
 
@@ -49,7 +50,7 @@ void FragmentProg(float4 position  : TEXCOORD0,
   float3 V = normalize(eyePosition - P);
   float3 H = normalize(L + V);
   float specularLight = pow(max(dot(H, N), 0), shininess);
-  if (diffuseLight <= 0) specularLight = 0;
+  if (dotLN <= 0) specularLight = 0;
   float3 specular = Ks * lightColor * specularLight;
 
   color.xyz = emissive + ambient + diffuse + specular;
