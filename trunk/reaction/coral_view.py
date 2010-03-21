@@ -7,10 +7,10 @@ class App(ZglAppWX):
     generation = Range(1, 120, 1, mode='slider')
 
     Ka            = Color((0, 0, 0))
-    Kd            = Color((208, 166, 252))
-    Ks            = Color((183, 183, 183))
+    Kd            = Color((250, 245, 255))
+    Ks            = Color((54, 54, 54))
     shininess     = Range(1.0, 200.0, 100.0, mode='slider') 
-    lambertWrap   = Range(0.0, 1.0, 1.0)
+    lambertWrap   = Color((255, 236, 204))
 
     animate       = Bool(False)
     growthRate    = Float(20)
@@ -21,7 +21,7 @@ class App(ZglAppWX):
                         Item(name='Kd', style='text'),
                         Item(name='Ks', style='text'),
                         Item(name='shininess'),
-                        Item(name='lambertWrap'),
+                        Item(name='lambertWrap', style='text'),
                         resizable = True)
 
 
@@ -64,7 +64,7 @@ class App(ZglAppWX):
             fragProg.Kd            = V(self.Kd[:3]) / 255.0
             fragProg.Ks            = V(self.Ks[:3]) / 255.0
             fragProg.shininess     = self.shininess
-            fragProg.lambertWrap   = self.lambertWrap 
+            fragProg.lambertWrap   = V(self.lambertWrap ) / 255.0
             with ctx(self.viewControl.with_vp, vertProg, fragProg, glstate(GL_DEPTH_TEST, GL_DEPTH_CLAMP_NV)):
                 drawArrays(GL_TRIANGLES, 
                   verts   = self.mesh['positions'], 
