@@ -32,7 +32,7 @@ class Voxelizer:
               srcType = GL_UNSIGNED_INT)
           
         self.fragProg = CGShader('gp4fp', '''
-          #line 38
+          #line 36
           uniform usampler1D columnBits;
           uniform float sliceNum;
           
