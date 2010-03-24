@@ -15,13 +15,13 @@ class Coral(HasTraits):
     diffuseStepNum   = Float(50) 
     growCoef         = Float(1.0)
     mouthDist        = Float(3.0)
-    coralliteSpacing = Float(1.3)
+    coralliteSpacing = Float(1.5)
 
     curDiffusionErr = Float(0.0)
 
     _ = Python(editable = False)
 
-    def __init__(self, gridSize = 128, coralliteSpacing = None):
+    def __init__(self, gridSize = 256, coralliteSpacing = None):
         self.gridSize = gridSize
         if coralliteSpacing is not None:
            self.coralliteSpacing = coralliteSpacing
@@ -36,6 +36,7 @@ class Coral(HasTraits):
         
         self.setupKernels()
         self.getMeshArrays()
+        self.calcAbsorb()
 
     def initMesh(self):
         spacing = self.coralliteSpacing
@@ -178,9 +179,9 @@ class Coral(HasTraits):
         self.positions = self.mesh.get_positions()
         self.normals = self.mesh.get_normals()
         self.faces = self.mesh.get_faces()
-        
-    @with_( profile("grow") )
-    def grow(self):
+
+    @with_( profile("calcAbsorb") )
+    def calcAbsorb(self):
         with glprofile('voxelize'):
             with self.voxelizer:
                 clearGLBuffers()
@@ -209,13 +210,21 @@ class Coral(HasTraits):
             d_absorb = ga.zeros(len(d_sinks), float32)
             self.FetchSinks(d_sinks, d_absorb)
             absorb = d_absorb.get()
+        self.absorb = absorb / absorb.max()
+
+    @with_( profile("growMesh") )
+    def growMesh(self):
+        mergeDist = 0.75 * self.coralliteSpacing
+        splitDist = 1.5  * self.coralliteSpacing
+        self.mesh.grow(mergeDist, splitDist, self.absorb*self.growCoef)
+        self.getMeshArrays()
+
+
         
-        with profile("GrowMesh"):
-            absorb /= absorb.max()
-            mergeDist = 0.75 * self.coralliteSpacing
-            splitDist = 1.5  * self.coralliteSpacing
-            self.mesh.grow(mergeDist, splitDist, absorb*self.growCoef)
-            self.getMeshArrays()
+    @with_( profile("grow") )
+    def grow(self):
+        self.growMesh()
+        self.calcAbsorb()
         
 if __name__ == '__main__':
     class App(ZglAppWX):
@@ -265,7 +274,8 @@ if __name__ == '__main__':
             savez(fname, 
               positions = self.coral.positions, 
               faces     = self.coral.faces,
-              normals   = self.coral.normals)
+              normals   = self.coral.normals,
+              absorb    = self.coral.absorb)
             print 'ok'
             
         def display(self):
