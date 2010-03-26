@@ -1,10 +1,13 @@
 from __future__ import with_statement
 from zgl import *
+import os
     
 class App(ZglAppWX):
     
-    dataDir = String('coral_gen/13')
-    generation = Range(1, 120, 1, mode='slider')
+    dataDir = String('coral_gen/256_1.5')
+    firstGeneration = Int(0)
+    lastGeneration  = Int(120)
+    generation = Range('firstGeneration', 'lastGeneration', 0, mode='slider')
 
     Ka            = Color((0, 0, 0))
     Kd            = Color((250, 245, 255))
@@ -25,21 +28,33 @@ class App(ZglAppWX):
                         resizable = True)
 
 
+    @on_trait_change('dataDir')
+    def scan_dir(self):
+        fs = [s for s in os.listdir(self.dataDir) if s[-4:] == '.npz']
+        self.genFiles = sort(fs)
+        self.lastGeneration = len(self.genFiles)-1
+        self.generation = min(self.lastGeneration, self.generation)
+    
 
-
-
-
-    @on_trait_change('dataDir, generation')
+    @on_trait_change('generation')
     def loadmesh(self):
-        fname = self.dataDir + '/coral_%03d.npz' % (self.generation,)
+        fname = self.dataDir + '/' + self.genFiles[self.generation]
         self.mesh = load(fname)
         print fname, 'loaded'
+        print len(self.mesh['positions'])
+        self.verts   = self.mesh['positions'].copy()
+        self.indices = self.mesh['faces'].copy()
+        self.normals = self.mesh['normals'].copy()
+
 
 
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
-        self.viewControl.speed = 20
+        self.viewControl.speed = 0.2
+        self.viewControl.zNear = 0.01
+        self.viewControl.zFar  = 10.0
 
+        self.scan_dir()
         self.loadmesh()
 
         code = file('data/cg/fragment_light.cg').read()
@@ -49,13 +64,13 @@ class App(ZglAppWX):
         fragProg.lightColor    = (1.0, 1.0, 1.0)
         fragProg.Ke            = (0.0, 0.0, 0.0)
 
-        fragProg.lightPosition = (64, 64, 128)
+        fragProg.lightPosition = (0, 0, 1.0)
 
         def draw():
             if self.animate:
               if self.time - self.lastGrowTime > 1.0 / self.growthRate:
                   self.lastGrowTime = self.time
-                  if self.generation < 120:
+                  if self.generation < self.lastGeneration:
                       self.generation += 1
 
             #fragProg.lightPosition = self.viewControl.eye
@@ -65,11 +80,11 @@ class App(ZglAppWX):
             fragProg.Ks            = V(self.Ks[:3]) / 255.0
             fragProg.shininess     = self.shininess
             fragProg.lambertWrap   = V(self.lambertWrap ) / 255.0
-            with ctx(self.viewControl.with_vp, vertProg, fragProg, glstate(GL_DEPTH_TEST, GL_DEPTH_CLAMP_NV)):
+            with ctx(self.viewControl.with_vp, vertProg, fragProg, glstate(GL_DEPTH_TEST)):
                 drawArrays(GL_TRIANGLES, 
-                  verts   = self.mesh['positions'], 
-                  indices = self.mesh['faces'],
-                  normals = self.mesh['normals'])
+                  verts   = self.verts, 
+                  indices = self.indices,
+                  normals = self.normals)
         self.draw = draw
 
     def key_LEFT(self):
@@ -77,7 +92,7 @@ class App(ZglAppWX):
     def key_RIGHT(self):
         self.generation +=1
     def key_UP(self):
-        self.generation = 120
+        self.generation = self.lastGeneration
     def key_DOWN(self):
         self.generation = 1
     def key_SPACE(self):
