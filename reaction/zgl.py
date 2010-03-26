@@ -459,7 +459,7 @@ class FlyCamera(WXAdapter):
         self.mButtons = zeros((3,), bool) # left, middle, right
         self.mPos = (0, 0)
         
-        self.vel = [0, 0]
+        self.vel = [0, 0, 0]
         self.sensitivity = 0.3
         self.speed = 1.0
 
@@ -475,7 +475,7 @@ class FlyCamera(WXAdapter):
     def resize(self, x, y):
         self.vp.size = (x, max(y, 1))
 
-    key2vel = {'w': (0, 1), 's': (0, -1), 'd': (1, 1), 'a': (1, -1) }
+    key2vel = {'w': (0, 1), 's': (0, -1), 'd': (1, 1), 'a': (1, -1), 'q': (2, 1), 'z': (2, -1) }
 
     def keyDown(self, key, x, y):
         k = key.lower()
@@ -552,9 +552,13 @@ class FlyCamera(WXAdapter):
         right = cross(fwd, up)
         right /= linalg.norm(right)
         return right
+    def viewUpVec(self):
+        fwd   = self.forwardVec()
+        right = self.rightVec()
+        return cross(right, fwd)
     
     def update(self, dt):
-        v = self.vel[0] * self.forwardVec() + self.vel[1] * self.rightVec()
+        v = self.vel[0] * self.forwardVec() + self.vel[1] * self.rightVec() + self.vel[2] * self.viewUpVec()
         if self.boost != 0:
             v *= 10
         self.eye += v*self.speed*dt

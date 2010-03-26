@@ -271,11 +271,21 @@ if __name__ == '__main__':
         def save_coral(self):
             fname = "coral_%03d" % (self.iterCount,)
             print "saving '%s' ..." % (fname,),
+
+            #filter unreferenced
+            mark = zeros(len(self.coral.positions), int32)
+            mark[self.coral.faces] = 1
+            ofs = cumsum(mark)-1
+            positions = self.coral.positions[mark==1].copy() / self.coral.gridSize
+            normals   = self.coral.normals[mark==1].copy()
+            absorb    = self.coral.absorb[mark==1].copy()
+            faces = ofs[self.coral.faces]
+
             savez(fname, 
-              positions = self.coral.positions, 
-              faces     = self.coral.faces,
-              normals   = self.coral.normals,
-              absorb    = self.coral.absorb)
+              positions = positions, 
+              faces     = faces,
+              normals   = normals,
+              absorb    = absorb)
             print 'ok'
             
         def display(self):
