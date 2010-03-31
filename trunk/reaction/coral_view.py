@@ -13,7 +13,7 @@ class App(ZglAppWX):
     Kd            = Color((250, 245, 255))
     Ks            = Color((54, 54, 54))
     shininess     = Range(1.0, 200.0, 100.0, mode='slider') 
-    lambertWrap   = Color((255, 236, 204))
+    lambertWrap   = Color(( 49, 215, 255))
 
     animate       = Bool(False)
     growthRate    = Float(20)

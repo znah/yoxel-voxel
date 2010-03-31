@@ -209,9 +209,9 @@ class App(ZglAppWX):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
 
-        self.voxelizer = Voxelizer(256)
+        self.voxelizer = Voxelizer(512)
         
-        (v, f) = load_obj("data/bunny/bunny.obj")
+        (v, f) = load_obj("data/zzz5.obj") #"data/bunny/bunny.obj"
         v = fit_box(v)[:,[0, 2, 1]]
 
         self.vertBuf = BufferObject(v)
@@ -235,11 +235,11 @@ class App(ZglAppWX):
     def display(self):
         clearGLBuffers()
         
-        with self.voxelizer:
+        with ctx(glprofile('voxelize'), self.voxelizer):
             clearGLBuffers()
-            self.drawFrame()
+            #self.drawFrame()
             glTranslate(0.5, 0.5, 0)
-            glRotate(self.time*30, 0, 0, 1)            
+            #glRotate(self.time*30, 0, 0, 1)            
             glTranslate(-0.5, -0.5, 0)
             self.drawMesh()
         self.volumeRender.volumeTex = self.voxelizer.dumpToTex()
