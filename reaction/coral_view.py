@@ -18,6 +18,8 @@ class App(ZglAppWX):
     animate       = Bool(False)
     growthRate    = Float(20)
 
+    saveBtn = Button('Save mesh')
+
     traits_view = View( Item(name = 'generation'),
                         Item(name = 'dataDir'),
                         Item(name='Ka', style='text'),
@@ -25,6 +27,7 @@ class App(ZglAppWX):
                         Item(name='Ks', style='text'),
                         Item(name='shininess'),
                         Item(name='lambertWrap', style='text'),
+                        Item(name='saveBtn'),
                         resizable = True)
 
 
@@ -35,7 +38,6 @@ class App(ZglAppWX):
         self.lastGeneration = len(self.genFiles)-1
         self.generation = min(self.lastGeneration, self.generation)
     
-
     @on_trait_change('generation')
     def loadmesh(self):
         fname = self.dataDir + '/' + self.genFiles[self.generation]
@@ -46,7 +48,9 @@ class App(ZglAppWX):
         self.indices = self.mesh['faces'].copy()
         self.normals = self.mesh['normals'].copy()
 
-
+    def _saveBtn_fired(self):
+        save_obj("t.obj", self.verts, self.indices)
+        print "t.obj saved"
 
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
