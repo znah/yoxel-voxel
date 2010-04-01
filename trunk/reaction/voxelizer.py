@@ -146,9 +146,10 @@ class Voxelizer:
             OpenGL.raw.GL.glGetTexImage(GL_TEXTURE_2D_ARRAY_EXT, 0, GL_RGBA_INTEGER_EXT, GL_UNSIGNED_INT, None)
         return self.dumpPBO
 
+    @with_(glprofile('dumpToTex'))
     def dumpToTex(self):
         if not hasattr(self, "dumpTex"):
-            self.dumpTex = Texture3D(size = (self.size,)*3, )
+            self.dumpTex = Texture3D(size = (self.size,)*3, format = GL_LUMINANCE8)
             self.dumpFBO = Framebuffer()
             with self.dumpFBO:
                 glDrawBuffers(4, GL_COLOR_ATTACHMENT0+arange(4))
@@ -187,6 +188,98 @@ class Voxelizer:
         return self.dumpTex
 
 
+    @with_(glprofile('densityToTex'))
+    def densityToTex(self):
+        hsize = self.size / 2
+        densityTex = Texture3D(size = (hsize,)*3, format = GL_LUMINANCE8)
+        fbo = Framebuffer()
+        with fbo:
+            glDrawBuffers(4, GL_COLOR_ATTACHMENT0+arange(8))
+        densityFrag = CGShader('gp4fp', '''
+          #line 200
+          typedef unsigned int uint;
+
+          uniform usampler2DARRAY slices;
+          uniform float dx;
+          uniform float slice;
+          uniform int channel;
+          uniform float evenFlag;
+          
+
+          uint fetchChannel(float2 pos)
+          {
+            uint4 d = tex2DARRAY(slices, float3(pos, slice));
+            uint res = d.x;
+            if (channel == 1)
+              res = d.y;
+            if (channel == 2)
+              res = d.z;
+            if (channel == 3)
+              res = d.w;
+            return res;
+          }
+
+          uint sumPairs(uint v)
+          {
+            const uint mask = 0x55555555;
+            return ((v>>1)&mask) + (v&mask);
+          }
+
+          float bits2float(uint v)
+          {
+            return float(v & 0xF) * (1.0 / 8.0);
+          }
+
+          void main(float2 pos: TEXCOORD0,
+            out float layer0: COLOR0,
+            out float layer1: COLOR1,
+            out float layer2: COLOR2,
+            out float layer3: COLOR3,
+            out float layer4: COLOR4,
+            out float layer5: COLOR5,
+            out float layer6: COLOR6,
+            out float layer7: COLOR7
+          )
+          {
+            uint v00 = fetchChannel(pos + float2(-dx, -dx));
+            uint v01 = fetchChannel(pos + float2(-dx,  dx));
+            uint v10 = fetchChannel(pos + float2( dx, -dx));
+            uint v11 = fetchChannel(pos + float2( dx,  dx));
+            v00 = sumPairs(v00);
+            v01 = sumPairs(v01);
+            v10 = sumPairs(v10);
+            v11 = sumPairs(v11);
+
+            const uint mask2 = 0x33333333;
+            uint veven = (v00 & mask2) + (v01 & mask2) + (v10 & mask2) + (v11 & mask2);
+            uint vodd  = ((v00>>2) & mask2) + ((v01>>2) & mask2) + ((v10>>2) & mask2) + ((v11>>2) & mask2);
+
+            uint res = evenFlag ? veven : vodd;
+
+            layer0 = bits2float(res);
+            layer1 = bits2float(res >> 4);
+            layer2 = bits2float(res >> 8);
+            layer3 = bits2float(res >> 12);
+            layer4 = bits2float(res >> 16);
+            layer5 = bits2float(res >> 20);
+            layer6 = bits2float(res >> 24);
+            layer7 = bits2float(res >> 28);
+          }
+        ''')
+        densityFrag.slices = self.slices
+        densityFrag.dx = 0.5 / self.size
+
+        @with_(glprofile("densityToTex"))
+        def newDensityToTex():
+            
+            return self.dumpToTex()
+
+
+        self.densityToTex = newDensityToTex
+        return newDensityToTex()
+            
+
+
 def drawBox(lo = (0, 0, 0), hi = (1, 1, 1)):
     i = indices((2, 2, 2)).T.reshape(-1,3)
     verts = choose(i, (lo, hi)).astype(float32)
@@ -209,16 +302,16 @@ class App(ZglAppWX):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
 
-        self.voxelizer = Voxelizer(512)
+        self.voxelizer = Voxelizer(256)
         
-        (v, f) = load_obj("data/zzz5.obj") #"data/bunny/bunny.obj"
-        v = fit_box(v)[:,[0, 2, 1]]
+        (v, f) = load_obj("t.obj") #"data/bunny/bunny.obj"
+        #v = fit_box(v)[:,[0, 2, 1]]
 
         self.vertBuf = BufferObject(v)
         self.idxBuf = BufferObject(f)
         self.idxNum = len(f) * 3
 
-        self.volumeRender = VolumeRenderer(self.voxelizer.dumpToTex())
+        self.volumeRender = VolumeRenderer(self.voxelizer.densityToTex())
         
     def drawMesh(self):
         with self.vertBuf.array:
@@ -242,9 +335,9 @@ class App(ZglAppWX):
             #glRotate(self.time*30, 0, 0, 1)            
             glTranslate(-0.5, -0.5, 0)
             self.drawMesh()
-        self.volumeRender.volumeTex = self.voxelizer.dumpToTex()
+        self.volumeRender.volumeTex = self.voxelizer.densityToTex()
 
-        with ctx(self.viewControl.with_vp):
+        with ctx(glprofile('volumeRender'), self.viewControl.with_vp):
             self.volumeRender.render()
 
 if __name__ == "__main__":
