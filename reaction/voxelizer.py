@@ -308,12 +308,26 @@ def drawBox(lo = (0, 0, 0), hi = (1, 1, 1)):
 
 class App(ZglAppWX):
     volumeRender = Instance(VolumeRenderer)
+    multiSample  = Bool(True)
+    turn         = Range(0.0, 360.0, 0.0, mode='slider')
+
+    @on_trait_change('multiSample')
+    def selectVoxelizer(self):
+        if not self.multiSample:
+            self.voxelizer    = self.simpleVox
+            self.voxelTexFunc = lambda : self.simpleVox.dumpToTex()
+        else:
+            self.voxelizer    = self.multiVox
+            self.voxelTexFunc = lambda : self.multiVox.densityToTex()
 
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
 
-        self.voxelizer = Voxelizer(512)
+        size = 256
+        self.simpleVox = Voxelizer(size)
+        self.multiVox = Voxelizer(size*2)
+        self.selectVoxelizer()
         
         (v, f) = load_obj("t.obj") #"data/bunny/bunny.obj"
         #v = fit_box(v)[:,[0, 2, 1]]
@@ -322,7 +336,7 @@ class App(ZglAppWX):
         self.idxBuf = BufferObject(f)
         self.idxNum = len(f) * 3
 
-        self.volumeRender = VolumeRenderer(self.voxelizer.densityToTex())
+        self.volumeRender = VolumeRenderer()
         
     def drawMesh(self):
         with self.vertBuf.array:
@@ -343,10 +357,10 @@ class App(ZglAppWX):
             clearGLBuffers()
             #self.drawFrame()
             glTranslate(0.5, 0.5, 0)
-            #glRotate(self.time*30, 0, 0, 1)            
+            glRotate(self.turn, 0, 0, 1)            
             glTranslate(-0.5, -0.5, 0)
             self.drawMesh()
-        self.volumeRender.volumeTex = self.voxelizer.densityToTex()
+        self.volumeRender.volumeTex = self.voxelTexFunc()
 
         with ctx(glprofile('volumeRender'), self.viewControl.with_vp):
             self.volumeRender.render()
