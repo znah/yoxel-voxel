@@ -190,11 +190,11 @@ class Voxelizer:
 
     @with_(glprofile('densityToTex'))
     def densityToTex(self):
-        hsize = self.size / 2
-        densityTex = Texture3D(size = (hsize,)*3, format = GL_LUMINANCE8)
+        halfSize = self.size / 2
+        densityTex = Texture3D(size = (halfSize,)*3, format = GL_LUMINANCE8)
         fbo = Framebuffer()
         with fbo:
-            glDrawBuffers(4, GL_COLOR_ATTACHMENT0+arange(8))
+            glDrawBuffers(8, GL_COLOR_ATTACHMENT0+arange(8))
         densityFrag = CGShader('gp4fp', '''
           #line 200
           typedef unsigned int uint;
@@ -203,7 +203,7 @@ class Voxelizer:
           uniform float dx;
           uniform float slice;
           uniform int channel;
-          uniform float evenFlag;
+          uniform float oddFlag;
           
 
           uint fetchChannel(float2 pos)
@@ -254,7 +254,7 @@ class Voxelizer:
             uint veven = (v00 & mask2) + (v01 & mask2) + (v10 & mask2) + (v11 & mask2);
             uint vodd  = ((v00>>2) & mask2) + ((v01>>2) & mask2) + ((v10>>2) & mask2) + ((v11>>2) & mask2);
 
-            uint res = evenFlag ? veven : vodd;
+            uint res = oddFlag ? vodd : veven;
 
             layer0 = bits2float(res);
             layer1 = bits2float(res >> 4);
@@ -269,12 +269,23 @@ class Voxelizer:
         densityFrag.slices = self.slices
         densityFrag.dx = 0.5 / self.size
 
+        viewCtx = ctx(Viewport(0, 0, halfSize, halfSize), ortho)
+
+        import itertools as it
+
         @with_(glprofile("densityToTex"))
         def newDensityToTex():
-            
-            return self.dumpToTex()
-
-
+            with ctx(fbo, viewCtx, densityFrag):
+                for sl in xrange(self.sliceNum):
+                    densityFrag.slice = sl
+                    for ch, odd in it.product( xrange(4), (0, 1) ):
+                        densityFrag.channel = ch
+                        densityFrag.oddFlag = odd
+                        for i in xrange(8):
+                            layer = sl*64 + ch*16 + i*2 + odd
+                            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, densityTex, 0, layer)
+                        drawQuad()
+            return densityTex
         self.densityToTex = newDensityToTex
         return newDensityToTex()
             
@@ -302,7 +313,7 @@ class App(ZglAppWX):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
 
-        self.voxelizer = Voxelizer(256)
+        self.voxelizer = Voxelizer(512)
         
         (v, f) = load_obj("t.obj") #"data/bunny/bunny.obj"
         #v = fit_box(v)[:,[0, 2, 1]]
