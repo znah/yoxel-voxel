@@ -7,16 +7,24 @@ class VolumeRenderer(HasTraits):
     transferOffset = Range(-1.0, 1.0, 0.0 )
     transferScale  = Range( 0.0, 2.0, 1.0 )
     stepsInTexel   = Range( 0.5, 4.0, 2.0 )
+
+    transferFunc   = Enum('gray', 'nv')
+
+    volumeTex      = Any(editable = False)
     
     _ = Python(editable = False)
-    
+
     @on_trait_change( '+' )
     def updateShaderParams(self):
+        if not hasattr(self, 'traceFP'):
+            return
         self.traceFP.brightness = self.brightness
         self.traceFP.transferOffset = self.transferOffset
         self.traceFP.transferScale = self.transferScale
+        self.traceFP.transferScale = self.transferScale
         self.traceFP.density = self.density / self.stepsInTexel
-        if hasattr(self, "volumeTex"):
+        self.traceFP.transferTex = self.trans[self.transferFunc]
+        if self.volumeTex is not None:
             self.traceFP.dt = 1.0 / (self.volumeTex.size[0] * self.stepsInTexel)
             self.volumeTex.filterLinear()
             self.volumeTex.setParams(*Texture.Clamp)
@@ -26,10 +34,19 @@ class VolumeRenderer(HasTraits):
     def __init__(self, volumeTex = None):
         HasTraits.__init__(self)
         
-        if volumeTex is not None:
-            self.volumeTex = volumeTex
+        self.volumeTex = volumeTex
             
-        transferFunc = array([
+        def makeTransTex(a):
+            tex = Texture1D(a, format = GL_RGBA8)
+            tex.filterLinear()
+            tex.setParams(*Texture.Clamp)
+            return tex
+
+        gray = makeTransTex(array([
+            [  0.0, 0.0, 0.0, 0.0 ],
+            [  1.0, 1.0, 1.0, 1.0 ]], float32))
+
+        nv = makeTransTex(array([
             [  0.0, 0.0, 0.0, 0.0 ],
             [  1.0, 0.0, 0.0, 1.0 ],
             [  1.0, 0.5, 0.0, 1.0 ],
@@ -38,10 +55,9 @@ class VolumeRenderer(HasTraits):
             [  0.0, 1.0, 1.0, 1.0 ],
             [  0.0, 0.0, 1.0, 1.0 ],
             [  1.0, 0.0, 1.0, 1.0 ],
-            [  0.0, 0.0, 0.0, 0.0 ]], float32)
-        self.transferTex = Texture1D(transferFunc, format = GL_RGBA8)
-        self.transferTex.filterLinear()
-        self.transferTex.setParams(*Texture.Clamp)
+            [  0.0, 0.0, 0.0, 0.0 ]], float32))
+
+        self.trans = {'nv': nv, 'gray': gray}
             
         self.traceVP = CGShader('vp40', '''
           #line 58
@@ -103,10 +119,11 @@ class VolumeRenderer(HasTraits):
               return float4(0, 0, 0, 0);
             float3 p = eyePos + rayDir * t1;
 
-            float3 step = dt * rayDir;
+            float step = dt;// * max(t1, 0.1);
             float4 accum = float4(0);
-            for (float t = t1; t < t2; t += dt, p += step)
+            for (float t = t1; t < t2; t += step, p += step * rayDir)
             {
+              //step = dt * max(t1, 0.1);
               float sample = tex3D(volume, p).r;
               float4 col = tex1D(transferTex, (sample - transferOffset) * transferScale);
               col.a *= density;
@@ -118,10 +135,11 @@ class VolumeRenderer(HasTraits):
             return accum * brightness;
           }
         ''')
-        self.traceFP.transferTex = self.transferTex
         self.updateShaderParams()
         
     def render(self):
+        if self.volumeTex is None:
+            return
         with ctx(self.traceVP, self.traceFP):
             drawQuad()
         
