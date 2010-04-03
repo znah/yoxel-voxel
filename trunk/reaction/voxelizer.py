@@ -324,7 +324,7 @@ class App(ZglAppWX):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
         self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
 
-        size = 256
+        size = 512
         self.simpleVox = Voxelizer(size)
         self.multiVox = Voxelizer(size*2)
         self.selectVoxelizer()

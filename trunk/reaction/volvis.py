@@ -99,7 +99,7 @@ class VolumeRenderer(HasTraits):
             texit  = min(t2.x, min(t2.y, t2.z));
           }
 
-          float3 getnormal(float3 p)
+          /*float3 getnormal(float3 p)
           {
             float d = 0.2/256.0;
             float x = tex3D(volume, p + float3(d, 0, 0)).r - tex3D(volume, p - float3(d, 0, 0)).r;
@@ -107,7 +107,7 @@ class VolumeRenderer(HasTraits):
             float z = tex3D(volume, p + float3(0, 0, d)).r - tex3D(volume, p - float3(0, 0, d)).r;
             float3 n = -0.5*float3(x, y, z);
             return normalize(n);
-          }
+          }*/
 
           float4 main( float3 rayDir: TEXCOORD0, float3 eyePos : TEXCOORD1) : COLOR 
           {
