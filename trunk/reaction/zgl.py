@@ -320,7 +320,7 @@ class Framebuffer:
     def __init__(self):
         self._as_parameter_ = glGenFramebuffers(1)
     def __del__(self):
-        glDeleteFramebuffers(self._as_parameter_)
+        glDeleteFramebuffers(1, [self._as_parameter_])
     def __enter__(self):
         glBindFramebuffer(GL_FRAMEBUFFER, self)
     def __exit__(self, *args):
