@@ -24,7 +24,7 @@ class App(ZglAppWX):
         
         gl2cudaBuf = cuda_gl.BufferObject(voxelizer.dumpToPBO().handle)
 
-        mod = SourceModule(file('density.cu').read(), include_dirs = [os.getcwd(), os.getcwd()+'/../include'], no_extern_c = True)
+        mod = SourceModule(file('density.cu').read(), include_dirs = [os.getcwd(), os.getcwd()+'/../include'], no_extern_c = True, keep = True)
         CalcDensity = mod.get_function('CalcDensity') 
         print CalcDensity.num_regs, CalcDensity.shared_size_bytes
 
@@ -38,13 +38,20 @@ class App(ZglAppWX):
         MarkBricks = mod.get_function('MarkBricks') 
         print MarkBricks.num_regs, MarkBricks.shared_size_bytes
 
-        mixedBits = ga.zeros((grid_size, grid_size, grid_size/32), uint32)
-        solidBits = ga.zeros((grid_size, grid_size, grid_size/32), uint32)
+        d_brickState = ga.zeros((grid_size, grid_size, grid_size), uint32)
+        def f():
+          MarkBricks(d_density, d_brickState, block = (grid_size/2, 1, 1), grid = (grid_size, grid_size))
+        f()
 
-        MarkBricks(d_density, mixedBits, solidBits, block = (64, 1, 1), grid = (grid_size, grid_size))
+        cu.Context.synchronize()
+        t = clock()
+        for i in xrange(100):
+            f()
+        cu.Context.synchronize()
+        print (clock() - t) / 100.0 * 1000
 
-        save('mixed', mixedBits.get() )
-        save('solid', solidBits.get() )
+
+        save('bricks',  d_brickState.get() )
         save("density", d_density.get())
     
     #def display(self):

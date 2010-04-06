@@ -52,78 +52,96 @@ __global__ void CalcDensity(const uint* src, uint2 * dst)
 }
 
 const int BRICK_SIZE   = 4;
+const int GRID_SIZE    = VOL_SIZE / BRICK_SIZE;  // 128
 const int COL_WORD_NUM = VOL_SIZE*4/32; // = 64
-const int GRID_SIZE    = VOL_SIZE / BRICK_SIZE;
-const int OUT_WORD_NUM = GRID_SIZE/32;  // = 4
-__shared__ uint s_column[ COL_WORD_NUM+1 ];
-__shared__ uint s_empty [ OUT_WORD_NUM ] ;
-__shared__ uint s_solid [ OUT_WORD_NUM ];
+__shared__ uint s_data[ GRID_SIZE ]; // +1 if COL_WORD_NUM == GRID_SIZE
 
 
-// block dim = (COL_WORD_NUM, 1, 1)
+const uint SOLID_BIT    = 0x80000000;
+const uint EMPTY_BIT    = 0x40000000;
+const uint UNIFORM_BITS = SOLID_BIT | EMPTY_BIT;
+
+__device__ uint brickState(uint v)
+{
+  const uint solidMask = 0x88888;
+  const uint emptyMask = 0xFFFFF;
+  uint state = 0;
+  if ((v & solidMask) == solidMask)
+    state = SOLID_BIT;
+  if ((v & emptyMask) == 0)
+    state = EMPTY_BIT;
+  return state;
+}
+
+
+// block dim = ( COL_WORD_NUM = GRID_SIZE/2, 1, 1 )
 extern "C"
-__global__ void MarkBricks(const uint* g_src, uint * g_mixed, uint * g_solid )
+__global__ void MarkBricks(const uint* g_src, uint * g_brickState )
 {
   int tid = threadIdx.x;
   if (tid == 0)
-    s_column[COL_WORD_NUM] = 0; // pad
-  if (tid < OUT_WORD_NUM)
-  {
-    s_empty[tid] = ~0;
-    s_solid[tid] = ~0;
-  }
+    s_data[COL_WORD_NUM] = 0; // pad
+
+  uint state1 = UNIFORM_BITS;
+  uint state2 = UNIFORM_BITS;
 
   int bx = blockIdx.x * BRICK_SIZE;
   int by = blockIdx.y * BRICK_SIZE;
   for (int y = by; y <= by + BRICK_SIZE; ++y)
   for (int x = bx; x <= bx + BRICK_SIZE; ++x)
   {
-    uint ofs = (x + y * VOL_SIZE) * COL_WORD_NUM + tid;
     uint v = 0;
+    uint ofs = (x + y * VOL_SIZE) * COL_WORD_NUM + tid;
     if (x < VOL_SIZE && y < VOL_SIZE)
       v = g_src[ofs];
-    s_column[tid] = v;
+    s_data[tid] = v;
     __syncthreads();
 
-    const uint solidMask = 0x88888;
-    const uint emptyMask = 0xFFFFF;
-    uint state = 0;
-    if ((v & solidMask) == solidMask)
-      state |= 1; // solid
-    if ((v & emptyMask) == 0)
-      state |= 4; // empty
-
-    v = (s_column[tid+1]<<16) | (v>>16);
-    if ((v & solidMask) == solidMask)
-      state |= 2; // solid
-    if ((v & emptyMask) == 0)
-      state |= 8; // empty
-    
-    //if (y < by + BRICK_SIZE && x < bx + BRICK_SIZE)
-    //  g_src[ofs] = state; // !!!
-
-    s_column[tid] = state;
-    __syncthreads();
-
-    if (tid < OUT_WORD_NUM)
-    {
-      uint solid = 0;
-      uint empty = 0;
-      for (int i = 0; i < 16; ++i)
-      {
-          int o = tid * 16 + i;
-          solid |= (s_column[o] & 3)   << (i*2);
-          empty |= (s_column[o] & 0xC) << (i*2-2);
-      }
-      s_empty[tid] &= empty;
-      s_solid[tid] &= solid;
-    }
+    state1 &= brickState(v);
+    v = (s_data[tid+1]<<16) | (v>>16);
+    state2 &= brickState(v);
   }
+  s_data[tid*2]   = state1 == 0 ? 1 : 0;
+  s_data[tid*2+1] = state2 == 0 ? 1 : 0;
+  __syncthreads();
 
-  if (tid < OUT_WORD_NUM)
+  // prefix sum
+  const int n = GRID_SIZE;
+  int offset = 1;
+  for (int d = n>>1; d > 0; d >>= 1)
   {
-    uint ofs = (blockIdx.x + blockIdx.y * GRID_SIZE) * OUT_WORD_NUM + tid;
-    g_mixed[ofs] = ~(s_solid[tid] | s_empty[tid]);
-    g_solid[ofs] = s_solid[tid];
+    if (tid < d)
+    {
+      int ai = offset * (2*tid+1)-1;
+      int bi = offset * (2*tid+2)-1;
+      s_data[bi] += s_data[ai];
+    }
+    offset *= 2;
+    __syncthreads();
   }
+
+  if (tid == 0) { s_data[n-1] = 0; }
+
+  for (int d = 1; d < n; d *= 2)
+  {
+    offset >>= 1;
+    if (tid < d)
+    {
+      int ai = offset * (2*tid+1)-1;
+      int bi = offset * (2*tid+2)-1;
+      uint t = s_data[ai];
+      s_data[ai] = s_data[bi];
+      s_data[bi] += t;
+    }
+    __syncthreads();
+  }
+  
+  s_data[tid*2]   |= state1;
+  s_data[tid*2+1] |= state2;
+  __syncthreads();
+
+  uint ofs = (blockIdx.x + blockIdx.y * GRID_SIZE) * GRID_SIZE + tid;
+  g_brickState[ofs] = s_data[tid];
+  g_brickState[ofs + GRID_SIZE/2] = s_data[tid + GRID_SIZE/2];
+
 }
