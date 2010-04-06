@@ -38,10 +38,17 @@ class App(ZglAppWX):
         MarkBricks = mod.get_function('MarkBricks') 
         print MarkBricks.num_regs, MarkBricks.shared_size_bytes
 
-        d_brickState = ga.zeros((grid_size, grid_size, grid_size), uint32)
+        d_bricks = ga.zeros((grid_size, grid_size, grid_size), uint32)
+        d_colsum  = ga.zeros((grid_size, grid_size), uint32)
         def f():
-          MarkBricks(d_density, d_brickState, block = (grid_size/2, 1, 1), grid = (grid_size, grid_size))
-        f()
+          MarkBricks(d_density, d_bricks, d_colsum, block = (grid_size/2, 1, 1), grid = (grid_size, grid_size))
+          colsum = d_colsum.get().ravel()
+          cumsum(colsum[1:], out = colsum[1:])
+          total = colsum[0] + colsum[-1]
+          colsum[0] = 0
+          d_colsum.set(colsum)
+          return total
+        print f()
 
         cu.Context.synchronize()
         t = clock()
@@ -50,9 +57,7 @@ class App(ZglAppWX):
         cu.Context.synchronize()
         print (clock() - t) / 100.0 * 1000
 
-
-        save('bricks',  d_brickState.get() )
-        save("density", d_density.get())
+        save('colsum',  d_colsum.get() )
     
     #def display(self):
         #clearGLBuffers()
