@@ -73,10 +73,45 @@ __device__ uint brickState(uint v)
   return state;
 }
 
+__device__ uint prefixSum()
+{
+  int tid = threadIdx.x;
+  const int n = GRID_SIZE;
+  int offset = 1;
+  for (int d = n>>1; d > 0; d >>= 1)
+  {
+    if (tid < d)
+    {
+      int ai = offset * (2*tid+1)-1;
+      int bi = offset * (2*tid+2)-1;
+      s_data[bi] += s_data[ai];
+    }
+    offset *= 2;
+    __syncthreads();
+  }
+
+  uint total = s_data[n-1];
+  if (tid == 0) { s_data[n-1] = 0; }
+
+  for (int d = 1; d < n; d *= 2)
+  {
+    offset >>= 1;
+    if (tid < d)
+    {
+      int ai = offset * (2*tid+1)-1;
+      int bi = offset * (2*tid+2)-1;
+      uint t = s_data[ai];
+      s_data[ai] = s_data[bi];
+      s_data[bi] += t;
+    }
+    __syncthreads();
+  }
+  return total;
+}
 
 // block dim = ( COL_WORD_NUM = GRID_SIZE/2, 1, 1 )
 extern "C"
-__global__ void MarkBricks(const uint* g_src, uint * g_brickState )
+__global__ void MarkBricks(const uint* g_src, uint * g_brickState, uint * g_colsum)
 {
   int tid = threadIdx.x;
   if (tid == 0)
@@ -105,43 +140,17 @@ __global__ void MarkBricks(const uint* g_src, uint * g_brickState )
   s_data[tid*2+1] = state2 == 0 ? 1 : 0;
   __syncthreads();
 
-  // prefix sum
-  const int n = GRID_SIZE;
-  int offset = 1;
-  for (int d = n>>1; d > 0; d >>= 1)
-  {
-    if (tid < d)
-    {
-      int ai = offset * (2*tid+1)-1;
-      int bi = offset * (2*tid+2)-1;
-      s_data[bi] += s_data[ai];
-    }
-    offset *= 2;
-    __syncthreads();
-  }
-
-  if (tid == 0) { s_data[n-1] = 0; }
-
-  for (int d = 1; d < n; d *= 2)
-  {
-    offset >>= 1;
-    if (tid < d)
-    {
-      int ai = offset * (2*tid+1)-1;
-      int bi = offset * (2*tid+2)-1;
-      uint t = s_data[ai];
-      s_data[ai] = s_data[bi];
-      s_data[bi] += t;
-    }
-    __syncthreads();
-  }
+  uint total = prefixSum();
   
   s_data[tid*2]   |= state1;
   s_data[tid*2+1] |= state2;
   __syncthreads();
 
-  uint ofs = (blockIdx.x + blockIdx.y * GRID_SIZE) * GRID_SIZE + tid;
+  int col_id = blockIdx.x + blockIdx.y * GRID_SIZE;
+  uint ofs = col_id * GRID_SIZE + tid;
   g_brickState[ofs] = s_data[tid];
   g_brickState[ofs + GRID_SIZE/2] = s_data[tid + GRID_SIZE/2];
 
+  if (tid == 0)
+    g_colsum[col_id] = total;
 }
