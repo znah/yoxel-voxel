@@ -154,3 +154,19 @@ __global__ void MarkBricks(const uint* g_src, uint * g_brickState, uint * g_cols
   if (tid == 0)
     g_colsum[col_id] = total;
 }
+
+// block dim = ( GRID_SIZE, 1, 1 )
+extern "C"
+__global__ void PackBricks(const uint * g_brickData, const uint * g_columnStart, uint * g_out )
+{
+  int x = blockIdx.x;
+  int y = blockIdx.y;
+  int z = threadIdx.x;
+  uint ofs = z + x * GRID_SIZE + y * GRID_SIZE * GRID_SIZE;
+  uint data = g_brickData[ofs];
+  if ((data & UNIFORM_BITS) == 0)
+  {
+    uint outidx = g_columnStart[x + y * GRID_SIZE] + data;
+    g_out[outidx] = (z << 16) + (y << 8) + x;
+  }
+}
