@@ -1,6 +1,7 @@
 //
 
 typedef unsigned int uint;
+typedef unsigned char uint8;
 
 const int BITVOL_SIZE  = 1024;
 const int VOL_SIZE  = BITVOL_SIZE / 2;
@@ -170,3 +171,29 @@ __global__ void PackBricks(const uint * g_brickData, const uint * g_columnStart,
     g_out[outidx] = (z << 16) + (y << 8) + x;
   }
 }
+
+
+//const 
+
+
+extern "C"
+__global__ void UpdateBrickPool(
+  int         brickNum, 
+  const uint* g_brickInfo, 
+  uint8*      g_dstBricks, 
+  const uint* g_dst)
+{
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
