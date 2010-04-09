@@ -39,3 +39,14 @@ using boost::noncopyable;
 
 typedef unsigned int  uint32;
 typedef unsigned char uint8;
+
+#define CU_SAFE_CALL_NO_SYNC( call ) {                                     \
+  CUresult err = call;                                                     \
+  if( CUDA_SUCCESS != err) {                                               \
+      fprintf(stderr, "Cuda driver error %x in file '%s' in line %i.\n",   \
+              err, __FILE__, __LINE__ );                                   \
+/*      exit(EXIT_FAILURE);   */                                           \
+  } }
+
+#define CU_SAFE_CALL( call )       CU_SAFE_CALL_NO_SYNC(call);
+

@@ -329,8 +329,8 @@ class App(ZglAppWX):
         self.multiVox = Voxelizer(size*2)
         self.selectVoxelizer()
         
-        (v, f) = load_obj("t.obj") #"data/bunny/bunny.obj"
-        #v = fit_box(v)[:,[0, 2, 1]]
+        (v, f) = load_obj("data/bunny/bunny.obj") #"data/bunny/bunny.obj"
+        v = fit_box(v)[:,[0, 2, 1]]
 
         self.vertBuf = BufferObject(v)
         self.idxBuf = BufferObject(f)

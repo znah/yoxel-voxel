@@ -1,36 +1,12 @@
-/*
- * Copyright 1993-2007 NVIDIA Corporation.  All rights reserved.
+    /*
+ * Copyright 1993-2010 NVIDIA Corporation.  All rights reserved.
  *
- * NOTICE TO USER:
- *
- * This source code is subject to NVIDIA ownership rights under U.S. and
- * international Copyright laws.  Users and possessors of this source code
- * are hereby granted a nonexclusive, royalty-free license to use this code
- * in individual and commercial software.
- *
- * NVIDIA MAKES NO REPRESENTATION ABOUT THE SUITABILITY OF THIS SOURCE
- * CODE FOR ANY PURPOSE.  IT IS PROVIDED "AS IS" WITHOUT EXPRESS OR
- * IMPLIED WARRANTY OF ANY KIND.  NVIDIA DISCLAIMS ALL WARRANTIES WITH
- * REGARD TO THIS SOURCE CODE, INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE.
- * IN NO EVENT SHALL NVIDIA BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL,
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS,  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
- * OR OTHER TORTIOUS ACTION,  ARISING OUT OF OR IN CONNECTION WITH THE USE
- * OR PERFORMANCE OF THIS SOURCE CODE.
- *
- * U.S. Government End Users.   This source code is a "commercial item" as
- * that term is defined at  48 C.F.R. 2.101 (OCT 1995), consisting  of
- * "commercial computer  software"  and "commercial computer software
- * documentation" as such terms are  used in 48 C.F.R. 12.212 (SEPT 1995)
- * and is provided to the U.S. Government only as a commercial end item.
- * Consistent with 48 C.F.R.12.212 and 48 C.F.R. 227.7202-1 through
- * 227.7202-4 (JUNE 1995), all U.S. Government End Users acquire the
- * source code with only those rights set forth herein.
- *
- * Any use of this source code in individual and commercial software must
- * include, in the user documentation and internal comments to the code,
- * the above Disclaimer and U.S. Government End Users Notice.
+ * NVIDIA Corporation and its licensors retain all intellectual property and 
+ * proprietary rights in and to this software and related documentation. 
+ * Any use, reproduction, disclosure, or distribution of this software 
+ * and related documentation without an express license agreement from
+ * NVIDIA Corporation is strictly prohibited.
+ * 
  */
 
 /*
@@ -59,7 +35,7 @@ inline float fminf(float a, float b)
 
 inline float fmaxf(float a, float b)
 {
-  return a < b ? a : b;
+  return a > b ? a : b;
 }
 
 inline int max(int a, int b)
@@ -70,6 +46,11 @@ inline int max(int a, int b)
 inline int min(int a, int b)
 {
   return a < b ? a : b;
+}
+
+inline float rsqrtf(float x)
+{
+    return 1.0f / sqrtf(x);
 }
 #endif
 
@@ -88,8 +69,21 @@ inline __device__ __host__ float clamp(float f, float a, float b)
     return fmaxf(a, fminf(f, b));
 }
 
+// smoothstep
+inline __device__ __host__ float smoothstep(float a, float b, float x)
+{
+	float y = clamp((x - a) / (b - a), 0.0f, 1.0f);
+	return (y*y*(3.0f - (2.0f*y)));
+}
+
 // int2 functions
 ////////////////////////////////////////////////////////////////////////////////
+
+// negate
+inline __host__ __device__ int2 operator-(int2 &a)
+{
+    return make_int2(-a.x, -a.y);
+}
 
 // addition
 inline __host__ __device__ int2 operator+(int2 a, int2 b)
@@ -140,6 +134,24 @@ inline __host__ __device__ float2 make_float2(float s)
 inline __host__ __device__ float2 make_float2(int2 a)
 {
     return make_float2(float(a.x), float(a.y));
+}
+
+// negate
+inline __host__ __device__ float2 operator-(float2 &a)
+{
+    return make_float2(-a.x, -a.y);
+}
+
+// min
+static __inline__ __host__ __device__ float2 fminf(float2 a, float2 b)
+{
+	return make_float2(fminf(a.x,b.x), fminf(a.y,b.y));
+}
+
+// max
+static __inline__ __host__ __device__ float2 fmaxf(float2 a, float2 b)
+{
+	return make_float2(fmaxf(a.x,b.x), fmaxf(a.y,b.y));
 }
 
 // addition
@@ -233,7 +245,7 @@ inline __host__ __device__ float length(float2 v)
 // normalize
 inline __host__ __device__ float2 normalize(float2 v)
 {
-    float invLen = 1.0f / sqrtf(dot(v, v));
+    float invLen = rsqrtf(dot(v, v));
     return v * invLen;
 }
 
@@ -247,6 +259,12 @@ inline __host__ __device__ float2 floor(const float2 v)
 inline __host__ __device__ float2 reflect(float2 i, float2 n)
 {
 	return i - 2.0f * n * dot(n,i);
+}
+
+// absolute value
+inline __host__ __device__ float2 fabs(float2 v)
+{
+	return make_float2(fabs(v.x), fabs(v.y));
 }
 
 // float3 functions
@@ -272,6 +290,12 @@ inline __host__ __device__ float3 make_float3(float4 a)
 inline __host__ __device__ float3 make_float3(int3 a)
 {
     return make_float3(float(a.x), float(a.y), float(a.z));
+}
+
+// negate
+inline __host__ __device__ float3 operator-(float3 &a)
+{
+    return make_float3(-a.x, -a.y, -a.z);
 }
 
 // min
@@ -391,7 +415,7 @@ inline __host__ __device__ float length(float3 v)
 // normalize
 inline __host__ __device__ float3 normalize(float3 v)
 {
-    float invLen = 1.0f / sqrtf(dot(v, v));
+    float invLen = rsqrtf(dot(v, v));
     return v * invLen;
 }
 
@@ -405,6 +429,12 @@ inline __host__ __device__ float3 floor(const float3 v)
 inline __host__ __device__ float3 reflect(float3 i, float3 n)
 {
 	return i - 2.0f * n * dot(n,i);
+}
+
+// absolute value
+inline __host__ __device__ float3 fabs(float3 v)
+{
+	return make_float3(fabs(v.x), fabs(v.y), fabs(v.z));
 }
 
 // float4 functions
@@ -426,6 +456,12 @@ inline __host__ __device__ float4 make_float4(float3 a, float w)
 inline __host__ __device__ float4 make_float4(int4 a)
 {
     return make_float4(float(a.x), float(a.y), float(a.z), float(a.w));
+}
+
+// negate
+inline __host__ __device__ float4 operator-(float4 &a)
+{
+    return make_float4(-a.x, -a.y, -a.z, -a.w);
 }
 
 // min
@@ -527,7 +563,7 @@ inline __host__ __device__ float length(float4 r)
 // normalize
 inline __host__ __device__ float4 normalize(float4 v)
 {
-    float invLen = 1.0f / sqrtf(dot(v, v));
+    float invLen = rsqrtf(dot(v, v));
     return v * invLen;
 }
 
@@ -535,6 +571,12 @@ inline __host__ __device__ float4 normalize(float4 v)
 inline __host__ __device__ float4 floor(const float4 v)
 {
     return make_float4(floor(v.x), floor(v.y), floor(v.z), floor(v.w));
+}
+
+// absolute value
+inline __host__ __device__ float4 fabs(float4 v)
+{
+	return make_float4(fabs(v.x), fabs(v.y), fabs(v.z), fabs(v.w));
 }
 
 // int3 functions
@@ -548,6 +590,12 @@ inline __host__ __device__ int3 make_int3(int s)
 inline __host__ __device__ int3 make_int3(float3 a)
 {
     return make_int3(int(a.x), int(a.y), int(a.z));
+}
+
+// negate
+inline __host__ __device__ int3 operator-(int3 &a)
+{
+    return make_int3(-a.x, -a.y, -a.z);
 }
 
 // min
