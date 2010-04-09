@@ -1,53 +1,62 @@
 #include "stdafx.h"
 #include "BrickPool.h"
 
-CuBrickPool::CuBrickPool(CuBrickPoolParams params)
+CuBrickPoolManager::CuBrickPoolManager(const Params & params)
 : m_params(params)
-, m_poolArray(NULL)
-, d_mappedSlices(NULL)
+, m_mappedBrickCount(0)
 {
-  const int brickSize = m_params.brickSize;
-  const int brickSize3 = brickSize * brickSize * brickSize;
+  const int sliceItemNum = m_params.sizeX * m_params.sizeY;
 
-  CUDA_ARRAY3D_DESCRIPTOR decs;
-  decs.Width  = m_params.sizeX * brickSize;
-  decs.Height = m_params.sizeY * brickSize;
-  decs.Depth  = m_params.sizeZ * brickSize;
-  decs.Format = CU_AD_FORMAT_UNSIGNED_INT8;
-  decs.NumChannels = 1;
-  decs.Flags = 0;
-  cuArray3DCreate(&m_poolArray, &decs);
-  assert(m_poolArray != NULL);
+  m_capacity = m_params.sizeX * m_params.sizeY * m_params.sizeZ;
+  m_brickMark.assign( m_capacity, 0 );
+  for (int i = 0; i < m_params.sizeZ; ++i)
+    m_sliceBrickCounters.push_back(CountSlicePair(0, i));
+  m_brickCount = 0;
 
-  cuMemAlloc(&d_mappedSlices, m_params.sizeX * m_params.sizeY * brickSize3 * m_params.maxMappedSliceNum);
-  assert(d_mappedSlices != NULL);
-
+  m_hostEnumBuf.assign(sliceItemNum * m_params.mappingSlotNum, 0);
 }
 
-CuBrickPool::~CuBrickPool()
+CuBrickPoolManager::~CuBrickPoolManager() {}
+
+int CuBrickPoolManager::allocMap(int count)
 {
-  if (m_poolArray != NULL)
-  { 
-    cuArrayDestroy(m_poolArray);
-    m_poolArray = NULL;
-  }
-  if (d_mappedSlices != NULL)
+  const int sliceItemNum = m_params.sizeX * m_params.sizeY;
+  std::sort(m_sliceBrickCounters.begin(), m_sliceBrickCounters.end());
+  m_slot2pool.erase(m_slot2pool.begin(), m_slot2pool.end());
+  
+  int allocated = 0;
+  int allocSlot = 0;
+  for (allocSlot = 0; allocSlot < m_params.mappingSlotNum && allocated < count; ++allocSlot)
   {
-    cuMemFree(d_mappedSlices);
-    d_mappedSlices = NULL;
+    int sliceFreeNum = sliceItemNum - m_sliceBrickCounters[allocSlot].first;
+    int slice = m_sliceBrickCounters[allocSlot].second;
+    if (sliceFreeNum == 0)
+      break;
+
+    int prevAllocated = allocated;
+
+    int poolBegin = slice * sliceItemNum;
+    int slotBegin = allocSlot * sliceItemNum;
+    for (int i = 0; i < sliceItemNum; ++i)
+    {
+      int poolIdx = poolBegin + i;
+      int slotIdx = slotBegin + i;
+      if (allocated < count && m_brickMark[poolIdx] == 0)
+      {
+        m_hostEnumBuf[slotIdx] = allocated;
+        m_brickMark[poolIdx] = 1;
+        ++allocated;
+      }
+      else
+        m_hostEnumBuf[slotIdx] = -1;
+    }
+    m_slot2pool.push_back(slice);
+    m_sliceBrickCounters[allocSlot].first += allocated - prevAllocated;
   }
-}
 
-CuBrickPoolMapping CuBrickPool::alloc_map(int count)
-{
-  CuBrickPoolMapping mapping;
-  mapping.sliceNum = 0;
-
-  return mapping;
-
-}
-
-void CuBrickPool::unmap()
-{
-
+  m_mappedBrickCount = allocated;
+  m_brickCount += allocated;
+  if (m_mappedBrickCount > 0)
+    CU_SAFE_CALL( cuMemcpyHtoD(m_params.d_mapSlotsMarkEnum, &m_hostEnumBuf[0], sliceItemNum * m_slot2pool.size()) );
+  return m_mappedBrickCount;
 }

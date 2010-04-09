@@ -1,51 +1,46 @@
 #pragma once
 
-typedef uint8 CellType;
-
-struct CuBrickPoolParams
-{
-  int sizeX;
-  int sizeY;
-  int sizeZ;
-  int brickSize;
-  int maxMappedSliceNum;
-
-  CuBrickPoolParams()
-  : sizeX(96)
-  , sizeY(96)
-  , sizeZ(96)
-  , brickSize(5)
-  , maxMappedSliceNum(16)
-  {}
-};
-
-struct CuBrickPoolMapping
-{
-  int sliceNum;
-  int mappedItemNum;
-  CUdeviceptr d_mappedSlices;
-  CUdeviceptr d_mappedIdxs;
-  CUdeviceptr d_sliceMap2Pool;
-};
-
-
-class CuBrickPool : public noncopyable
+class CuBrickPoolManager : public noncopyable
 {
 public:
-  CuBrickPool(CuBrickPoolParams params);
-  ~CuBrickPool();
+  struct Params
+  {
+    int sizeX;
+    int sizeY;
+    int sizeZ;
+    int mappingSlotNum;
+    CUdeviceptr d_mapSlotsMarkEnum;
 
-  int capacity() const;
-  int size() const;
+    Params()
+      : sizeX(96)
+      , sizeY(96)
+      , sizeZ(96)
+      , mappingSlotNum(16)
+      , d_mapSlotsMarkEnum(NULL)
+    {}
+  };
 
-  CuBrickPoolMapping alloc_map(int count);
-  void unmap();
+  CuBrickPoolManager(const Params & params);
+  ~CuBrickPoolManager();
+
+  int capacity() const { return m_capacity; }
+  int brickCount() const { return m_brickCount; }
+  
+  int allocMap(int count);
+  const std::vector<int> slot2slice() const { return m_slot2pool; }
+  int mappedBrickCount() const { return m_mappedBrickCount; };
+
 
 private:
-  const CuBrickPoolParams m_params;
+  const Params m_params;
+  int m_capacity;
 
-  CUarray     m_poolArray;
-  CUdeviceptr d_mappedSlices;
-  
+  std::vector<int> m_brickMark;
+  typedef std::pair<int, int> CountSlicePair;
+  std::vector<CountSlicePair> m_sliceBrickCounters;
+  int m_brickCount;
 
+  std::vector<int> m_hostEnumBuf;
+  int m_mappedBrickCount;
+  std::vector<int> m_slot2pool;
 };

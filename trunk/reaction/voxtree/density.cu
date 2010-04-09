@@ -52,6 +52,21 @@ __global__ void CalcDensity(const uint* src, uint2 * dst)
   dst[ofs] = res; 
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const int BRICK_SIZE   = 4;
 const int GRID_SIZE    = VOL_SIZE / BRICK_SIZE;  // 128
 const int COL_WORD_NUM = VOL_SIZE*4/32; // = 64
@@ -156,6 +171,18 @@ __global__ void MarkBricks(const uint* g_src, uint * g_brickState, uint * g_cols
     g_colsum[col_id] = total;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
 // block dim = ( GRID_SIZE, 1, 1 )
 extern "C"
 __global__ void PackBricks(const uint * g_brickData, const uint * g_columnStart, uint * g_out )
@@ -173,15 +200,21 @@ __global__ void PackBricks(const uint * g_brickData, const uint * g_columnStart,
 }
 
 
-//const 
+
+
+
+
+
+
+const int MAX_MAPPED_SLOTS = 16;
+__constant__ int slot2slice[MAX_MAPPED_SLOTS];
+
 
 
 extern "C"
 __global__ void UpdateBrickPool(
-  int         brickNum, 
-  const uint* g_brickInfo, 
-  uint8*      g_dstBricks, 
-  const uint* g_dst)
+  
+)
 {
 
 

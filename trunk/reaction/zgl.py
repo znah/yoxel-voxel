@@ -1053,6 +1053,12 @@ def with_(*context):
         return f
     return wrap
 
+def setattrs(obj, **args):
+    for name in args:
+        setattr(obj, name, args[name])
+        print name, args[name]
+    return obj
+
 
 def genericFP(inline_code, profile = 'fp40'):
     if 'return' not in inline_code:
