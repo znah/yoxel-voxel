@@ -48,10 +48,13 @@ class App(ZglAppWX):
         CalcDensity = mod.get_function('CalcDensity') 
         MarkBricks  = mod.get_function('MarkBricks') 
         PackBricks  = mod.get_function('PackBricks') 
+        UpdateBrickPool  = mod.get_function('UpdateBrickPool') 
+        d_slot2slice = mod.get_global('slot2slice')[0]
 
         print CalcDensity.num_regs, CalcDensity.shared_size_bytes
         print MarkBricks.num_regs, MarkBricks.shared_size_bytes
         print PackBricks.num_regs, PackBricks.shared_size_bytes
+        print UpdateBrickPool.num_regs, UpdateBrickPool.shared_size_bytes
 
         # sum 2x2x2 bits
         d_density = ga.zeros((size/2, size/2, size/2*4/32), uint32)
@@ -77,15 +80,33 @@ class App(ZglAppWX):
             PackBricks(d_bricks, d_columnStart, d_packedBricks, block = (grid_size, 1, 1), grid = (grid_size, grid_size))
         profile_run(f)
 
-
+        # update brick pool
         brick_pool.allocMap(total)
+        cu.memcpy_htod(d_slot2slice, brick_pool.slot2slice)
+        
+        def f():
+            UpdateBrickPool(
+              int32(brick_pool.pool_shape[2]), 
+              brick_pool.d_map_mark_enum,
+              d_packedBricks,
+              d_density,
+              brick_pool.d_map_slots,
+              d_bricks,
+              block = (5, 5, 5),
+              grid = (brick_pool.pool_shape[2] * len(brick_pool.slot2slice), brick_pool.pool_shape[1]))
+        profile_run(f)
 
+        print  brick_pool.slot2slice
+
+
+        save("slots", brick_pool.d_map_slots.get())
         brick_pool.commit()
 
         save('mark', brick_pool.d_map_mark_enum.get())
+        save('bricks', d_bricks.get())
 
-
-
+        
+        
 
 
         print total

@@ -17,7 +17,7 @@ class BrickPool(HasTraits):
 
     _ = Python(editable = False)
     
-    def __init__(self, brick_size = 5, pool_shape = (64, 96, 64)):
+    def __init__(self, brick_size = 5, pool_shape = (64, 128, 64)):
         self.brick_size = brick_size
         self.pool_shape = pool_shape
         w = pool_shape[2] * brick_size

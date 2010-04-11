@@ -57,6 +57,6 @@ int CuBrickPoolManager::allocMap(int count)
   m_mappedBrickCount = allocated;
   m_brickCount += allocated;
   if (m_mappedBrickCount > 0)
-    CU_SAFE_CALL( cuMemcpyHtoD(m_params.d_mapSlotsMarkEnum, &m_hostEnumBuf[0], sliceItemNum * m_slot2pool.size()) );
+    CU_SAFE_CALL( cuMemcpyHtoD(m_params.d_mapSlotsMarkEnum, &m_hostEnumBuf[0], sliceItemNum * m_slot2pool.size() * sizeof(int)) );
   return m_mappedBrickCount;
 }
