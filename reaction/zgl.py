@@ -1056,7 +1056,6 @@ def with_(*context):
 def setattrs(obj, **args):
     for name in args:
         setattr(obj, name, args[name])
-        print name, args[name]
     return obj
 
 

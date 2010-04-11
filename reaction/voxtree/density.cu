@@ -1,5 +1,7 @@
 //
 
+#include "cutil_math.h"
+
 typedef unsigned int uint;
 typedef unsigned char uint8;
 
@@ -180,6 +182,15 @@ __global__ void MarkBricks(const uint* g_src, uint * g_brickState, uint * g_cols
 
 
 
+__device__ int3 unpackXYZ(uint data)
+{
+  return make_int3( data & 0xff, (data>>8) & 0xff, (data>>16) & 0xff );
+}
+
+__device__ uint packXYZ(int x, int y, int z)
+{
+  return (z << 16) + (y << 8) + x;
+}
 
 
 
@@ -195,7 +206,7 @@ __global__ void PackBricks(const uint * g_brickData, const uint * g_columnStart,
   if ((data & UNIFORM_BITS) == 0)
   {
     uint outidx = g_columnStart[x + y * GRID_SIZE] + data;
-    g_out[outidx] = (z << 16) + (y << 8) + x;
+    g_out[outidx] = packXYZ(x, y, z);
   }
 }
 
@@ -203,21 +214,54 @@ __global__ void PackBricks(const uint * g_brickData, const uint * g_columnStart,
 
 
 
-
+// mapped enum -> packed bricks -> volume -> mapped slots
 
 
 const int MAX_MAPPED_SLOTS = 16;
 __constant__ int slot2slice[MAX_MAPPED_SLOTS];
 
+const int BRICK_SIZE_PAD = BRICK_SIZE+1;
+const int BRICK_SIZE_PAD3 = BRICK_SIZE_PAD * BRICK_SIZE_PAD * BRICK_SIZE_PAD;
+
+//__shared__ uint s_brickvol[BRICK_SIZE+1];
 
 
+// block size: brickSize^3,  grid size: sliceSizeX, sliceSizeY*slotNum
 extern "C"
 __global__ void UpdateBrickPool(
-  
+  int sliceSizeX,
+  const int  * g_mappedEnum, 
+  const uint * g_packedBrickPos, 
+  const uint * g_volume, 
+  uint8 * g_mappedBricks,
+  uint * g_brickState
 )
 {
+  int mapSlot = blockIdx.x / sliceSizeX;
+  int mapX = blockIdx.x % sliceSizeX;
+  int mapY = blockIdx.y;
+  int mapIdx = blockIdx.x + blockIdx.y * gridDim.x;
+
+  int packedIdx = g_mappedEnum[mapIdx];
+  if (packedIdx < 0)
+    return;
+
+  int3 brickpos = unpackXYZ( g_packedBrickPos[packedIdx] );
+  int3 pos = brickpos * BRICK_SIZE;
+  pos.x += threadIdx.x;
+  pos.y += threadIdx.y;
+  pos.z += threadIdx.z;
+
+  int volofs = (pos.z/8) * VOL_SIZE * VOL_SIZE + pos.y * VOL_SIZE + pos.x;
+  uint d = g_volume[volofs];
+  uint v = (d >> ((pos.z%8) * 4)) & 0xf;
+
+  int tid = threadIdx.x + (threadIdx.y + threadIdx.z * blockDim.y) * blockDim.x;
+  g_mappedBricks[mapIdx * BRICK_SIZE_PAD3 + tid] = v;
 
 
+  if (tid == 0)
+    g_brickState[ brickpos.z + (brickpos.x + brickpos.y * GRID_SIZE) * GRID_SIZE ] = packXYZ(mapX, mapY, slot2slice[mapSlot]);
 }
 
 
