@@ -1,0 +1,1 @@
+"%CUDA_BIN_PATH%\nvcc.exe" -c -D_DEBUG -DWIN32 -D_CONSOLE -D_MBCS -Xcompiler /EHsc,/W3,/nologo,/Wp64,/Od,/Zi,/RTC1,/MTd -I"%CUDA_INC_PATH%" -I"../cpp" -o Debug\%~n1.obj %1
