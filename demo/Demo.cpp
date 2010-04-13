@@ -8,17 +8,16 @@ using std::endl;
 
 Demo::Demo() 
 : m_pboNeedUnreg(false)
-, m_pos( 0.16560096f, 0.46532935f, 0.11644295f ) // 0.15224274f, 0.50049937f, 0.12925711f
-, m_crs(281) // 300
-, m_pitch(-11.0f) // -17
+, m_pos(0.15224274f, 0.50049937f, 0.12925711f)
+, m_crs(300.0f)
+, m_pitch(-17.0f)
 , m_mouseMoving(false)
 , m_frameCount(0)
 , m_editAction(EditNone)
 , m_lastEditTime(0)
-, m_dumpCount(0)
 {
   cout << "loading scene ...";
-  if (!m_svo.Load("../data/scene.vox"))
+  if (!m_svo.Load("../data/coral.vox"))
     throw std::runtime_error("Can't load scene");
   cout << " OK" << endl;
   
@@ -81,34 +80,28 @@ void Demo::Resize(int width, int height)
 
 void Demo::DoEdit(const point_3f & fwdDir)
 {
-  int count = m_editAction == EditGrow ? 100 : 100;
-
-  for (int i = 0; i < count; ++i)
+  point_3f spread;
+  for (int i = 0; i < 3; ++i)
+    spread[i] = cg::symmetric_rand(0.5f);
+  point_3f shotDir = cg::normalized(fwdDir + spread * 0.1f);
+  TraceResult res;
+  if (!m_svo.TraceRay(m_pos, shotDir, res))
+    return;
+  if (res.t > 0.0)
   {
-    point_3f spread;
-    for (int i = 0; i < 3; ++i)
-      spread[i] = cg::symmetric_rand(1.0f);
-    point_3f shotDir = cg::normalized(fwdDir + spread * 0.1f);
-    TraceResult res;
-    if (!m_svo.TraceRay(m_pos, shotDir, res))
-      return;
-    if (res.t > 0.0)
+    point_3f pt = m_pos + shotDir*res.t;
+    if (m_editAction == EditGrow)
     {
-      point_3f pt = m_pos + shotDir*res.t;
-      if (m_editAction == EditGrow)
-      {
-        Color16 c;
-        Normal16 n;
-        UnpackVoxData(res.node.data, c, n);
-        SphereSource src(4, UnpackColor(c), false);
-        //SpongeSource src(7, 0.8);
-        m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_GROW, &src);
-      }
-      else
-      {
-        SphereSource src(4, Color32(192, 182, 128, 255), true);
-        m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_CLEAR, &src);
-      }
+      Color16 c;
+      Normal16 n;
+      UnpackVoxData(res.node.data, c, n);
+      SphereSource src(4, UnpackColor(c), false);
+      m_svo.BuildRange(11, pt*(1<<11)+shotDir*4, BUILD_MODE_GROW, &src);
+    }
+    else
+    {
+      SphereSource src(8, Color32(192, 182, 128, 255), true);
+      m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_CLEAR, &src);
     }
   }
 }
@@ -133,38 +126,43 @@ void Demo::Idle()
   point_3f upDir(0, 0, 1);
   point_3f rightDir = cg::normalized(fwdDir ^ upDir);
   point_3f dir = fwdDir*m_motionVel.y + rightDir*m_motionVel.x;
-  m_pos += dir*dt*0.03; 
+  m_pos += dir*dt*0.3; 
 
   m_renderer.SetViewDir(fwdDir);
   m_renderer.SetViewPos(m_pos);
 
   LightParams lp;
   lp.enabled = true;
-  lp.pos = make_float3(m_pos);
+  lp.pos = make_float3(/*m_pos*/point_3f(1.0/4, 1.0/4, 1.0/4));
   lp.diffuse = make_float3(0.7f);
   lp.specular = make_float3(0.3f);
-  lp.attenuationCoefs = make_float3(1, 0, 0.5);
+  lp.attenuationCoefs = make_float3(1, 0, 1);
   m_renderer.SetLigth(0, lp);
+
+  lp.pos = make_float3(m_pos);
+  m_renderer.SetLigth(1, lp);
   
   if (m_editAction != EditNone && curTime - m_lastEditTime > 0.02)
   {
-    DoEdit(fwdDir);
+    int editNum = m_editAction == EditGrow ? 100 : 10;
+    for (int i = 0; i < editNum; ++i)
+      DoEdit(fwdDir);
     m_renderer.UpdateSVO();
     m_lastEditTime = curTime;
     
     TraceResult traceRes;
     lp.enabled = m_svo.TraceRay(m_pos, fwdDir, traceRes);
     lp.pos = make_float3(m_pos + fwdDir * (traceRes.t - 0.05));
-    lp.diffuse = make_float3(1, 1, 1);
+    lp.diffuse = make_float3(2, 0.5, 0.5);
     lp.specular = make_float3(0.3f);
-    lp.attenuationCoefs = make_float3(1, 10, 400);
-    m_renderer.SetLigth(1, lp);
+    lp.attenuationCoefs = make_float3(1, 10, 800);
+    m_renderer.SetLigth(2, lp);
   }
 
   if (curTime - m_lastEditTime > 0.1)
   {
     lp.enabled = false;
-    m_renderer.SetLigth(1, lp);
+    m_renderer.SetLigth(2, lp);
   }
 
 
@@ -198,17 +196,11 @@ void Demo::KeyDown(unsigned char key, int x, int y)
   if (key == '-') m_renderer.SetFOV( m_renderer.GetFOV()*1.1f );
   if (key == '=') m_renderer.SetFOV( m_renderer.GetFOV()*0.9f );
 
+  if (key == '[') m_renderer.SetDither( m_renderer.GetDither()*1.1f );
+  if (key == ']') m_renderer.SetDither( m_renderer.GetDither()*0.9f );
+
   if (key == '1') m_editAction = EditGrow;
   if (key == '2') m_editAction = EditClear;
-
-  if (key == '3') m_renderer.SetSSNA( !m_renderer.GetSSNA() );
-  if (key == '4') m_renderer.SetShowNormals( !m_renderer.GetShowNormals() );
-
-  if (key == 'q') 
-  {
-    m_renderer.DumpTraceData(formatStr("dmp_{0}") % (m_dumpCount++));
-    cout << "dump written" << endl;
-  }
 }
 
 void Demo::KeyUp(unsigned char key, int x, int y)

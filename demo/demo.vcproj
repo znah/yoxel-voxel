@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8,00"
+	Version="9.00"
 	Name="demo"
 	ProjectGUID="{19FE1D2C-7154-4DEE-B662-6910BF3A181C}"
 	RootNamespace="demo"
 	Keyword="Win32Proj"
+	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -41,7 +42,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="../cpp;../freeglut/include"
+				AdditionalIncludeDirectories="c:\dev\sdk\glew\include;&quot;$(CUDA_INC_PATH)&quot;;../cpp;../freeglut/include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -65,10 +66,12 @@
 				AdditionalDependencies="glew32.lib cuda.lib cudart.lib"
 				OutputFile="$(OutDir)/demo.exe"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="../freeglut/lib"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;c:\dev\sdk\glew\lib;../freeglut/lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(OutDir)/demo.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -88,9 +91,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -121,7 +121,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="../cpp;../freeglut/include"
+				AdditionalIncludeDirectories="c:\dev\sdk\glew\include;&quot;$(CUDA_INC_PATH)&quot;;../cpp;../freeglut/include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
@@ -143,11 +143,13 @@
 				AdditionalDependencies="glew32.lib cuda.lib cudart.lib"
 				OutputFile="$(OutDir)/demo.exe"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="../freeglut/lib"
+				AdditionalLibraryDirectories="&quot;$(CUDA_LIB_PATH)&quot;;c:\dev\sdk\glew\lib;../freeglut/lib"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -167,171 +169,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="emu_debug|Win32"
-			OutputDirectory="$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
-			CharacterSet="2"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-				AdditionalIncludeDirectories="../cpp;../freeglut/include"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
-				MinimalRebuild="true"
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="1"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				Detect64BitPortabilityProblems="true"
-				DebugInformationFormat="4"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				AdditionalDependencies="glew32.lib cuda.lib cudart.lib"
-				OutputFile="$(OutDir)/demo.exe"
-				LinkIncremental="2"
-				AdditionalLibraryDirectories="../freeglut/lib"
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/demo.pdb"
-				SubSystem="1"
-				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="EmuDebug|Win32"
-			OutputDirectory="$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
-			CharacterSet="2"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-				AdditionalIncludeDirectories="../cpp;../freeglut/include"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
-				MinimalRebuild="true"
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="1"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				Detect64BitPortabilityProblems="true"
-				DebugInformationFormat="4"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				AdditionalDependencies="glew32.lib cuda.lib cudart.lib"
-				OutputFile="$(OutDir)/demo.exe"
-				LinkIncremental="2"
-				AdditionalLibraryDirectories="../freeglut/lib"
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/demo.pdb"
-				SubSystem="1"
-				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -423,46 +260,12 @@
 						Outputs="$(TargetDir)\$(InputName).obj"
 					/>
 				</FileConfiguration>
-				<FileConfiguration
-					Name="emu_debug|Win32"
-					>
-					<Tool
-						Name="VCCustomBuildTool"
-						CommandLine="../utils/nvcc_debug.cmd $(InputPath)&#x0D;&#x0A;"
-						Outputs="$(TargetDir)\$(InputName).obj"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="EmuDebug|Win32"
-					>
-					<Tool
-						Name="VCCustomBuildTool"
-						CommandLine="../utils/nvcc_debug.cmd $(InputPath)&#x0D;&#x0A;"
-						Outputs="$(TargetDir)\$(InputName).obj"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\cpp\trace_cu.h"
 				>
 			</File>
 		</Filter>
-		<File
-			RelativePath="..\cpp\matrix.h"
-			>
-		</File>
-		<File
-			RelativePath="..\cpp\matrix_ops.h"
-			>
-		</File>
-		<File
-			RelativePath="..\cpp\stdafx.h"
-			>
-		</File>
-		<File
-			RelativePath="..\cpp\trace_utils.h"
-			>
-		</File>
 	</Files>
 	<Globals>
 	</Globals>

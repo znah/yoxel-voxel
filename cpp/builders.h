@@ -180,12 +180,7 @@ public:
       if (hi < level)
         return ResEmpty;
       if (level <= lo)
-      {
-        outColor = m_color;
-        outNormal = Normal32(1, 0, 0, 0);
-        return ResSurface;
-        //return ResFull;
-      }
+        return ResFull;
       return ResGoDown;
     }
     else
@@ -217,32 +212,4 @@ public:
       return ResSurface;
     }
   }
-};
-
-class SpongeSource : public VoxelSource
-{
-public:
-  SpongeSource(int levelNum, float prob)
-    : VoxelSource(point_3i(1, 1, 1) * (1 << (levelNum-1)), point_3i(0, 0, 0))
-    , m_levelNum(levelNum)
-    , m_prob(prob)
-  {}
-
-  virtual TryRangeResult TryRange(const point_3i & blockStart, int blockSize, Color32 & outColor, Normal32 & outNormal)
-  {
-    const float prob = 0.9f;
-    if (cg::rand(1.0f) > m_prob)
-      return ResEmpty;
-
-    if (blockSize > 1)
-      return ResGoDown;
-
-    outColor = Color32(128, 172, 128, 255);
-    outNormal = Normal32(127, 0, 0, 0);;
-    return ResSurface;
-  }
-
-private:
-  int m_levelNum;
-  float m_prob;
 };

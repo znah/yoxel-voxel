@@ -5,7 +5,7 @@ from scipy import weave
 from scipy.weave import converters
 from time import clock
 
-def buildRegion(x0, y0, x1, y1, hmap, tex):
+def buildRegion(x0, y0, x1, y1, hmap):
     sx = slice( max(0, x0-1), min(hmap.shape[1], x1+1) )
     sy = slice( max(0, y0-1), min(hmap.shape[0], y1+1) )
     h0 = int(hmap[sy, sx].min())
@@ -52,8 +52,8 @@ def buildRegion(x0, y0, x1, y1, hmap, tex):
             normalize(n);
             n *= 127.0;
 
-            //point_3f c1(0.1f, 0.5f, 0.1f), c2(0.7f, 0.3f, 0.2f);
-            point_3b c(tex(y, x, 0), tex(y, x, 1), tex(y, x, 2));// = 255*(c1 + (h/300.0f) * (c2-c1));
+            point_3f c1(0.1f, 0.5f, 0.1f), c2(0.7f, 0.3f, 0.2f);
+            point_3b c = 255*(c1 + (h/300.0f) * (c2-c1));
             
             cmap(ph, py, px, 0) = c[0];
             cmap(ph, py, px, 1) = c[1];
@@ -67,16 +67,16 @@ def buildRegion(x0, y0, x1, y1, hmap, tex):
         }
 
     '''
-    weave.inline(code, ["x0", "y0", "x1", "y1", "h0", "dh", "hmap", "cmap", "nmap", "tex"], headers=['"common/point_utils.h"'], include_dirs=['cpp'], type_converters=converters.blitz)
+    weave.inline(code, ["x0", "y0", "x1", "y1", "h0", "dh", "hmap", "cmap", "nmap"], headers=['"common/point_utils.h"'], include_dirs=['cpp'], type_converters=converters.blitz)
     return (cmap, nmap, int(h0), int(dh))
 
 
-def buildHeightmap(bld, hmap, tex, level, pos):
+def buildHeightmap(bld, hmap, level, pos):
     start = clock()
     step = 8
     for y in xrange(0, hmap.shape[0]/step):
         for x in xrange(0, hmap.shape[1]/step):
-            (cmap, nmap, h0, dh) = buildRegion(x*step, y*step, (x+1)*step, (y+1)*step, hmap, tex)
+            (cmap, nmap, h0, dh) = buildRegion(x*step, y*step, (x+1)*step, (y+1)*step, hmap)
             src = MakeRawSource(point_3i(step, step, dh), cmap, nmap)
             bld.BuildRange(level, point_3i(pos[0] + x*step, pos[1] + y*step, pos[2] + h0), BuildMode.GROW, src)
         print y, bld.nodecount
@@ -85,26 +85,16 @@ def buildHeightmap(bld, hmap, tex, level, pos):
 
 
 def addHeightmaps(bld):
-    hmap = asarray(Image.open("data/gcanyon_height.png"))
-    tex = asarray(Image.open("data/gcanyon_color_4k2k.png"))
-    
-    n = 2048
-    hmap = hmap[:n, :n]
-    tex = tex[:n, :n]
+    im = Image.open("data/heightmap1024.png")
+    hmap = fromstring(im.tostring(), uint16)
+    print hmap.shape
+    s = im.size
+    print s
+    hmap.shape = (s[0], s[1], 2)
+    hmap = hmap[...,0].astype(float32)
+    hmap *= 0.5/256
 
-    #import pylab
-    #pylab.imshow(hmap)
-    #pylab.show()
-    hmap = hmap.astype(float32)
-    hmap *= 2.0
-    from scipy import signal
-    g = signal.gaussian(5, 1.0)
-    g = outer(g, g)
-    g /= g.sum()
-    hmap2 = signal.convolve2d(hmap, g, "same", "symm")
-
-
-    buildHeightmap(bld, hmap2, tex, 11, (0, 0, 0))
+    buildHeightmap(bld, hmap, 11, (0, 0, 0))
     #buildHeightmap(bld, hmap, 11, (768, 768, 256))
 
 
@@ -134,7 +124,7 @@ if __name__ == '__main__':
     
     bld = DynamicSVO()
 
-    #addHeightmaps(bld)
+    addHeightmaps(bld)
     addTrees(bld)
     
     print "saving tree..."

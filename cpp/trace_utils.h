@@ -73,14 +73,3 @@ inline GLOBAL_FUNC  bool GoNext(int & childId, point_3f & t1, point_3f & t2)
   else
     return (t2.x < t2.z) ? GoNextTempl<0>(childId, t1, t2) : GoNextTempl<2>(childId, t1, t2);
 }
-
-inline GLOBAL_FUNC  void GoUp(int childId, point_3f & t1, point_3f & t2)
-{
-  for (int i = 0; i < 3; ++i)
-  {
-    int mask = 1<<i;
-    float dt = t2[i] - t1[i];
-    ((childId & mask) == 0) ? t2[i] += dt : t1[i] -= dt;
-  }
-}
-

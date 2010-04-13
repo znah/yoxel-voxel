@@ -13,36 +13,38 @@ public:
 
   void SetScene(DynamicSVO * svo);
 
-  void SetViewPos(const point_3f & pos) { m_pos = pos; }
-  void SetViewDir(const point_3f & dir) { m_dir = dir; }
-  void SetViewUp (const point_3f & up) { m_up = up; }
+  void SetViewPos(const point_3f & pos) { CheckSet(m_pos, pos); }
+  void SetViewDir(const point_3f & dir) { CheckSet(m_dir, dir); }
+  void SetViewUp (const point_3f & up)  { CheckSet(m_up, up); }
 
   void SetViewSize(int width, int height);
 
-  void SetFOV(float fov) { m_fov = fov; }
+  void SetFOV(float fov) { CheckSet(m_fov, fov); }
   float GetFOV() const { return m_fov; }
 
-  void SetDetailCoef(float coef) { m_detailCoef = coef; }
+  void SetDetailCoef(float coef) { CheckSet(m_detailCoef, coef); }
   float GetDetailCoef() const { return m_detailCoef; }
 
-  void SetSSNA(bool enable) { m_ssna = enable; }
-  bool GetSSNA() const { return m_ssna; }
-
-  void SetShowNormals(bool enable) { m_showNormals = enable; }
-  bool GetShowNormals() const { return m_showNormals; }
+  void SetDither(float coef) { CheckSet(m_ditherCoef, coef); }
+  float GetDither() const { return m_ditherCoef; }
 
   void SetLigth(int i, const LightParams & lp) { m_lights[i] = lp; }
 
   void Render(void * d_dstBuf);
   void UpdateSVO();
 
-  void DumpTraceData(std::string);
+  void ResetAccum();
 
 private:
-  CudaSVO m_svo;
+  template <class T>
+  void CheckSet(T & val, const T & newVal)
+  {
+    if (val != newVal)
+      ResetAccum();
+    val = newVal;
+  }
 
-  bool m_ssna;
-  bool m_showNormals;
+  CudaSVO m_svo;
 
   point_3f m_pos;
   point_3f m_dir;
@@ -56,9 +58,10 @@ private:
   float m_detailCoef;
 
   CuVector<RayData> m_rayDataBuf;
-  CuVector<float> m_zbuf[2];
+  CuVector<float> m_noiseBuf;
+  CuVector<ushort4> m_accumBuf;
 
   const textureReference * m_dataTexRef;
 
-  void InitBlur();
+  int m_accumIter;
 };

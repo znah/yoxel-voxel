@@ -45,8 +45,6 @@ private:
   double m_lastFPSTime;
   int m_frameCount;
 
-  int m_dumpCount;
-
   enum EditAction { EditNone, EditGrow, EditClear };
   EditAction m_editAction;
   double m_lastEditTime;

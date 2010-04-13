@@ -5,7 +5,7 @@
 # Specify the path to the Boost project.  If you move this project,
 # adjust the path to refer to the Boost root directory.
 use-project boost 
-   : c:/dev/sdk/boost_1_35_0 ;
+   : c:/dev/sdk/boost_1_39_0 ;
 #  : ../../../.. ;
 
 # Set up the project-wide requirements that everything uses the
@@ -16,15 +16,15 @@ project boost-python-quickstart
     <library>/boost/python//boost_python
     <include>../../cpp
     <include>c:/cuda/include
-    <include>C:/Python25/Lib/site-packages/numpy/core/include/
-    #<library>c:/cuda/lib/cuda.lib
+    <include>C:/Python26/Lib/site-packages/numpy/core/include/
+    <library>c:/cuda/lib/cuda.lib
     ;
 
 # Make the definition of the python-extension rule available
 import python ;
 
 # Declare a Python extension called hello.
-#python-extension _ore : main.cpp ../../cpp/DynamicSVO.cpp ../../cpp/CudaSVO.cpp ;
-python-extension _ore : main.cpp ../../cpp/DynamicSVO.cpp ;
+python-extension _ore : main.cpp ../../cpp/DynamicSVO.cpp ../../cpp/CudaSVO.cpp ;
+#python-extension _ore : main.cpp ../../cpp/DynamicSVO.cpp ;
 
 
