@@ -3,6 +3,7 @@
 #include "cutil_math.h"
 
 typedef unsigned int uint;
+typedef unsigned int uint32;
 typedef unsigned char uint8;
 
 const int BITVOL_SIZE  = 1024;
@@ -192,6 +193,15 @@ __device__ uint packXYZ(int x, int y, int z)
   return (z << 16) + (y << 8) + x;
 }
 
+__device__ int brickOfs(int x, int y, int z)
+{
+  return z + x * GRID_SIZE + y * GRID_SIZE * GRID_SIZE;
+}
+
+__device__ int brickOfs(int3 brickIdx)
+{
+  return brickOfs(brickIdx.x, brickIdx.y, brickIdx.z);
+}
 
 
 // block dim = ( GRID_SIZE, 1, 1 )
@@ -201,7 +211,7 @@ __global__ void PackBricks(const uint * g_brickData, const uint * g_columnStart,
   int x = blockIdx.x;
   int y = blockIdx.y;
   int z = threadIdx.x;
-  uint ofs = z + x * GRID_SIZE + y * GRID_SIZE * GRID_SIZE;
+  uint ofs = brickOfs(x, y, z);
   uint data = g_brickData[ofs];
   if ((data & UNIFORM_BITS) == 0)
   {
@@ -221,12 +231,13 @@ const int MAX_MAPPED_SLOTS = 16;
 __constant__ int slot2slice[MAX_MAPPED_SLOTS];
 
 const int BRICK_SIZE_PAD = BRICK_SIZE+1;
-const int BRICK_SIZE_PAD3 = BRICK_SIZE_PAD * BRICK_SIZE_PAD * BRICK_SIZE_PAD;
+const int BRICK_SIZE_PAD2 = BRICK_SIZE_PAD * BRICK_SIZE_PAD;
+const int BRICK_SIZE_PAD3 = BRICK_SIZE_PAD2 * BRICK_SIZE_PAD;
 
 //__shared__ uint s_brickvol[BRICK_SIZE+1];
 
 
-// block size: brickSize^3,  grid size: sliceSizeX, sliceSizeY*slotNum
+// block size: brickSize^3,  grid size: sliceSizeX*slotNum, sliceSizeY
 extern "C"
 __global__ void UpdateBrickPool(
   int sliceSizeX,
@@ -237,6 +248,7 @@ __global__ void UpdateBrickPool(
   uint * g_brickState
 )
 {
+  int sliceSizeY = gridDim.y;
   int mapSlot = blockIdx.x / sliceSizeX;
   int mapX = blockIdx.x % sliceSizeX;
   int mapY = blockIdx.y;
@@ -251,17 +263,24 @@ __global__ void UpdateBrickPool(
   pos.x += threadIdx.x;
   pos.y += threadIdx.y;
   pos.z += threadIdx.z;
+  if (threadIdx.x >= BRICK_SIZE || threadIdx.y >= BRICK_SIZE || threadIdx.z >= BRICK_SIZE)
+    return;
 
   int volofs = (pos.z/8) * VOL_SIZE * VOL_SIZE + pos.y * VOL_SIZE + pos.x;
   uint d = g_volume[volofs];
   uint v = (d >> ((pos.z%8) * 4)) & 0xf;
 
   int tid = threadIdx.x + (threadIdx.y + threadIdx.z * blockDim.y) * blockDim.x;
-  g_mappedBricks[mapIdx * BRICK_SIZE_PAD3 + tid] = v;
+  
+  mapX = mapX * BRICK_SIZE_PAD + threadIdx.x;
+  mapY = mapY * BRICK_SIZE_PAD + threadIdx.y;
+  int layerStride = sliceSizeY * sliceSizeY * BRICK_SIZE_PAD2;
+  int ofs = layerStride * (threadIdx.z + mapSlot * BRICK_SIZE_PAD) + mapY * sliceSizeX * BRICK_SIZE_PAD + mapX;
+  g_mappedBricks[ofs] = v;
 
 
   if (tid == 0)
-    g_brickState[ brickpos.z + (brickpos.x + brickpos.y * GRID_SIZE) * GRID_SIZE ] = packXYZ(mapX, mapY, slot2slice[mapSlot]);
+    g_brickState[ brickOfs(brickpos) ] = packXYZ(mapX, mapY, slot2slice[mapSlot]);
 }
 
 
@@ -270,7 +289,40 @@ __global__ void UpdateBrickPool(
 
 
 
+texture<uint8, 3, cudaReadModeNormalizedFloat> brick_pool_tex;
+texture<uint32, 1, cudaReadModeElementType>    brick_grid_tex;
+
+__device__ uchar4 VolFetch(float3 globalPos)
+{
+  float3 brickPos = globalPos * (1.0f / BRICK_SIZE);
+  int3   brickIdx = make_int3(brickPos);
+  float3 localPos = (brickPos - make_float3(brickIdx)) * BRICK_SIZE;
+
+  uint32 brickData = tex1Dfetch(brick_grid_tex, brickOfs(brickIdx));
+  
+  if (brickData & SOLID_BIT)
+    return make_uchar4(0, 0, 128, 0);
+  if (brickData & EMPTY_BIT)
+    return make_uchar4(0, 0, 0, 0);
+  
+  int3   poolIdx  = unpackXYZ(brickData);
+  float3 poolPos = make_float3(poolIdx) * BRICK_SIZE_PAD + make_float3(0.5f) + localPos;
+  float v = tex3D(brick_pool_tex, poolPos.x, poolPos.y, poolPos.z) * (255.0f / 8.0f);
+
+  return make_uchar4(64, v*255, 0, 1);
+}
 
 
+extern "C"
+__global__ void FetchTest(float x0, float y0, float z0, uchar4 * g_out)
+{
+  int x = threadIdx.x + blockIdx.x * blockDim.x;
+  int y = threadIdx.y + blockIdx.y * blockDim.y;
+
+  const int viewWidth = blockDim.x * gridDim.x; 
+
+  float3 p = make_float3(x0 + x*0.5, y0 + y*0.5, z0);
+  g_out[x + y * viewWidth] = VolFetch(p);
+}
 
 
