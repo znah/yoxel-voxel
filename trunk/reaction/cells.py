@@ -2,6 +2,7 @@ from __future__ import with_statement
 from zgl import *
 
 shaderCode = '''
+  #line 6
   uniform sampler2D noiseTex;
   uniform float2 noiseSize;
   uniform float time;
@@ -19,7 +20,7 @@ shaderCode = '''
     return v;
   }
 
-  float cell(float2 ci, float2 pos)
+  void cell(float2 ci, float2 pos, inout float2 res)
   {
     float2 seed = ci / noiseSize;
     float count = 0;
@@ -30,18 +31,20 @@ shaderCode = '''
       p *= noise(seed).x;
     }
 
-    float sum = 0;
     for (float i = 0; i < count; i += 1)
     {
-      float3 v = noise(seed).xyz;
+      float4 v = noise(seed);
       float2 center = v.xy;
-      float r = v.z * abs(sin(time+seed.x*10));
+      float speed = 10.0 * pow(v.w, 4.0);
+      float phase = sin(time*speed + seed.x*10);
+      float r = 0.8 + 0.2 * v.z * phase;
       float d = length(center - pos) / r;
-      if (d < 1)
-        sum += sin(d*PI*3) * 0.3;
+      if (res.x > d)
+      {
+        res.x = d;
+        res.y = speed * v.z * max(0, phase);
+      }
     }
-
-    return sum;
   }
 
   float4 main(float2 pos: TEXCOORD0) : COLOR
@@ -49,15 +52,15 @@ shaderCode = '''
     float2 p2 = pos / CELL_SIZE;
     float2 ci = floor(p2);
     float2 posInCell = p2 - ci;
-    float sum = 0;
+    float2 res = float2(2.0, 0.0);
     for (int yi = -1; yi <= 1; ++yi)
       for (int xi = -1; xi <= 1; ++xi)
       {
         float2 dp = float2(xi, yi);
-        sum += cell(ci + dp, posInCell - dp);
+        cell(ci + dp, posInCell - dp, res);
       }
 
-    return float4(sum, sum, sum, 1);
+    return float4(res.x + res.y*0.05, res.x, res.x, 1);
 
   }
 '''
@@ -75,7 +78,7 @@ class App(ZglAppWX):
     def display(self):
         clearGLBuffers()
         with ctx(self.viewControl.with_vp, self.cellFrag(time = self.time)):
-            drawQuad()
+            drawQuad(self.viewControl.rect)
 
 if __name__ == "__main__":
     app = App()

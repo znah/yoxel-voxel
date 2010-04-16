@@ -15,6 +15,7 @@ import PIL.Image
 from enthought.traits.api import *
 from enthought.traits.ui.api import *
 from StringIO import StringIO
+import re
 
 from ctypes import cdll, c_int, c_uint, c_float, c_char_p, c_long
 
@@ -1060,10 +1061,18 @@ def setattrs(obj, **args):
 
 
 def genericFP(inline_code, profile = 'fp40'):
+    uniforms = set( re.findall("(([a-z0-9]+)_\w+)", inline_code) )
+
+    types = dict(f = 'float', f2 = 'float2', f3 = 'float3', f4 = 'float4', 
+      s = 'sampler2D', s1 = 'sampler1D', s2 = 'sampler2D', s3 = 'sampler3D')
+
+    uniforms = ['uniform %s %s;\n' % (types[t], n) for n, t in uniforms if t in types]
+    uniforms = "".join(uniforms)
+
     if 'return' not in inline_code:
         inline_code = 'return ' + inline_code
     code = '''
-      uniform sampler2D texture;
+      %s
 
       float4 main( 
         float4 tc0: TEXCOORD0,
@@ -1071,7 +1080,8 @@ def genericFP(inline_code, profile = 'fp40'):
       { 
         %s; 
       }
-    ''' % (inline_code,)
+    ''' % (uniforms, inline_code)
+    print code
     return CGShader(profile, code)
 
 TestShaders = '''
