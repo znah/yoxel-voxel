@@ -45,8 +45,9 @@ private:
   double m_lastFPSTime;
   int m_frameCount;
 
-  enum EditAction { EditNone, EditGrow, EditClear };
+  enum EditAction { EditNone, EditGrow, EditClear, EditGrowSide };
   EditAction m_editAction;
   double m_lastEditTime;
   void DoEdit(const point_3f & fwdDir);
+  void ShootBall(const point_3f & shotDir, int radius, BuildMode mode, Color32 color, bool sideGrow);
 };

@@ -80,30 +80,42 @@ void Demo::Resize(int width, int height)
 
 void Demo::DoEdit(const point_3f & fwdDir)
 {
-  point_3f spread;
-  for (int i = 0; i < 3; ++i)
-    spread[i] = cg::symmetric_rand(0.5f);
-  point_3f shotDir = cg::normalized(fwdDir + spread * 0.1f);
+  if (m_editAction == EditGrow || m_editAction == EditGrowSide)
+  {
+    for (int i = 0; i < 30; ++i)
+    {
+      point_3f spread;
+      for (int i = 0; i < 3; ++i)
+        spread[i] = cg::symmetric_rand(0.5f);
+      point_3f shotDir = cg::normalized(fwdDir + spread * 0.1f);
+      Color32 col = m_editAction == EditGrowSide ? Color32(50, 182, 50, 255) : Color32(182, 182, 50, 255);
+      ShootBall(shotDir, 4, BUILD_MODE_GROW, col, m_editAction == EditGrowSide);
+    }
+  }
+  else
+  {
+    ShootBall(fwdDir, 32, BUILD_MODE_CLEAR, Color32(192, 23, 23, 255), false);
+  }
+}
+
+void Demo::ShootBall(const point_3f & shotDir, int radius, BuildMode mode, Color32 color, bool sideGrow)
+{
   TraceResult res;
   if (!m_svo.TraceRay(m_pos, shotDir, res))
     return;
-  if (res.t > 0.0)
-  {
-    point_3f pt = m_pos + shotDir*res.t;
-    if (m_editAction == EditGrow)
-    {
-      Color16 c;
-      Normal16 n;
-      UnpackVoxData(res.node.data, c, n);
-      SphereSource src(4, UnpackColor(c), false);
-      m_svo.BuildRange(11, pt*(1<<11)+shotDir*4, BUILD_MODE_GROW, &src);
-    }
-    else
-    {
-      SphereSource src(8, Color32(192, 182, 128, 255), true);
-      m_svo.BuildRange(11, pt*(1<<11), BUILD_MODE_CLEAR, &src);
-    }
-  }
+  if (res.t <= 0.0)
+    return;
+  point_3f pt = m_pos + shotDir*res.t;
+
+  Color16 c;
+  Normal16 n;
+  UnpackVoxData(res.node.data, c, n);
+  SphereSource src(radius, color, mode == BUILD_MODE_CLEAR);
+  const int level = 11;
+  pt *= 1<<level;
+  if (sideGrow)
+    pt += shotDir * radius;
+  m_svo.BuildRange(level, pt, mode, &src);
 }
 
 void Demo::Idle()
@@ -126,17 +138,17 @@ void Demo::Idle()
   point_3f upDir(0, 0, 1);
   point_3f rightDir = cg::normalized(fwdDir ^ upDir);
   point_3f dir = fwdDir*m_motionVel.y + rightDir*m_motionVel.x;
-  m_pos += dir*dt*0.3; 
+  m_pos += dir*dt*0.1; 
 
   m_renderer.SetViewDir(fwdDir);
   m_renderer.SetViewPos(m_pos);
 
   LightParams lp;
   lp.enabled = true;
-  lp.pos = make_float3(/*m_pos*/point_3f(1.0/4, 1.0/4, 1.0/4));
+  lp.pos = make_float3(/*m_pos*/point_3f(0.5, 0.5, 1.0));
   lp.diffuse = make_float3(0.7f);
   lp.specular = make_float3(0.3f);
-  lp.attenuationCoefs = make_float3(1, 0, 1);
+  lp.attenuationCoefs = make_float3(1, 0, 0);
   m_renderer.SetLigth(0, lp);
 
   lp.pos = make_float3(m_pos);
@@ -144,9 +156,7 @@ void Demo::Idle()
   
   if (m_editAction != EditNone && curTime - m_lastEditTime > 0.02)
   {
-    int editNum = m_editAction == EditGrow ? 100 : 10;
-    for (int i = 0; i < editNum; ++i)
-      DoEdit(fwdDir);
+    DoEdit(fwdDir);
     m_renderer.UpdateSVO();
     m_lastEditTime = curTime;
     
@@ -155,7 +165,7 @@ void Demo::Idle()
     lp.pos = make_float3(m_pos + fwdDir * (traceRes.t - 0.05));
     lp.diffuse = make_float3(2, 0.5, 0.5);
     lp.specular = make_float3(0.3f);
-    lp.attenuationCoefs = make_float3(1, 10, 800);
+    lp.attenuationCoefs = make_float3(0.5, 10, 500);
     m_renderer.SetLigth(2, lp);
   }
 
@@ -200,7 +210,8 @@ void Demo::KeyDown(unsigned char key, int x, int y)
   if (key == ']') m_renderer.SetDither( m_renderer.GetDither()*0.9f );
 
   if (key == '1') m_editAction = EditGrow;
-  if (key == '2') m_editAction = EditClear;
+  if (key == '2') m_editAction = EditGrowSide;
+  if (key == '3') m_editAction = EditClear;
 }
 
 void Demo::KeyUp(unsigned char key, int x, int y)
@@ -209,7 +220,7 @@ void Demo::KeyUp(unsigned char key, int x, int y)
     m_motionVel.x = 0;
   if (key == 'w' || key == 's') 
     m_motionVel.y = 0;
-  if (key == '1' || key == '2') 
+  if (key == '1' || key == '2' || key == '3') 
     m_editAction = EditNone;
 }
 
