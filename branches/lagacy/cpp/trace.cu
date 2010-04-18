@@ -228,7 +228,12 @@ __global__ void ShadeSimple(const RayData * eyeRays, uchar4 * img, ushort4 * acc
   
   point_3f res(0, 0, 0);
   if (IsNull(node))
-    res = point_3f(0, node == EmptyNode ? 0 : 64, 0);
+  {
+    float h = (float)yi / sy;
+    res = point_3f(128, 128, 255) * (1.0 - h);
+    if (node != EmptyNode)
+      res = point_3f(1, 0, 0);
+  }
   else
   {
     float3 p = rp.eyePos;                          
