@@ -1,7 +1,7 @@
 % !TEX TS-program = pdflatex
 % !TEX encoding = UTF-8 Unicode
 
-\documentclass{beamer}
+\documentclass[hyperref={pdfencoding=unicode}]{beamer}
 
 \usepackage[english, russian]{babel}
 \usepackage[utf8]{inputenc}
@@ -13,13 +13,21 @@
 %\usepackage{fourier}
 %\usepackage[T2A]{fontenc}
 
+%\usepackage{beamerthemesplit}
 \mode<presentation>
 {
-  \usetheme{Warsaw}
-   \setbeamercovered{transparent}
+  %\usetheme{Warsaw}
+   %\setbeamercovered{transparent}
+  \setbeamertemplate{footline}[frame number]
+  \setbeamertemplate{navigation symbols}{}
 }
 
-%\usepackage{beamerthemesplit}
+
+% Рисунки
+\usepackage{graphicx}
+\graphicspath{{img/}}
+\usepackage{floatflt}
+
 
 \title[CUDA voxel graphics]{Визуализация объемных структур с динамической границей с использованием технологии СUDA}
 \author{Мордвинцев~А.~С.  }
@@ -36,6 +44,6 @@
 \frame{\titlepage}
 
 %% Include wiki2beamer output:
-\input _tmp.tex
+\input _slides.tex
 
 \end{document}
