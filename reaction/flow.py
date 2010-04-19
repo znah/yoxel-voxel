@@ -37,7 +37,7 @@ class App(ZglAppWX):
                 glBlendFunc(GL_ONE, GL_ONE);
                 glBlendEquation(GL_FUNC_ADD);
                 clearGLBuffers()
-                vortexFP(turn = 30.0, emit = 0.0, fade = 50, center = size*(0.3, 0.3))
+                vortexFP(turn = 60.0, emit = 0.0, fade = 50, center = size*(0.3, 0.3))
                 drawQuad()
 
                 if self.viewControl.mButtons[0]:
@@ -56,7 +56,10 @@ class App(ZglAppWX):
                 drawQuad()
 
         noiseTex = Texture2D(random.rand(size[1], size[0], 4).astype(float32))
-        #noiseTex.filterLinear()
+        noiseTex.genMipmaps()
+        noiseTex.filterLinearMipmap()
+        noiseTex.aniso = 4
+        
         flowVisFP = CGShader('fp40', '''
           #line 62
           uniform sampler2D flow;
@@ -67,10 +70,11 @@ class App(ZglAppWX):
 
           const float pi = 3.141593;
 
-          float getnoise(float2 p)
+          float getnoise(float2 p, float2 vel)
           {
-            float4 rnd = tex2D(noise, p);
-            float v = frac(rnd.r + time);//sin(2*pi*rnd.r + time * 10.0)*0.5 + 0.5;
+            float2 nvel = normalize(float2(-vel.y, vel.x));
+            float4 rnd = tex2D(noise, p/*, vel/gridSize, nvel/gridSize*/);
+            float v = rnd.r;//frac(rnd.r + time);//sin(2*pi*rnd.r + time * 10.0)*0.5 + 0.5;
             return v;
           }
 
@@ -80,8 +84,8 @@ class App(ZglAppWX):
             float2 sp = p * gridSize - vel;
             
             float a = tex2D(src, sp / gridSize).r;
-            float b = getnoise(p);
-            float v = lerp(a, b, 0.05);
+            float b = getnoise(p, vel);
+            float v = lerp(a, b, 0.05);//0.05
             float speed = length(vel);
             return float4(v, speed, 0, 0);
           }
@@ -111,7 +115,7 @@ class App(ZglAppWX):
           float4 c2 = float4(v, v, v, 1.0);
           float4 c = lerp(c1, c2, 2.0*speed);
 
-          return c;
+          return c2;
         ''' )
         def display():
             updateFlow()

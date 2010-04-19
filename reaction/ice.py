@@ -12,7 +12,7 @@ class App(ZglAppWX):
           float2 dp = p - f2_mpos;
           float d = length(dp);
 
-          float v = tex2D(s_texture, p) + sin(saturate(0.2 - d*0.5)*100)*0.1; 
+          float v = tex2D(s_texture, lerp(p, f2_mpos, saturate(0.5-d))) + sin(saturate(0.2 - d*0.5)*100)*0.1; 
           return saturate( (v - f_threshold) / f_blur);
         ''')
         fragProg.s_texture = loadTex('data/highmap.jpg')
@@ -21,7 +21,7 @@ class App(ZglAppWX):
         def display():
             clearGLBuffers()
             fragProg( 
-              f_threshold = 0.2*sin(self.time)+0.5,#self.threshold, 
+              f_threshold = self.threshold, 
               f_blur = self.blur, 
               f2_mpos = self.viewControl.mPosWld )
 
