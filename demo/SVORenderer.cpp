@@ -11,6 +11,7 @@ SVORenderer::SVORenderer()
 , m_detailCoef(1.0)
 , m_ditherCoef(1.0f/2048.0f)
 , m_accumIter(0)
+, m_shadeMode(SM_SIMPLE)
 {
   cudaGetTextureReference(&m_dataTexRef, "nodes_tex");
 
@@ -106,9 +107,19 @@ void SVORenderer::Render(void * d_dstBuf)
 
   Run_InitEyeRays(make_grid2d(m_viewSize, point_2i(16, 28)), m_rayDataBuf.d_ptr(), m_noiseBuf.d_ptr());
   CUT_CHECK_ERROR("ttt");
+
+  CuTimer timer;
+  timer.start();
   Run_Trace(make_grid2d(m_viewSize, point_2i(16, 28)), m_rayDataBuf.d_ptr());
   CUT_CHECK_ERROR("ttt");
-  Run_ShadeSimple(make_grid2d(m_viewSize, point_2i(16, 16)), m_rayDataBuf.d_ptr(), (uchar4*)d_dstBuf, m_accumBuf.d_ptr());
+  float traceTime = timer.stop();
+  m_profStats.traceTime = (m_profStats.traceTime == 0) ? traceTime : (0.5f * m_profStats.traceTime  + 0.5f * traceTime);
+  
+
+  if (m_shadeMode == SM_SIMPLE)
+    Run_ShadeSimple(make_grid2d(m_viewSize, point_2i(16, 16)), m_rayDataBuf.d_ptr(), (uchar4*)d_dstBuf, m_accumBuf.d_ptr());
+  else
+    Run_ShadeCounter(make_grid2d(m_viewSize, point_2i(16, 16)), m_rayDataBuf.d_ptr(), (uchar4*)d_dstBuf);
   CUT_CHECK_ERROR("ttt");
 }
 

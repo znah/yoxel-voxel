@@ -6,18 +6,24 @@
 using std::cout;
 using std::endl;
 
+const char * SceneName = "../data/coral.vox";
+
 Demo::Demo() 
 : m_pboNeedUnreg(false)
 , m_pos(0.15224274f, 0.50049937f, 0.12925711f)
-, m_crs(300.0f)
-, m_pitch(-17.0f)
+, m_crs(290.0f)
+, m_pitch(27.0f)
 , m_mouseMoving(false)
 , m_frameCount(0)
 , m_editAction(EditNone)
 , m_lastEditTime(0)
+, m_recortStart(0)
+, m_recording(false)
+, m_playStart(0)
+, m_playing(false)
 {
   cout << "loading scene ...";
-  if (!m_svo.Load("../data/coral.vox"))
+  if (!m_svo.Load(SceneName))
     throw std::runtime_error("Can't load scene");
   cout << " OK" << endl;
   
@@ -33,7 +39,7 @@ Demo::Demo()
   m_lastFPSTime = GetTime();
 }
 
-double Demo::GetTime() { return glutGet(GLUT_ELAPSED_TIME) / 1000.0; }
+float Demo::GetTime() { return glutGet(GLUT_ELAPSED_TIME) / 1000.0f; }
 
 Demo::~Demo() 
 {
@@ -80,48 +86,53 @@ void Demo::Resize(int width, int height)
 
 void Demo::DoEdit(const point_3f & fwdDir)
 {
-  if (m_editAction == EditGrow || m_editAction == EditGrowSide)
+  for (int i = 0; i < 30; ++i)
   {
-    for (int i = 0; i < 30; ++i)
-    {
-      point_3f spread;
-      for (int i = 0; i < 3; ++i)
-        spread[i] = cg::symmetric_rand(0.5f);
-      point_3f shotDir = cg::normalized(fwdDir + spread * 0.1f);
-      Color32 col = m_editAction == EditGrowSide ? Color32(50, 182, 50, 255) : Color32(182, 182, 50, 255);
-      ShootBall(shotDir, 4, BUILD_MODE_GROW, col, m_editAction == EditGrowSide);
-    }
-  }
-  else
-  {
-    ShootBall(fwdDir, 32, BUILD_MODE_CLEAR, Color32(192, 23, 23, 255), false);
+    point_3f spread;
+    for (int i = 0; i < 3; ++i)
+      spread[i] = cg::symmetric_rand(0.5f);
+    EditData action;
+    action.shotDir = cg::normalized(fwdDir + spread * 0.1f);
+    action.shotPos = m_pos;
+    action.radius = 4;
+    if (m_editAction == EditGrow)
+      action.color = Color32(182, 182, 50, 255);
+    else if (m_editAction == EditGrowSide)
+      action.color = Color32(50, 182, 50, 255);
+    else
+      action.color = Color32(192, 23, 23, 255);
+    action.sideGrow = m_editAction == EditGrowSide;
+    action.mode = m_editAction == EditClear ? BUILD_MODE_CLEAR : BUILD_MODE_GROW;
+    ShootBall(action);
+    if (m_recording)
+      m_editLog.insert(std::make_pair(GetTime() - m_recortStart, action));
   }
 }
 
-void Demo::ShootBall(const point_3f & shotDir, int radius, BuildMode mode, Color32 color, bool sideGrow)
+void Demo::ShootBall(const EditData & action)
 {
   TraceResult res;
-  if (!m_svo.TraceRay(m_pos, shotDir, res))
+  if (!m_svo.TraceRay(action.shotPos, action.shotDir, res))
     return;
   if (res.t <= 0.0)
     return;
-  point_3f pt = m_pos + shotDir*res.t;
+  point_3f pt = action.shotPos + action.shotDir*res.t;
 
   Color16 c;
   Normal16 n;
   UnpackVoxData(res.node.data, c, n);
-  SphereSource src(radius, color, mode == BUILD_MODE_CLEAR);
+  SphereSource src(action.radius, action.color, action.mode == BUILD_MODE_CLEAR);
   const int level = 11;
   pt *= 1<<level;
-  if (sideGrow)
-    pt += shotDir * radius;
-  m_svo.BuildRange(level, pt, mode, &src);
+  if (action.sideGrow)
+    pt += action.shotDir * action.radius;
+  m_svo.BuildRange(level, pt, action.mode, &src);
 }
 
 void Demo::Idle()
 {
-  double curTime = GetTime();
-  float dt = float(curTime - m_lastTime);
+  float curTime = GetTime();
+  float dt = curTime - m_lastTime;
   m_lastTime = curTime;
   
   if (curTime - m_lastFPSTime > 0.5)
@@ -149,32 +160,30 @@ void Demo::Idle()
   lp.diffuse = make_float3(0.7f);
   lp.specular = make_float3(0.3f);
   lp.attenuationCoefs = make_float3(1, 0, 0);
-  m_renderer.SetLigth(0, lp);
+  m_renderer.SetLight(0, lp);
 
   lp.pos = make_float3(m_pos);
-  m_renderer.SetLigth(1, lp);
+  m_renderer.SetLight(1, lp);
   
   if (m_editAction != EditNone && curTime - m_lastEditTime > 0.02)
   {
     DoEdit(fwdDir);
     m_renderer.UpdateSVO();
     m_lastEditTime = curTime;
-    
-    TraceResult traceRes;
-    lp.enabled = m_svo.TraceRay(m_pos, fwdDir, traceRes);
-    lp.pos = make_float3(m_pos + fwdDir * (traceRes.t - 0.05));
-    lp.diffuse = make_float3(2, 0.5, 0.5);
-    lp.specular = make_float3(0.3f);
-    lp.attenuationCoefs = make_float3(0.5, 10, 500);
-    m_renderer.SetLigth(2, lp);
   }
-
-  if (curTime - m_lastEditTime > 0.1)
+  if (m_playing)
   {
-    lp.enabled = false;
-    m_renderer.SetLigth(2, lp);
+    float t = curTime - m_playStart;
+    bool changed = false;
+    while (!m_playLog.empty() && m_playLog.begin()->first < t)
+    {
+      ShootBall(m_playLog.begin()->second);
+      m_playLog.erase(m_playLog.begin());
+      changed = true;
+    }
+    if (changed)
+      m_renderer.UpdateSVO();
   }
-
 
   void * d_pboPtr = 0;
   cudaGLMapBufferObject(&d_pboPtr, m_pboId); 
@@ -209,9 +218,39 @@ void Demo::KeyDown(unsigned char key, int x, int y)
   if (key == '[') m_renderer.SetDither( m_renderer.GetDither()*1.1f );
   if (key == ']') m_renderer.SetDither( m_renderer.GetDither()*0.9f );
 
-  if (key == '1') m_editAction = EditGrow;
-  if (key == '2') m_editAction = EditGrowSide;
-  if (key == '3') m_editAction = EditClear;
+  if (key == '1') m_editAction = EditGrowSide;
+  if (key == '2') m_editAction = EditClear;
+  if (key == '3') m_editAction = EditGrow;
+
+  if (key == 'i')
+  {
+    int mode = m_renderer.GetShadeMode();
+    mode = mode + 1 % SVORenderer::SM_MAX;
+    m_renderer.SetShadeMode(mode);
+  }
+
+  if (key == 'z')
+  {
+    m_recording = !m_recording;
+    if (m_recording)
+    {
+      m_recortStart = GetTime();
+    }
+    else
+    {
+      SaveLog();
+    }
+  }
+
+  if (key == 'x') 
+  {
+    m_playing = !m_playing;
+    if (m_playing)
+    {
+      LoadLog();
+      m_playStart = GetTime();
+    }
+  }
 }
 
 void Demo::KeyUp(unsigned char key, int x, int y)
@@ -275,7 +314,46 @@ void Demo::Display()
   glTexCoord2f(1, 1); glVertex2f(1, 1);
   glTexCoord2f(0, 1); glVertex2f(0, 1);
   glEnd();
+  glDisable(GL_TEXTURE_2D);
+
+  glColor4f(0, 1, 0, 1);
+  std::string info = format("trace time: {0}\n") % m_renderer.GetProfile().traceTime;
+  if (m_recording)
+    info += "REC ";
+  if (m_playing)
+    info += "PLAY ";
+  glWindowPos2i(20, m_viewSize.y - 20); 
+  glutBitmapString(GLUT_BITMAP_9_BY_15, (const unsigned char*)info.c_str());
 
   glutSwapBuffers();
+}
+
+template<class Stream>
+inline int GetStreamSize(Stream & ss)
+{
+  int curPos = ss.tellg();
+  ss.seekg(0, std::ios::end);
+  int size = ss.tellg();
+  ss.seekg(curPos, std::ios::beg);
+  return size;
+}
+
+void Demo::SaveLog()
+{
+  std::vector<LogItem> log(m_editLog.begin(), m_editLog.end());
+  std::ofstream file("log.dat", std::ios::binary);
+  file.write((char*)&log[0], sizeof(LogItem)*log.size());
+}
+
+void Demo::LoadLog()
+{
+  std::vector<LogItem> log;
+  std::ifstream file("log.dat", std::ios::binary);
+  if (file.is_open())
+  {
+    log.resize(GetStreamSize(file) / sizeof(LogItem));
+    file.read((char*)&log[0], sizeof(LogItem)*log.size());
+  }
+  m_playLog = EditLog(log.begin(), log.end());
 }
 
