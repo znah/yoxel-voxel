@@ -5,9 +5,21 @@
 #include "cu_cpp.h"
 #include "trace_cu.h"
 
+struct ProfileStats
+{
+  float traceTime;
+  ProfileStats() : traceTime(0) {}
+};
+
 class SVORenderer
 {
 public:
+  enum ShadeMode { 
+    SM_SIMPLE = 0, 
+    SM_COUNTER, 
+    SM_MAX };
+
+
   SVORenderer();
   ~SVORenderer();
 
@@ -28,12 +40,17 @@ public:
   void SetDither(float coef) { CheckSet(m_ditherCoef, coef); }
   float GetDither() const { return m_ditherCoef; }
 
-  void SetLigth(int i, const LightParams & lp) { m_lights[i] = lp; }
+  void SetLight(int i, const LightParams & lp) { m_lights[i] = lp; }
+
+  void SetShadeMode(int mode) { CheckSet(m_shadeMode, mode); }
+  int GetShadeMode() const { return m_shadeMode; }
 
   void Render(void * d_dstBuf);
   void UpdateSVO();
 
   void ResetAccum();
+
+  const ProfileStats & GetProfile() const { return m_profStats; }
 
 private:
   template <class T>
@@ -51,7 +68,9 @@ private:
   point_3f m_up;
   point_2i m_viewSize;
   float m_fov;
+  
   float m_ditherCoef;
+  int m_shadeMode;
 
   LightParams m_lights[MaxLightsNum];
 
@@ -64,4 +83,6 @@ private:
   const textureReference * m_dataTexRef;
 
   int m_accumIter;
+
+  ProfileStats m_profStats;
 };

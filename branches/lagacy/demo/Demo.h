@@ -3,6 +3,8 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 
+#include <map>
+
 #include "DynamicSVO.h"
 #include "SVORenderer.h"
 #include "builders.h"
@@ -39,15 +41,37 @@ private:
   point_3f CalcViewDir();
   point_3f m_motionVel;
 
-  double GetTime();
+  float GetTime();
 
-  double m_lastTime;
-  double m_lastFPSTime;
+  float m_lastTime;
+  float m_lastFPSTime;
   int m_frameCount;
 
   enum EditAction { EditNone, EditGrow, EditClear, EditGrowSide };
   EditAction m_editAction;
-  double m_lastEditTime;
+  float m_lastEditTime;
   void DoEdit(const point_3f & fwdDir);
-  void ShootBall(const point_3f & shotDir, int radius, BuildMode mode, Color32 color, bool sideGrow);
+
+  struct EditData
+  {
+    point_3f shotPos;
+    point_3f shotDir;
+    int radius;
+    BuildMode mode;
+    Color32 color;
+    bool sideGrow;
+  };
+  typedef std::pair<float, EditData> LogItem;
+  void SaveLog();
+  void LoadLog();
+
+  void ShootBall(const EditData & action);
+  typedef std::multimap<float, EditData> EditLog;
+  EditLog m_editLog;
+  EditLog m_playLog;
+  float m_recortStart;
+  bool m_recording;
+
+  float m_playStart;
+  bool m_playing;
 };
