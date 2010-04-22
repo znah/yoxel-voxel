@@ -1,22 +1,24 @@
 % !TEX TS-program = pdflatex
 % !TEX encoding = UTF-8 Unicode
 
-\documentclass[hyperref={pdfencoding=unicode}]{beamer}
+\documentclass[14pt,hyperref={pdfencoding=unicode}, professionalfonts]{beamer}
 
 \usepackage[english, russian]{babel}
 \usepackage[utf8]{inputenc}
 % \usepackage[T1]{fontenc}
-\usepackage{color}
+\usepackage{xcolor}
 \usepackage{textcomp}
 
 %\usepackage{times}
 %\usepackage{fourier}
 %\usepackage[T2A]{fontenc}
+\usepackage{multimedia}
+
 
 %\usepackage{beamerthemesplit}
 \mode<presentation>
 {
-  %\usetheme{Warsaw}
+ % \usetheme{Singapore}
    %\setbeamercovered{transparent}
   \setbeamertemplate{footline}[frame number]
   \setbeamertemplate{navigation symbols}{}
@@ -27,7 +29,7 @@
 \usepackage{graphicx}
 \graphicspath{{img/}}
 \usepackage{floatflt}
-
+\usepackage{wrapfig} 
 
 \title[CUDA voxel graphics]{Визуализация объемных структур с динамической границей с использованием технологии СUDA}
 \author{Мордвинцев~А.~С.  }
