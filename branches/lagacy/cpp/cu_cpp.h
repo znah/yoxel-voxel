@@ -117,3 +117,32 @@ inline GridShape make_grid2d(const point_2i & size, const point_2i & block)
   shape.grid = dim3(iDivUp(size.x, block.x), iDivUp(size.y, block.y), 1);
   return shape;
 }
+
+class CuTimer
+{
+public:
+  CuTimer()
+  {
+    CUDA_SAFE_CALL( cudaEventCreate(&m_start) );
+    CUDA_SAFE_CALL( cudaEventCreate(&m_stop)  );
+  }
+  ~CuTimer()
+  {
+    CUDA_SAFE_CALL( cudaEventDestroy(m_start) );
+    CUDA_SAFE_CALL( cudaEventDestroy(m_stop) );
+  }
+
+  void start() { cudaEventRecord(m_start, 0); }
+  float stop() 
+  { 
+    cudaEventRecord(m_stop, 0);
+    cudaEventSynchronize(m_stop);
+    float gpu_time = 0;
+    cudaEventElapsedTime(&gpu_time, m_start, m_stop);
+    return gpu_time;
+  }
+
+private:
+  cudaEvent_t m_start, m_stop;
+};
+

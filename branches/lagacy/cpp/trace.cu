@@ -120,11 +120,13 @@ __global__ void Trace(RayData * rays)
   int childId = 0;
   int level = 0;
   float nodeSize = pow(0.5f, level);
+  int count = 0;
 
   enum States { ST_EXIT, ST_ANALYSE, ST_SAVE, ST_GOUP, ST_GODOWN, ST_GONEXT };
   int state = ST_ANALYSE;
   while (state != ST_EXIT)
   {
+    ++count;
     switch (state)
     {
       case ST_ANALYSE:
@@ -141,10 +143,15 @@ __global__ void Trace(RayData * rays)
       {
         if (minCoord(t2) < 0) { state = ST_GONEXT; break; }
 
-        if (GetLeafFlag(GetNodeInfo(nodePtr), childId^dirFlags)) { state = ST_SAVE; break; }
+        VoxNodeInfo nodeInfo = GetNodeInfo(nodePtr);
+        int realChildId = childId^dirFlags;
+        if (GetLeafFlag(nodeInfo, realChildId)) { state = ST_SAVE; break; }
         
-        VoxNodeId ch = GetChild(nodePtr, childId^dirFlags);
-        if (IsNull(ch)) {state = ST_GONEXT; break; }
+        // no performance gain for some reason
+        // if (GetNullFlag(nodeInfo, realChildId)) { state = ST_GONEXT; break; } 
+        
+        VoxNodeId ch = GetChild(nodePtr, realChildId);
+        if (IsNull(ch)) { state = ST_GONEXT; break; }
         nodePtr = GetNodePtr(ch);
         ++level;
         nodeSize /= 2;
@@ -193,6 +200,7 @@ __global__ void Trace(RayData * rays)
       }
     }
   }
+  rays[tid].perfCount = count;
 }
 
 __device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
@@ -220,9 +228,19 @@ __device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
   return accum;
 }
 
+__global__ void ShadeCounter(const RayData * eyeRays, uchar4 * img)
+{
+  INIT_THREAD;
+
+  int count = eyeRays[tid].perfCount;
+  count = min(count, 255);
+  img[tid] = make_uchar4(count, count, count, 255);
+  return;
+}
+
 __global__ void ShadeSimple(const RayData * eyeRays, uchar4 * img, ushort4 * accum)
 {
-  INIT_THREAD
+  INIT_THREAD;
 
   VoxNodeId node = eyeRays[tid].endNode;
   
@@ -288,5 +306,11 @@ void Run_ShadeSimple(GridShape grid, const RayData * eyeRays, uchar4 * img, usho
 {
   ShadeSimple<<<grid.grid, grid.block>>>(eyeRays, img, accum);
 }
+
+void Run_ShadeCounter(GridShape grid, const RayData * eyeRays, uchar4 * img)
+{
+  ShadeCounter<<<grid.grid, grid.block>>>(eyeRays, img);
+}
+
 
 }

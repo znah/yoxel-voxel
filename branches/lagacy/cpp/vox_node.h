@@ -5,7 +5,10 @@
 
 typedef uint VoxData; // color - 16bit, normal - 16bit
 typedef uint VoxChild; // VoxData or VoxNodeId
-typedef uint VoxNodeInfo; // 8 - leafFlags, 3 - selfChildId, 1 - emptyFlag
+typedef uint VoxNodeInfo; //  0 .. 7   - leafFlags, 
+                          //  8 .. 15  - nullFlags, 
+                          // 16 .. 18 - selfChildId,  
+                          // 19     - emptyFlag
 typedef uint VoxNodeId;
 
 #pragma pack(push, 4)  
@@ -33,16 +36,23 @@ inline GLOBAL_FUNC void SetLeafFlag(VoxNodeInfo & ni, int i, bool v)
   uint mask = 1<<i;
   ni = v ? (ni | mask) : (ni & ~mask);
 }
-inline GLOBAL_FUNC int  GetSelfChildId(VoxNodeInfo ni) { return (ni>>8) & 7; }
+inline GLOBAL_FUNC bool GetNullFlag(VoxNodeInfo ni, int i) { return (ni & (1<<(i+8))) != 0; }
+inline GLOBAL_FUNC uchar GetNullFlags(VoxNodeInfo ni) { return (ni>>8) & 0xff; }
+inline GLOBAL_FUNC void SetNullFlag(VoxNodeInfo & ni, int i, bool v) 
+{ 
+  uint mask = 1<<(i+8);
+  ni = v ? (ni | mask) : (ni & ~mask);
+}
+inline GLOBAL_FUNC int  GetSelfChildId(VoxNodeInfo ni) { return (ni>>16) & 7; }
 inline GLOBAL_FUNC void SetSelfChildId(VoxNodeInfo & ni, int v) 
 { 
-  ni &= ~(7<<8);
-  ni |= v<<8;
+  ni &= ~(7<<16);
+  ni |= v<<16;
 }
-inline GLOBAL_FUNC bool GetEmptyFlag(VoxNodeInfo ni) { return (ni & (1<<11)) != 0; }
+inline GLOBAL_FUNC bool GetEmptyFlag(VoxNodeInfo ni) { return (ni & (1<<19)) != 0; }
 inline GLOBAL_FUNC void SetEmptyFlag(VoxNodeInfo & ni, bool v) 
 { 
-  uint mask = 1<<11;
+  uint mask = 1<<19;
   ni = v ? (ni | mask) : (ni & ~mask);
 }
 

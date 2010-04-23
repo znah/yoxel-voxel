@@ -6,7 +6,7 @@
 using std::cout;
 using std::endl;
 
-const char * SceneName = "../data/coral.vox";
+const char * SceneName = "../data/coral2.vox";
 
 Demo::Demo() 
 : m_pboNeedUnreg(false)
@@ -86,7 +86,7 @@ void Demo::Resize(int width, int height)
 
 void Demo::DoEdit(const point_3f & fwdDir)
 {
-  for (int i = 0; i < 30; ++i)
+  for (int i = 0; i < 100; ++i)
   {
     point_3f spread;
     for (int i = 0; i < 3; ++i)
@@ -100,7 +100,7 @@ void Demo::DoEdit(const point_3f & fwdDir)
     else if (m_editAction == EditGrowSide)
       action.color = Color32(50, 182, 50, 255);
     else
-      action.color = Color32(192, 23, 23, 255);
+      action.color = Color32(182, 182, 50, 255);
     action.sideGrow = m_editAction == EditGrowSide;
     action.mode = m_editAction == EditClear ? BUILD_MODE_CLEAR : BUILD_MODE_GROW;
     ShootBall(action);
@@ -225,7 +225,7 @@ void Demo::KeyDown(unsigned char key, int x, int y)
   if (key == 'i')
   {
     int mode = m_renderer.GetShadeMode();
-    mode = mode + 1 % SVORenderer::SM_MAX;
+    mode = (mode + 1) % SVORenderer::SM_MAX;
     m_renderer.SetShadeMode(mode);
   }
 
