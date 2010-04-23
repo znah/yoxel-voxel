@@ -50,6 +50,7 @@ struct RayData
   VoxNodeId endNode;
   int endNodeChild;
   float endNodeSize;
+  int perfCount;
 };
 
 
@@ -60,6 +61,7 @@ extern "C" {
 void Run_InitEyeRays(GridShape grid, RayData * rays, float * noiseBuf);
 void Run_Trace(GridShape grid, RayData * rays);
 void Run_ShadeSimple(GridShape grid, const RayData * eyeRays, uchar4 * img, ushort4 * accum);
+void Run_ShadeCounter(GridShape grid, const RayData * eyeRays, uchar4 * img);
 
 #ifdef __cplusplus
 }

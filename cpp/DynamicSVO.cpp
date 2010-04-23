@@ -31,7 +31,7 @@ VoxNodeId DynamicSVO::CreateNode()
 {
   VoxNodeId nodeId = m_nodes.insert();
   VoxNode & node = m_nodes[nodeId];
-  node.flags= 0;
+  node.flags = 0xff00;
   SetEmptyFlag(node.flags, true);
 
   node.parent = EmptyNode;
@@ -143,6 +143,7 @@ struct DynamicSVO::TreeBuilder
       if (!IsNull(node.child[i]))
         return false;
     return true;
+    //return GetNullFlags(node.flags) == 0xff;
   }
   
   void BuildRange(int level, const point_3i & p, VoxChild & dstChild, bool & dstLeafFlag)
@@ -192,7 +193,7 @@ struct DynamicSVO::TreeBuilder
       return;
 
     VoxNode node;
-    node.flags = 0;
+    node.flags = 0x0;
     node.parent = -1;
     for (walk_3 octant(2, 2, 2); !octant.done(); ++octant)
     {
@@ -201,6 +202,7 @@ struct DynamicSVO::TreeBuilder
       child = dstLeafFlag ? FullNode : dstChild;
       BuildRange(level+1, 2*p+octant.p, child, leafFlag);
       SetLeafFlag(node.flags, octant.flat(), leafFlag);
+      SetNullFlag(node.flags, octant.flat(), !leafFlag && IsNull(child));
     }
 
     if (IsEmptyNode(node))
@@ -260,7 +262,10 @@ struct DynamicSVO::TreeBuilder
       {
         childRef = UpdateRange(level+1, p*2+octant.p, childRef);
         if (IsNull(childRef))
+        {
+          SetNullFlag(node.flags, octant.flat(), true);
           changed = true;
+        }
         continue;
       }
 
@@ -273,6 +278,7 @@ struct DynamicSVO::TreeBuilder
       leafFlag = newLeafFlag;
 
       SetLeafFlag(node.flags, octant.flat(), leafFlag);
+      SetNullFlag(node.flags, octant.flat(), !leafFlag && IsNull(childRef));
       if (!leafFlag)
         SetNodeParent(childRef, nodeId, octant.flat());
 

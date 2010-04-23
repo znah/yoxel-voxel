@@ -2,6 +2,7 @@ from numpy import *
 from ore.ore import *
 import gc
 
+'''
 bld = DynamicSVO()
 
 for z, y, x in ndindex(2, 2, 2):
@@ -14,4 +15,13 @@ for z, y, x in ndindex(2, 2, 2):
     print fn
 
 bld.Save("data/coral.vox")
+'''
 
+bld2 = DynamicSVO()
+
+data = load('a_256.npy')
+src = MakeIsoSource(point_3i(256, 256, 256), data)
+src.SetIsoLevel(64)
+bld2.BuildRange(11, point_3i(0, 0, 0), BuildMode.GROW, src)
+
+bld2.Save("data/coral2.vox")

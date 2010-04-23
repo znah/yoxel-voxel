@@ -1,4 +1,4 @@
-call "%VS71COMNTOOLS%\vsvars32.bat"
+call "%VS90COMNTOOLS%\vsvars32.bat"
 
 del /q ..\_ptx\*.*
 cd ..\_ptx
