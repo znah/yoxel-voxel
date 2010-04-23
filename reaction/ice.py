@@ -12,10 +12,12 @@ class App(ZglAppWX):
           float2 dp = p - f2_mpos;
           float d = length(dp);
 
-          float v = tex2D(s_texture, lerp(p, f2_mpos, saturate(0.5-d))) + sin(saturate(0.2 - d*0.5)*100)*0.1; 
-          return saturate( (v - f_threshold) / f_blur);
+          float trsh = f_threshold;// + 0.02 * sin((p.x + 0.5*p.y)*10.0 + f_time*3);
+
+          float v = tex2D(s_texture, p); 
+          return saturate( (v - trsh) / f_blur);
         ''')
-        fragProg.s_texture = loadTex('data/highmap.jpg')
+        fragProg.s_texture = loadTex('data/highmap2.jpg')
 
     
         def display():
@@ -23,7 +25,8 @@ class App(ZglAppWX):
             fragProg( 
               f_threshold = self.threshold, 
               f_blur = self.blur, 
-              f2_mpos = self.viewControl.mPosWld )
+              f2_mpos = self.viewControl.mPosWld, 
+              f_time = self.time)
 
             with ctx(self.viewControl.with_vp, fragProg):
                 drawQuad(rect = self.viewControl.rect)
