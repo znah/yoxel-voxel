@@ -904,14 +904,15 @@ def loadTex(fn):
 
 _ObejctPool = {}
 
-def drawGrid(w, h = None):
+def drawGrid(w, h = None, normalized = True):
     if h is None:
         h = w
     objName = "drawGrid_%dx%d" % (w, h)
     if objName not in _ObejctPool:
         verts = zeros((h, w, 2), float32)
         verts[...,1], verts[...,0] = indices((h, w))
-        verts /= (w, h)
+        if normalized:
+            verts /= (w, h)
     
         idxgrid = arange(h*w).reshape(h, w)
         idxs= zeros((h-1, w-1, 4), uint32)
@@ -1074,6 +1075,8 @@ def genericFP(inline_code, profile = 'fp40'):
     code = '''
       %s
 
+      const float pi = 3.14159265359f;
+
       float4 main( 
         float4 tc0: TEXCOORD0,
         float4 tc1: TEXCOORD1) : COLOR 
@@ -1081,7 +1084,6 @@ def genericFP(inline_code, profile = 'fp40'):
         %s; 
       }
     ''' % (uniforms, inline_code)
-    print code
     return CGShader(profile, code)
 
 TestShaders = '''

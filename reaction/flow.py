@@ -107,7 +107,7 @@ class App(ZglAppWX):
 
         texlookupFP = genericFP('''
           #line 104
-          float4 data = tex2D(texture, tc0.xy);
+          float4 data = tex2D(s_texture, tc0.xy);
           float v = data.r;
           float speed = data.g;
 
@@ -120,7 +120,7 @@ class App(ZglAppWX):
         def display():
             updateFlow()
             updateFlowVis()
-            with ctx(self.viewControl.vp, ortho, texlookupFP( texture = visBuf.src.tex )):
+            with ctx(self.viewControl.vp, ortho, texlookupFP( s_texture = visBuf.src.tex )):
                 drawQuad()
 
         self.display = display
