@@ -1,0 +1,51 @@
+% !TEX TS-program = pdflatex
+% !TEX encoding = UTF-8 Unicode
+
+\documentclass[14pt,hyperref={pdfencoding=unicode}, professionalfonts]{beamer}
+
+\usepackage[english, russian]{babel}
+\usepackage[utf8]{inputenc}
+% \usepackage[T1]{fontenc}
+\usepackage{xcolor}
+\usepackage{textcomp}
+
+%\usepackage{times}
+%\usepackage{fourier}
+%\usepackage[T2A]{fontenc}
+\usepackage{multimedia}
+
+
+%\usepackage{beamerthemesplit}
+\mode<presentation>
+{
+ % \usetheme{Singapore}
+   %\setbeamercovered{transparent}
+  \setbeamertemplate{footline}[frame number]
+  \setbeamertemplate{navigation symbols}{}
+}
+
+
+% Рисунки
+\usepackage{graphicx}
+\graphicspath{{img/}}
+\usepackage{floatflt}
+\usepackage{wrapfig} 
+
+\title[CUDA voxel graphics]{Визуализация объемных структур с динамической границей с использованием технологии СUDA}
+\author{Мордвинцев~А.~С.  }
+\institute[СПб ГУ ИТМО] % (optional, but mostly needed)
+{
+  Кафедра КТ\\
+  СПб ГУ ИТМО
+}
+\date{\today}
+%\date{23.04.2010 / Школа HPC}
+
+\begin{document}
+
+\frame{\titlepage}
+
+%% Include wiki2beamer output:
+\input _slides.tex
+
+\end{document}
