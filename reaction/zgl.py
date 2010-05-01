@@ -1005,7 +1005,7 @@ class profile:
             return
         global _profileCurNodeName
         dt = (clock() - self.startTime) * 1000.0
-        node_data = _profileNodes.get( self.fullName, dict(ncalls=0, total = 0.0, max = 0.0, avg = 0.0) )
+        node_data = _profileNodes.get( self.fullName, dict(ncalls=1, total = dt, max = dt, avg = dt) )
         node_data['ncalls'] += 1
         node_data['total']  += dt
         node_data['max']    = max(dt, node_data['max'])
