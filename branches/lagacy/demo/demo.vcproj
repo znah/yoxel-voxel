@@ -265,6 +265,10 @@
 				RelativePath="..\cpp\trace_cu.h"
 				>
 			</File>
+			<File
+				RelativePath="..\cpp\trace_utils.h"
+				>
+			</File>
 		</Filter>
 	</Files>
 	<Globals>

@@ -6,12 +6,12 @@
 using std::cout;
 using std::endl;
 
-const char * SceneName = "../data/coral2.vox";
+const char * SceneName = "../data/coral.vox";
 
 Demo::Demo() 
 : m_pboNeedUnreg(false)
-, m_pos(0.15224274f, 0.50049937f, 0.12925711f)
-, m_crs(290.0f)
+, m_pos(-0.012421815f, 0.50748748f, 0.25519851f)
+, m_crs(0.0f)
 , m_pitch(27.0f)
 , m_mouseMoving(false)
 , m_frameCount(0)
