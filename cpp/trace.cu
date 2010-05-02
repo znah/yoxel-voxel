@@ -121,8 +121,84 @@ __global__ void Trace(RayData * rays)
   int level = 0;
   float nodeSize = pow(0.5f, level);
   int count = 0;
+  int3 pos = make_int3(0, 0, 0);
 
-  enum States { ST_EXIT, ST_ANALYSE, ST_SAVE, ST_GOUP, ST_GODOWN, ST_GONEXT };
+  childId = FindFirstChild(t1, t2);
+  VoxNodeInfo nodeInfo = GetNodeInfo(nodePtr);
+
+  enum Action { ACT_UNKNOWN, ACT_SAVE, ACT_DOWN, ACT_NEXT };
+  bool done = false;
+  while (!done)
+  {
+    //bool lodLimit = maxCoord(t1) * rp.detailCoef > nodeSize/2;
+    //bool emptyNode = GetEmptyFlag(nodeInfo);
+    int realChildId = childId^dirFlags;
+    VoxNodeId ch = GetChild(nodePtr, realChildId);
+    bool hitLeaf = GetLeafFlag(nodeInfo, realChildId);
+
+    int action = ACT_UNKNOWN;
+    /*if (lodLimit && emptyNode)
+      action = ACT_NEXT;
+    if (action == ACT_UNKNOWN && lodLimit && !emptyNode)
+    {
+      realChildId = -1;
+      action = ACT_SAVE;
+    }*/
+    if (action == ACT_UNKNOWN && hitLeaf)
+      action = ACT_SAVE;
+
+    if (action == ACT_UNKNOWN && IsNull(ch))
+      action = ACT_NEXT;
+    if (action == ACT_UNKNOWN)
+      action = ACT_DOWN;
+
+    if (action == ACT_SAVE)
+    {
+      rays[tid].endNode = Ptr2Id(nodePtr);
+      rays[tid].endNodeChild = realChildId;
+      rays[tid].t = maxCoord(t1);
+      rays[tid].endNodeSize = nodeSize;
+      break;
+    }
+
+    if (action == ACT_DOWN)
+    {
+      nodePtr = GetNodePtr(ch);
+      ++level;
+      nodeSize /= 2;
+      childId = FindFirstChild(t1, t2);
+      nodeInfo = GetNodeInfo(nodePtr);
+      continue;
+    }
+
+    
+    // GO NEXT
+    while (!GoNext(childId, t1, t2, pos))
+    {
+      // GO UP
+      VoxNodeId p = GetParent(nodePtr);
+      if (IsNull(p)) 
+      { 
+        rays[tid].endNode = EmptyNode;
+        done = true;
+        break; 
+      }
+      for (int i = 0; i < 3; ++i)
+      {
+        int mask = 1<<i;
+        float dt = t2[i] - t1[i];
+        ((childId & mask) == 0) ? t2[i] += dt : t1[i] -= dt;
+      }
+      childId = GetSelfChildId(GetNodeInfo(nodePtr))^dirFlags;
+      nodePtr = GetNodePtr(p);
+      nodeInfo = GetNodeInfo(nodePtr);
+      --level;
+      nodeSize *= 2;
+    }
+  }
+
+
+  /*enum States { ST_EXIT, ST_ANALYSE, ST_SAVE, ST_GOUP, ST_GODOWN, ST_GONEXT };
   int state = ST_ANALYSE;
   while (state != ST_EXIT)
   {
@@ -155,13 +231,14 @@ __global__ void Trace(RayData * rays)
         nodePtr = GetNodePtr(ch);
         ++level;
         nodeSize /= 2;
+
         state = ST_ANALYSE;
         break;
       }
       
       case ST_GONEXT:
       {
-        state = GoNext(childId, t1, t2) ? ST_GODOWN : ST_GOUP;
+        state = GoNext(childId, t1, t2, pos) ? ST_GODOWN : ST_GOUP;
         break;
       }
 
@@ -199,7 +276,7 @@ __global__ void Trace(RayData * rays)
         break;
       }
     }
-  }
+  }*/
   rays[tid].perfCount = count;
 }
 
