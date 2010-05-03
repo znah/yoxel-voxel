@@ -16,6 +16,26 @@
 __constant__ VoxStructTree tree;
 __constant__ RenderParams rp;
 
+__constant__ int c_popc8LUT[256] =
+{
+    0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+    4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
+};
+
 texture<uint, 1, cudaReadModeElementType> nodes_tex;
 
 
@@ -119,28 +139,43 @@ __device__ float minv(float3 p)
   return fminf( fminf(p.x, p.y), p.z );
 }
 
-/*inline __device__ float3 operator+(const float3 & p, float a)
-{
-  return p + make_float3(a);
-}*/
 __device__ int3 operator+(const int3 & p, int a)
 {
   return p + make_int3(a);
 }
 
-__device__ int FindFirstChild2(float t_enter, float3 t_coef, float3 t_bias, int3 & pos, float nodeSize)
+
+__device__ int popc8(uint mask)
+{
+    return c_popc8LUT[mask];
+}
+
+__device__ int popc16(uint mask)
+{
+    return c_popc8LUT[mask & 0xffu] + c_popc8LUT[mask >> 8];
+}
+
+__device__ int popc32(uint mask)
+{
+    int result = c_popc8LUT[mask & 0xffu];
+    result += c_popc8LUT[(mask >> 8) & 0xffu];
+    result += c_popc8LUT[(mask >> 16) & 0xffu];
+    result += c_popc8LUT[mask >> 24];
+    return result;
+}
+
+
+__device__ void FindFirstChild2(float t_enter, float3 t_coef, float3 t_bias, int3 & pos, float nodeSize)
 {
   float3 corner = make_float3(pos) + 0.5;
   corner *= nodeSize;
   float3 t_center = corner * t_coef + t_bias;
-  int ch = 0;
   pos.x <<= 1;
   pos.y <<= 1;
   pos.z <<= 1;
-  if (t_center.x < t_enter) ch |= 1, ++pos.x;
-  if (t_center.y < t_enter) ch |= 2, ++pos.y;
-  if (t_center.z < t_enter) ch |= 4, ++pos.z;
-  return ch;
+  if (t_center.x < t_enter) ++pos.x;
+  if (t_center.y < t_enter) ++pos.y;
+  if (t_center.z < t_enter) ++pos.z;
 }
 
 __global__ void Trace(RayData * rays)
@@ -154,19 +189,22 @@ __global__ void Trace(RayData * rays)
   ray.endNode = EmptyNode;
   ray.perfCount = 0;
 
-  point_3f dir = ray.dir;
-
   float3 t_coef, t_bias;
-  t_coef.x = 1.0f / fabs(dir.x);
-  t_coef.y = 1.0f / fabs(dir.y);
-  t_coef.z = 1.0f / fabs(dir.z);
-  t_bias.x = -t_coef.x * ray.pos.x;
-  t_bias.y = -t_coef.y * ray.pos.y;
-  t_bias.z = -t_coef.z * ray.pos.z;
   uint octant_mask = 0;
-  if (dir.x < 0.0f) octant_mask |= 1, t_bias.x = -t_coef.x - t_bias.x;
-  if (dir.y < 0.0f) octant_mask |= 2, t_bias.y = -t_coef.y - t_bias.y;
-  if (dir.z < 0.0f) octant_mask |= 4, t_bias.z = -t_coef.z - t_bias.z;
+
+  {
+    float3 dir = ray.dir;
+    t_coef.x = 1.0f / fabs(dir.x);
+    t_coef.y = 1.0f / fabs(dir.y);
+    t_coef.z = 1.0f / fabs(dir.z);
+    t_bias.x = -t_coef.x * ray.pos.x;
+    t_bias.y = -t_coef.y * ray.pos.y;
+    t_bias.z = -t_coef.z * ray.pos.z;
+    
+    if (dir.x < 0.0f) octant_mask |= 1, t_bias.x = -t_coef.x - t_bias.x;
+    if (dir.y < 0.0f) octant_mask |= 2, t_bias.y = -t_coef.y - t_bias.y;
+    if (dir.z < 0.0f) octant_mask |= 4, t_bias.z = -t_coef.z - t_bias.z;
+  }
 
   float t_enter = maxv(t_bias);
   float t_exit  = minv(t_coef + t_bias);
@@ -175,10 +213,12 @@ __global__ void Trace(RayData * rays)
 
   NodePtr nodePtr = GetNodePtr(tree.root);
   VoxNodeInfo nodeInfo = GetNodeInfo(nodePtr);
-  int childId = 0;
   int3 pos = make_int3(0);
-  childId = FindFirstChild2(t_enter, t_coef, t_bias, pos, 1.0f);
+  FindFirstChild2(t_enter, t_coef, t_bias, pos, 1.0f);
   float nodeSize = 0.5f;
+
+  int level = 0;
+  NodePtr stack[20];
 
   enum Action { ACT_UNKNOWN, ACT_SAVE, ACT_DOWN, ACT_NEXT };
   enum Condition {
@@ -188,14 +228,14 @@ __global__ void Trace(RayData * rays)
   };
   while (true)
   {
-    float3 dt = nodeSize * t_coef;
-    float3 t = make_float3(pos) * dt + t_bias;
-    t_enter = maxv(t);
-    t += dt;
-    t_exit  = minv(t);
-    int exitPlane = argmin(t);
+    int exitMask = 1;
+    t_exit = (pos.x+1) * nodeSize * t_coef.x + t_bias.x;
+    float t = (pos.y+1) * nodeSize * t_coef.y + t_bias.y;
+    if (t < t_exit) t_exit = t, exitMask = 2;
+    t = (pos.z+1) * nodeSize * t_coef.z + t_bias.z;
+    if (t < t_exit) t_exit = t, exitMask = 4;
 
-    int realChildId = childId^octant_mask;
+    int realChildId = pos2ch(pos)^octant_mask;
     uint cond = 0;
     if (GetNullFlag(nodeInfo, realChildId))
       cond |= CND_HIT_EMPTY;
@@ -223,37 +263,36 @@ __global__ void Trace(RayData * rays)
 
     if (action == ACT_DOWN)
     {
+      stack[level++] = nodePtr;
       VoxNodeId ch = GetChild(nodePtr, realChildId);
       nodePtr = GetNodePtr(ch);
-      childId = FindFirstChild2(t_enter, t_coef, t_bias, pos, nodeSize);
+      FindFirstChild2(t_enter, t_coef, t_bias, pos, nodeSize);
       nodeSize *= 0.5f;
       nodeInfo = GetNodeInfo(nodePtr);
       continue;
     }
 
     // GO NEXT
-    uint exitMask = 1 << exitPlane;
-    while (childId & exitMask)
+    int i;  
+    if (exitMask == 1) {i = pos.x; ++pos.x;}
+    if (exitMask == 2) {i = pos.y; ++pos.y;}
+    if (exitMask == 4) {i = pos.z; ++pos.z;}
+    i = (i^(i+1))>>1;
+
+    int upcount = popc32(i);
+    if (level < upcount)
+      return;
+    level -= upcount;
+    if (upcount > 0)
     {
-      // GO UP
-      VoxNodeId p = GetParent(nodePtr);
-      
-      if (IsNull(p))
-      {
-        return;
-      }
-      pos.x >>= 1;
-      pos.y >>= 1;
-      pos.z >>= 1;
-      childId = pos2ch(pos);
-      nodeSize *= 2.0f;
-      nodePtr = GetNodePtr(p);
+      nodePtr = stack[level];
       nodeInfo = GetNodeInfo(nodePtr);
     }
-    childId |= exitMask;
-    if (exitMask == 1) ++pos.x;
-    if (exitMask == 2) ++pos.y;
-    if (exitMask == 4) ++pos.z;
+    pos.x >>= upcount;
+    pos.y >>= upcount;
+    pos.z >>= upcount;
+    nodeSize *= 1<<upcount;
+    t_enter = t_exit;
   }
 
 
