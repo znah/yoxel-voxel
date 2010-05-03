@@ -3,7 +3,13 @@
 inline GLOBAL_FUNC float maxCoord(const point_3f & p) { return max(p.x, max(p.y, p.z)); }
 inline GLOBAL_FUNC float minCoord(const point_3f & p) { return min(p.x, min(p.y, p.z)); }
 
-
+inline GLOBAL_FUNC  int argmin(point_3f & p)
+{
+  if (p.x > p.y)
+    return (p.y < p.z) ? 1 : 2;
+  else
+    return (p.x < p.z) ? 0 : 2;
+}
 
 inline GLOBAL_FUNC void AdjustDir(point_3f & dir)
 {
@@ -51,7 +57,7 @@ inline GLOBAL_FUNC int FindFirstChild(point_3f & t1, point_3f & t2)
 }
 
 template<int ExitPlane>
-inline GLOBAL_FUNC bool GoNextTempl(int & childId, point_3f & t1, point_3f & t2, int3 & pos)
+inline GLOBAL_FUNC bool GoNextTempl(int & childId, point_3f & t1, point_3f & t2)
 {
   int mask = 1<<ExitPlane;
   if ((childId & mask) != 0)
@@ -63,21 +69,15 @@ inline GLOBAL_FUNC bool GoNextTempl(int & childId, point_3f & t1, point_3f & t2,
   t1[ExitPlane] = t2[ExitPlane];
   t2[ExitPlane] += dt;
   
-  if (ExitPlane == 0)
-    ++pos.x;
-  else if (ExitPlane == 1)
-    ++pos.y;
-  else
-    ++pos.z;
-
   return true;
 }
 
-inline GLOBAL_FUNC  bool GoNext(int & childId, point_3f & t1, point_3f & t2, int3 & pos)
+inline GLOBAL_FUNC  bool GoNext(int & childId, point_3f & t1, point_3f & t2, int exitPlane)
 {
-  // argmin
-  if (t2.x > t2.y)
-    return (t2.y < t2.z) ? GoNextTempl<1>(childId, t1, t2, pos) : GoNextTempl<2>(childId, t1, t2, pos);
-  else
-    return (t2.x < t2.z) ? GoNextTempl<0>(childId, t1, t2, pos) : GoNextTempl<2>(childId, t1, t2, pos);
+  if (exitPlane == 0)
+    return GoNextTempl<0>(childId, t1, t2);
+  if (exitPlane == 1)
+    return GoNextTempl<1>(childId, t1, t2);
+  return GoNextTempl<2>(childId, t1, t2);
 }
+

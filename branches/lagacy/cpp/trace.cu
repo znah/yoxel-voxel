@@ -119,21 +119,36 @@ __global__ void Trace(RayData * rays)
   int level = 0;
   float nodeSize = pow(0.5f, level);
   int count = 0;
-  int3 pos = make_int3(0, 0, 0);
 
   childId = FindFirstChild(t1, t2);
   VoxNodeInfo nodeInfo = GetNodeInfo(nodePtr);
 
   enum Action { ACT_UNKNOWN, ACT_SAVE, ACT_DOWN, ACT_NEXT };
+  enum Condition {
+    CND_HIT_EMPTY = 1,
+    CND_HIT_LEAF  = 2,
+    CND_EARLY     = 4,
+  };
+
   while (true)
   {
-    //bool lodLimit = maxCoord(t1) * rp.detailCoef > nodeSize/2;
-    //bool emptyNode = GetEmptyFlag(nodeInfo);
     int realChildId = childId^dirFlags;
-    VoxNodeId ch = GetChild(nodePtr, realChildId);
-    bool hitLeaf = GetLeafFlag(nodeInfo, realChildId);
+    uint cond = 0;
+    if (GetNullFlag(nodeInfo, realChildId))
+      cond |= CND_HIT_EMPTY;
+    if (GetLeafFlag(nodeInfo, realChildId))
+      cond |= CND_HIT_LEAF;
+    if (minCoord(t2) < 0) 
+      cond |= CND_EARLY;
 
     int action = ACT_UNKNOWN;
+    if (cond & (CND_HIT_EMPTY | CND_EARLY))
+      action = ACT_NEXT;
+    if (cond == CND_HIT_LEAF)
+      action = ACT_SAVE;
+    if (action == ACT_UNKNOWN)
+      action = ACT_DOWN;
+
     /*if (lodLimit && emptyNode)
       action = ACT_NEXT;
     if (action == ACT_UNKNOWN && lodLimit && !emptyNode)
@@ -141,13 +156,7 @@ __global__ void Trace(RayData * rays)
       realChildId = -1;
       action = ACT_SAVE;
     }*/
-    if (action == ACT_UNKNOWN && hitLeaf)
-      action = ACT_SAVE;
 
-    if (action == ACT_UNKNOWN && IsNull(ch))
-      action = ACT_NEXT;
-    if (action == ACT_UNKNOWN)
-      action = ACT_DOWN;
 
     if (action == ACT_SAVE)
     {
@@ -160,6 +169,7 @@ __global__ void Trace(RayData * rays)
 
     if (action == ACT_DOWN)
     {
+      VoxNodeId ch = GetChild(nodePtr, realChildId);
       nodePtr = GetNodePtr(ch);
       ++level;
       nodeSize /= 2;
@@ -170,14 +180,14 @@ __global__ void Trace(RayData * rays)
 
     
     // GO NEXT
-    while (!GoNext(childId, t1, t2, pos))
+    int exitPlane = argmin(t2);
+    uint exitMask = 1<<exitPlane;
+    while (childId & exitMask)
     {
       // GO UP
       VoxNodeId p = GetParent(nodePtr);
       if (IsNull(p)) 
-      { 
         return;
-      }
       for (int i = 0; i < 3; ++i)
       {
         int mask = 1<<i;
@@ -190,6 +200,7 @@ __global__ void Trace(RayData * rays)
       --level;
       nodeSize *= 2;
     }
+    GoNext(childId, t1, t2, exitPlane);
   }
 
 
