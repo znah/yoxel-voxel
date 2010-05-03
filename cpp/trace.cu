@@ -56,8 +56,9 @@ __global__ void InitEyeRays(RayData * rays, float * noiseBuf)
 {
   INIT_THREAD
 
-  float3 dir = rp.dir + 2*(xi-sx/2)*rp.right/sx + 2*(yi-sy/2)*rp.up/sy;
+  point_3f dir = rp.dir + 2*(xi-sx/2)*rp.right/sx + 2*(yi-sy/2)*rp.up/sy;
   dir = normalize(dir);
+  AdjustDir(dir);
 
   int noiseBase = (tid*3 + rp.rndSeed) % (3*sx*sy-3);
   point_3f noiseShift = point_3f(noiseBuf[noiseBase], noiseBuf[noiseBase+1], noiseBuf[noiseBase+2]) * rp.ditherCoef;
@@ -87,8 +88,9 @@ __global__ void InitFishEyeRays(RayData * rays)
   float ct = __cosf(theta);
   float3 v = make_float3(__cosf(phi)*ct, __sinf(phi)*ct, __sinf(theta));
 
-  float3 dir = v.x*rp.right + v.y*rp.up + v.z*rp.dir;
+  point_3f dir = v.x*rp.right + v.y*rp.up + v.z*rp.dir;
   dir = normalize(dir);        
+  AdjustDir(dir);
 
   rays[tid].dir.x = dir.x;
   rays[tid].dir.y = dir.y;
@@ -98,30 +100,85 @@ __global__ void InitFishEyeRays(RayData * rays)
   rays[tid].endNodeChild = EmptyNode;
 }
 
+__device__ int pos2ch(int3 pos)
+{
+  int childId;
+  childId  = pos.x & 1;
+  childId |= (pos.y & 1) << 1;
+  childId |= (pos.z & 1) << 2;
+  return childId;
+}
+
+__device__ float maxv(float3 p)
+{
+  return fmaxf( fmaxf(p.x, p.y), p.z );
+}
+
+__device__ float minv(float3 p)
+{
+  return fminf( fminf(p.x, p.y), p.z );
+}
+
+/*inline __device__ float3 operator+(const float3 & p, float a)
+{
+  return p + make_float3(a);
+}*/
+__device__ int3 operator+(const int3 & p, int a)
+{
+  return p + make_int3(a);
+}
+
+__device__ int FindFirstChild2(float t_enter, float3 t_coef, float3 t_bias, int3 & pos, float nodeSize)
+{
+  float3 corner = make_float3(pos) + 0.5;
+  corner *= nodeSize;
+  float3 t_center = corner * t_coef + t_bias;
+  int ch = 0;
+  pos.x <<= 1;
+  pos.y <<= 1;
+  pos.z <<= 1;
+  if (t_center.x < t_enter) ch |= 1, ++pos.x;
+  if (t_center.y < t_enter) ch |= 2, ++pos.y;
+  if (t_center.z < t_enter) ch |= 4, ++pos.z;
+  return ch;
+}
+
 __global__ void Trace(RayData * rays)
 {
-  INIT_THREAD
+  INIT_THREAD;
 
-  if (IsNull(rays[tid].endNode))
+  RayData & ray = rays[tid];
+
+  if (IsNull(ray.endNode))
     return;
-  rays[tid].endNode = EmptyNode;
+  ray.endNode = EmptyNode;
+  ray.perfCount = 0;
 
-  point_3f dir = rays[tid].dir;
-  AdjustDir(dir);
+  point_3f dir = ray.dir;
 
-  point_3f t1, t2;
-  uint dirFlags = 0;
-  if (!SetupTrace(rays[tid].pos, dir, t1, t2, dirFlags)) //rp.eyePos
-    return;
+  float3 t_coef, t_bias;
+  t_coef.x = 1.0f / fabs(dir.x);
+  t_coef.y = 1.0f / fabs(dir.y);
+  t_coef.z = 1.0f / fabs(dir.z);
+  t_bias.x = -t_coef.x * ray.pos.x;
+  t_bias.y = -t_coef.y * ray.pos.y;
+  t_bias.z = -t_coef.z * ray.pos.z;
+  uint octant_mask = 0;
+  if (dir.x < 0.0f) octant_mask |= 1, t_bias.x = -t_coef.x - t_bias.x;
+  if (dir.y < 0.0f) octant_mask |= 2, t_bias.y = -t_coef.y - t_bias.y;
+  if (dir.z < 0.0f) octant_mask |= 4, t_bias.z = -t_coef.z - t_bias.z;
+
+  float t_enter = maxv(t_bias);
+  float t_exit  = minv(t_coef + t_bias);
+  if (t_exit < 0.0f || t_enter > t_exit)
+     return;
 
   NodePtr nodePtr = GetNodePtr(tree.root);
-  int childId = 0;
-  int level = 0;
-  float nodeSize = pow(0.5f, level);
-  int count = 0;
-
-  childId = FindFirstChild(t1, t2);
   VoxNodeInfo nodeInfo = GetNodeInfo(nodePtr);
+  int childId = 0;
+  int3 pos = make_int3(0);
+  childId = FindFirstChild2(t_enter, t_coef, t_bias, pos, 1.0f);
+  float nodeSize = 0.5f;
 
   enum Action { ACT_UNKNOWN, ACT_SAVE, ACT_DOWN, ACT_NEXT };
   enum Condition {
@@ -129,16 +186,22 @@ __global__ void Trace(RayData * rays)
     CND_HIT_LEAF  = 2,
     CND_EARLY     = 4,
   };
-
   while (true)
   {
-    int realChildId = childId^dirFlags;
+    float3 dt = nodeSize * t_coef;
+    float3 t = make_float3(pos) * dt + t_bias;
+    t_enter = maxv(t);
+    t += dt;
+    t_exit  = minv(t);
+    int exitPlane = argmin(t);
+
+    int realChildId = childId^octant_mask;
     uint cond = 0;
     if (GetNullFlag(nodeInfo, realChildId))
       cond |= CND_HIT_EMPTY;
     if (GetLeafFlag(nodeInfo, realChildId))
       cond |= CND_HIT_LEAF;
-    if (minCoord(t2) < 0) 
+    if (t_exit < 0.0f) 
       cond |= CND_EARLY;
 
     int action = ACT_UNKNOWN;
@@ -149,21 +212,12 @@ __global__ void Trace(RayData * rays)
     if (action == ACT_UNKNOWN)
       action = ACT_DOWN;
 
-    /*if (lodLimit && emptyNode)
-      action = ACT_NEXT;
-    if (action == ACT_UNKNOWN && lodLimit && !emptyNode)
-    {
-      realChildId = -1;
-      action = ACT_SAVE;
-    }*/
-
-
     if (action == ACT_SAVE)
     {
-      rays[tid].endNode = Ptr2Id(nodePtr);
-      rays[tid].endNodeChild = realChildId;
-      rays[tid].t = maxCoord(t1);
-      rays[tid].endNodeSize = nodeSize;
+      ray.endNode = Ptr2Id(nodePtr);
+      ray.endNodeChild = realChildId;
+      ray.t = t_enter;
+      ray.endNodeSize = nodeSize;
       break;
     }
 
@@ -171,36 +225,35 @@ __global__ void Trace(RayData * rays)
     {
       VoxNodeId ch = GetChild(nodePtr, realChildId);
       nodePtr = GetNodePtr(ch);
-      ++level;
-      nodeSize /= 2;
-      childId = FindFirstChild(t1, t2);
+      childId = FindFirstChild2(t_enter, t_coef, t_bias, pos, nodeSize);
+      nodeSize *= 0.5f;
       nodeInfo = GetNodeInfo(nodePtr);
       continue;
     }
 
-    
     // GO NEXT
-    int exitPlane = argmin(t2);
-    uint exitMask = 1<<exitPlane;
+    uint exitMask = 1 << exitPlane;
     while (childId & exitMask)
     {
       // GO UP
       VoxNodeId p = GetParent(nodePtr);
-      if (IsNull(p)) 
-        return;
-      for (int i = 0; i < 3; ++i)
+      
+      if (IsNull(p))
       {
-        int mask = 1<<i;
-        float dt = t2[i] - t1[i];
-        ((childId & mask) == 0) ? t2[i] += dt : t1[i] -= dt;
+        return;
       }
-      childId = GetSelfChildId(GetNodeInfo(nodePtr))^dirFlags;
+      pos.x >>= 1;
+      pos.y >>= 1;
+      pos.z >>= 1;
+      childId = pos2ch(pos);
+      nodeSize *= 2.0f;
       nodePtr = GetNodePtr(p);
       nodeInfo = GetNodeInfo(nodePtr);
-      --level;
-      nodeSize *= 2;
     }
-    GoNext(childId, t1, t2, exitPlane);
+    childId |= exitMask;
+    if (exitMask == 1) ++pos.x;
+    if (exitMask == 2) ++pos.y;
+    if (exitMask == 4) ++pos.z;
   }
 
 
@@ -226,7 +279,7 @@ __global__ void Trace(RayData * rays)
         if (minCoord(t2) < 0) { state = ST_GONEXT; break; }
 
         VoxNodeInfo nodeInfo = GetNodeInfo(nodePtr);
-        int realChildId = childId^dirFlags;
+        int realChildId = childId^octant_mask;
         if (GetLeafFlag(nodeInfo, realChildId)) { state = ST_SAVE; break; }
         
         // no performance gain for some reason
@@ -264,7 +317,7 @@ __global__ void Trace(RayData * rays)
           float dt = t2[i] - t1[i];
           ((childId & mask) == 0) ? t2[i] += dt : t1[i] -= dt;
         }
-        childId = GetSelfChildId(GetNodeInfo(nodePtr))^dirFlags;
+        childId = GetSelfChildId(GetNodeInfo(nodePtr))^octant_mask;
         nodePtr = GetNodePtr(p);
         --level;
         nodeSize *= 2;
@@ -275,7 +328,7 @@ __global__ void Trace(RayData * rays)
       case ST_SAVE:
       {
         rays[tid].endNode = Ptr2Id(nodePtr);
-        rays[tid].endNodeChild = childId^dirFlags;
+        rays[tid].endNodeChild = childId^octant_mask;
         rays[tid].t = maxCoord(t1);
         rays[tid].endNodeSize = nodeSize;
         state = ST_EXIT;
@@ -283,7 +336,7 @@ __global__ void Trace(RayData * rays)
       }
     }
   }*/
-  rays[tid].perfCount = count;
+  //rays[tid].perfCount = count;
 }
 
 __device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
