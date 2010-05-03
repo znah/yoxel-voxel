@@ -149,7 +149,7 @@ void Demo::Idle()
   point_3f upDir(0, 0, 1);
   point_3f rightDir = cg::normalized(fwdDir ^ upDir);
   point_3f dir = fwdDir*m_motionVel.y + rightDir*m_motionVel.x;
-  m_pos += dir*dt*0.1; 
+  m_pos += dir*dt*0.3; 
 
   m_renderer.SetViewDir(fwdDir);
   m_renderer.SetViewPos(m_pos);
