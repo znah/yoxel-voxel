@@ -34,7 +34,6 @@ VoxNodeId DynamicSVO::CreateNode()
   node.flags = 0xff00;
   SetEmptyFlag(node.flags, true);
 
-  node.parent = EmptyNode;
   std::fill(node.child, node.child+8, EmptyNode);
   return nodeId;
 }
@@ -65,15 +64,6 @@ struct DynamicSVO::TreeBuilder
     , mode(BUILD_MODE_GROW)
     , destLevel(8)
   {}
-
-  void SetNodeParent(VoxNodeId dst, VoxNodeId parent, int octant)
-  {
-    if (IsNull(dst))
-      return;
-    VoxNode & node = svo.m_nodes[dst];
-    SetSelfChildId(node.flags, octant);
-    node.parent = parent;
-  }
 
   bool IsInRange(const point_3i & blockPos, int blockSize)
   {
@@ -194,7 +184,6 @@ struct DynamicSVO::TreeBuilder
 
     VoxNode node;
     node.flags = 0x0;
-    node.parent = -1;
     for (walk_3 octant(2, 2, 2); !octant.done(); ++octant)
     {
       bool leafFlag = false;
@@ -217,10 +206,6 @@ struct DynamicSVO::TreeBuilder
     VoxNodeId nodeId = svo.CreateNode();
     svo.m_nodes[nodeId] = node;
     svo.m_nodes.setItemVer(nodeId, svo.GetCurVersion());
-
-    for (int i = 0; i < 8; ++i)
-      if (!GetLeafFlag(node.flags, i))
-        SetNodeParent(node.child[i], nodeId, i);
 
     dstLeafFlag = false;
     dstChild = nodeId;
@@ -279,8 +264,6 @@ struct DynamicSVO::TreeBuilder
 
       SetLeafFlag(node.flags, octant.flat(), leafFlag);
       SetNullFlag(node.flags, octant.flat(), !leafFlag && IsNull(childRef));
-      if (!leafFlag)
-        SetNodeParent(childRef, nodeId, octant.flat());
 
       changed = true;        
     }

@@ -7,7 +7,6 @@ typedef uint VoxData; // color - 16bit, normal - 16bit
 typedef uint VoxChild; // VoxData or VoxNodeId
 typedef uint VoxNodeInfo; //  0 .. 7   - leafFlags, 
                           //  8 .. 15  - nullFlags, 
-                          // 16 .. 18 - selfChildId,  
                           // 19     - emptyFlag
 typedef uint VoxNodeId;
 
@@ -15,11 +14,8 @@ typedef uint VoxNodeId;
 struct VoxNode
 {
   VoxNodeInfo flags;
-  VoxNodeId   parent;
   VoxData     data;
   VoxChild    child[8];
-
-  uint        _pad; // pad to 16 byte multiple
 };
 #pragma pack(pop)
 
@@ -43,16 +39,10 @@ inline GLOBAL_FUNC void SetNullFlag(VoxNodeInfo & ni, int i, bool v)
   uint mask = 1<<(i+8);
   ni = v ? (ni | mask) : (ni & ~mask);
 }
-inline GLOBAL_FUNC int  GetSelfChildId(VoxNodeInfo ni) { return (ni>>16) & 7; }
-inline GLOBAL_FUNC void SetSelfChildId(VoxNodeInfo & ni, int v) 
-{ 
-  ni &= ~(7<<16);
-  ni |= v<<16;
-}
-inline GLOBAL_FUNC bool GetEmptyFlag(VoxNodeInfo ni) { return (ni & (1<<19)) != 0; }
+inline GLOBAL_FUNC bool GetEmptyFlag(VoxNodeInfo ni) { return (ni & (1<<16)) != 0; }
 inline GLOBAL_FUNC void SetEmptyFlag(VoxNodeInfo & ni, bool v) 
 { 
-  uint mask = 1<<19;
+  uint mask = 1<<16;
   ni = v ? (ni | mask) : (ni & ~mask);
 }
 
