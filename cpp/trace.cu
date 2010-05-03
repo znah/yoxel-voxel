@@ -104,6 +104,7 @@ __global__ void Trace(RayData * rays)
 
   if (IsNull(rays[tid].endNode))
     return;
+  rays[tid].endNode = EmptyNode;
 
   point_3f dir = rays[tid].dir;
   AdjustDir(dir);
@@ -111,10 +112,7 @@ __global__ void Trace(RayData * rays)
   point_3f t1, t2;
   uint dirFlags = 0;
   if (!SetupTrace(rays[tid].pos, dir, t1, t2, dirFlags)) //rp.eyePos
-  {
-    rays[tid].endNode = EmptyNode;
     return;
-  }
 
   NodePtr nodePtr = GetNodePtr(tree.root);
   int childId = 0;
@@ -127,8 +125,7 @@ __global__ void Trace(RayData * rays)
   VoxNodeInfo nodeInfo = GetNodeInfo(nodePtr);
 
   enum Action { ACT_UNKNOWN, ACT_SAVE, ACT_DOWN, ACT_NEXT };
-  bool done = false;
-  while (!done)
+  while (true)
   {
     //bool lodLimit = maxCoord(t1) * rp.detailCoef > nodeSize/2;
     //bool emptyNode = GetEmptyFlag(nodeInfo);
@@ -179,9 +176,7 @@ __global__ void Trace(RayData * rays)
       VoxNodeId p = GetParent(nodePtr);
       if (IsNull(p)) 
       { 
-        rays[tid].endNode = EmptyNode;
-        done = true;
-        break; 
+        return;
       }
       for (int i = 0; i < 3; ++i)
       {
@@ -325,7 +320,7 @@ __global__ void ShadeSimple(const RayData * eyeRays, uchar4 * img, ushort4 * acc
   if (IsNull(node))
   {
     float h = (float)yi / sy;
-    res = point_3f(128, 128, 255) * (1.0 - h);
+    res = point_3f(128, 128, 255) * (1.0f - h);
     if (node != EmptyNode)
       res = point_3f(1, 0, 0);
   }
