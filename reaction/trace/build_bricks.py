@@ -2,8 +2,8 @@ from numpy import *
 
 a = load("a_512.npy")
 
-brick_size = bs = 4
-border = 0
+brick_size = bs = 8
+border = 1
 pbs = brick_size + border
 grid_size = gs = array(a.shape) / brick_size
 
@@ -21,6 +21,11 @@ for i, j, k in ndindex(pbs, pbs, pbs):
 SolidAcc = 255*pbs**3
 mark = (acc > 0) & (acc < SolidAcc)
 
+
+save('mark', mark.astype(uint8))
+
+
+'''
 print "..."
 
 bz, by, bx = mgrid[ 0:gs[0], 0:gs[1], 0:gs[2] ]
@@ -52,3 +57,4 @@ print sum(mark) * pbs**3 / 2.0**20
 
 
 
+'''
