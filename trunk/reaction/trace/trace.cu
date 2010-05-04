@@ -7,6 +7,7 @@ __constant__ int2     c_viewSize;
 
 texture<uchar,  3, cudaReadModeNormalizedFloat> volumeTex;   // 3D texture
 texture<float4, 1, cudaReadModeElementType>     transferTex; // 1D transfer function texture
+texture<uchar,  3, cudaReadModeElementType>     markTex;
 
 struct RayData
 {
@@ -59,32 +60,49 @@ __device__ bool walkBrick(RayData ray, float t_enter, float t_exit, float4 & acc
 
 __device__ float4 castRay(RayData ray)
 {
-    float tx_coef = 1.0f / fabs(ray.dir.x);
-    float ty_coef = 1.0f / fabs(ray.dir.y);
-    float tz_coef = 1.0f / fabs(ray.dir.z);
+    float3 t_coef, t_bias;
+    t_coef.x = 1.0f / fabs(ray.dir.x);
+    t_coef.y = 1.0f / fabs(ray.dir.y);
+    t_coef.z = 1.0f / fabs(ray.dir.z);
 
-    float tx_bias = -tx_coef * ray.orig.x;
-    float ty_bias = -ty_coef * ray.orig.y;
-    float tz_bias = -tz_coef * ray.orig.z;
+    t_bias.x = -t_coef.x * ray.orig.x;
+    t_bias.y = -t_coef.y * ray.orig.y;
+    t_bias.z = -t_coef.z * ray.orig.z;
 
     int octant_mask = 0;
-    if (ray.dir.x < 0.0f) octant_mask ^= 1, tx_bias = -tx_coef - tx_bias;
-    if (ray.dir.y < 0.0f) octant_mask ^= 2, ty_bias = -ty_coef - ty_bias;
-    if (ray.dir.z < 0.0f) octant_mask ^= 4, tz_bias = -tz_coef - tz_bias;
+    if (ray.dir.x < 0.0f) octant_mask ^= 1, t_bias.x = -t_coef.x - t_bias.x;
+    if (ray.dir.y < 0.0f) octant_mask ^= 2, t_bias.y = -t_coef.y - t_bias.y;
+    if (ray.dir.z < 0.0f) octant_mask ^= 4, t_bias.z = -t_coef.z - t_bias.z;
 
-    float t_enter = fmaxf(tx_bias, ty_bias, tz_bias);
-    float t_exit  = fminf(tx_coef + tx_bias, ty_coef + ty_bias, tz_coef + tz_bias);
+    float t_enter = fmaxf(t_bias.x, t_bias.y, t_bias.z);
+    float t_exit  = fminf(t_coef.x + t_bias.x, t_coef.y + t_bias.y, t_coef.z + t_bias.z);
     
     t_enter = fmaxf(0.0f, t_enter);
     if (t_exit < 0.0f || t_enter > t_exit)
         return make_float4(0, 0, 0, 0);
 
 
-    
+    const float gridSize  = 64.0f;
+    const float brickSize = 1.0f / gridSize;
 
+    float3 p = ray.orig + t_enter * ray.dir;
+    p = make_float3(make_int3(p * gridSize)) * brickSize;
 
     float4 accum = make_float4(0);
-    walkBrick(ray, t_enter, t_exit, accum);
+    while (true)   
+    {
+      float3 t = (p + brickSize) * t_coef + t_bias;
+      float t2 = fmaxf(t.x, t.y, t.z);
+      if (t2 == t.x) p.x += brickSize;
+      if (t2 == t.y) p.y += brickSize;
+      if (t2 == t.z) p.z += brickSize;
+      
+      if (tex3D(markTex, p.x, p.y, p.z) != 0)
+        walkBrick(ray, t_enter, t2, accum);
+      t_enter = t2;
+      if (t_enter >= t_exit)
+        break;
+    }
     return accum;
 }
  

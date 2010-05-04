@@ -47,6 +47,8 @@ class CuTracer(HasTraits):
     def __init__(self):
         mod = cu_compile( file('trace.cu').read() )
         Trace        = mod.get_function('Trace')
+        print "reg: %d,  lmem: %d " % (Trace.num_regs, Trace.local_size_bytes)
+
 
         c_viewSize    = mod.get_global('c_viewSize')
         c_proj2wldMtx = mod.get_global('c_proj2wldMtx')
@@ -58,12 +60,20 @@ class CuTracer(HasTraits):
         viewBuf  = CuGLBuf(a)
 
         vol = load('a_512.npy')
+        mark = load('mark.npy') 
         self.d_vol = d_vol = to_cuda_array3d(vol)  # protect from gc
+        self.d_mark = d_mark = to_cuda_array3d(mark)  # protect from gc
+
 
         vol_tex = mod.get_texref('volumeTex')
         vol_tex.set_array( d_vol )
         vol_tex.set_flags( cu.TRSF_NORMALIZED_COORDINATES )
         vol_tex.set_filter_mode( cu.filter_mode.LINEAR )
+        
+        mark_tex = mod.get_texref('markTex')
+        mark_tex.set_array( d_mark )
+        mark_tex.set_flags( cu.TRSF_NORMALIZED_COORDINATES )
+
         #vol_tex.set_address_mode(0, cu.address_mode.WRAP)
         #vol_tex.set_address_mode(1, cu.address_mode.WRAP)
         #vol_tex.set_address_mode(2, cu.address_mode.WRAP)
@@ -84,7 +94,7 @@ class CuTracer(HasTraits):
             mapping = viewBuf.cu.map()
             with cuprofile('Trace'):
                 Trace(int32(mapping.device_ptr()), block = (32, 8, 1), grid = (w/32, h/8),
-                  texrefs = [vol_tex])  # mapping.size()
+                  texrefs = [vol_tex, mark_tex])  # mapping.size()
             mapping.unmap()
             with ctx(viewTex, viewBuf.gl.pixelUnpack):
                 glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, None)
@@ -99,6 +109,10 @@ class App(ZglAppWX):
         ZglAppWX.__init__(self, viewControl = FlyCamera(), zglpath='..', size = (1024, 768))
         
         self.renderer = renderer = CuTracer()
+
+        self.viewControl.course = 45
+        self.viewControl.pitch = 20
+
 
         texFrag = genericFP('tex2D(s_tex, tc0.xy)')
 
