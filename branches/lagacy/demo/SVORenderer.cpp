@@ -105,12 +105,12 @@ void SVORenderer::Render(void * d_dstBuf)
 
   CuSetSymbol(rp, "rp");
 
-  Run_InitEyeRays(make_grid2d(m_viewSize, point_2i(16, 28)), m_rayDataBuf.d_ptr(), m_noiseBuf.d_ptr());
+  Run_InitEyeRays(make_grid2d(m_viewSize, point_2i(16, 16)), m_rayDataBuf.d_ptr(), m_noiseBuf.d_ptr());
   CUT_CHECK_ERROR("ttt");
 
   CuTimer timer;
   timer.start();
-  Run_Trace(make_grid2d(m_viewSize, point_2i(16, 28)), m_rayDataBuf.d_ptr());
+  Run_Trace(make_grid2d(m_viewSize, point_2i(8, 16)), m_rayDataBuf.d_ptr());
   CUT_CHECK_ERROR("ttt");
   float traceTime = timer.stop();
   m_profStats.traceTime = (m_profStats.traceTime == 0) ? traceTime : (0.5f * m_profStats.traceTime  + 0.5f * traceTime);

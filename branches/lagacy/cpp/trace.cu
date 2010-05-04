@@ -52,8 +52,7 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
   __device__ VoxNodeId Ptr2Id(NodePtr p) { return p/NODE_SZ; }
 
   __device__ VoxNodeInfo GetNodeInfo(NodePtr p) { return GET_TEXNODE_FIELD(p, 0); }
-  __device__ VoxNodeId   GetParent  (NodePtr p) { return GET_TEXNODE_FIELD(p, 1); }
-  __device__ VoxChild    GetChild   (NodePtr p, int chId) { return GET_TEXNODE_FIELD(p, 3 + chId); }
+  __device__ VoxChild    GetChild   (NodePtr p, int chId) { return GET_TEXNODE_FIELD(p, 2 + chId); }
 #else
   typedef const VoxNode * NodePtr;
   __constant__ NodePtr InvalidPtr = NULL;
@@ -62,7 +61,6 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
   __device__ VoxNodeId Ptr2Id(NodePtr p) { return p - tree.nodes; }
 
   __device__ const VoxNodeInfo & GetNodeInfo(NodePtr p) { return p->flags; }
-  __device__ const VoxNodeId   & GetParent  (NodePtr p) { return p->parent; }
   __device__ const VoxChild    & GetChild   (NodePtr p, int chId) { return p->child[chId]; }
 #endif
 
@@ -144,7 +142,6 @@ __device__ int3 operator+(const int3 & p, int a)
   return p + make_int3(a);
 }
 
-
 __device__ int popc8(uint mask)
 {
     return c_popc8LUT[mask];
@@ -182,6 +179,7 @@ __global__ void Trace(RayData * rays)
 {
   INIT_THREAD;
 
+
   RayData & ray = rays[tid];
 
   if (IsNull(ray.endNode))
@@ -218,13 +216,15 @@ __global__ void Trace(RayData * rays)
   float nodeSize = 0.5f;
 
   int level = 0;
-  NodePtr stack[20];
+  NodePtr stack[16];
 
   enum Action { ACT_UNKNOWN, ACT_SAVE, ACT_DOWN, ACT_NEXT };
   enum Condition {
     CND_HIT_EMPTY = 1,
     CND_HIT_LEAF  = 2,
     CND_EARLY     = 4,
+    CND_LOD       = 8,
+    CND_LOD_EMPTY = 16
   };
   while (true)
   {
@@ -243,6 +243,10 @@ __global__ void Trace(RayData * rays)
       cond |= CND_HIT_LEAF;
     if (t_exit < 0.0f) 
       cond |= CND_EARLY;
+    /*if (t_enter * rp.detailCoef > nodeSize)
+      cond |= CND_LOD;
+    if (GetEmptyFlag(GetNodeInfo(nodePtr))
+      cond |= CND_LOD_EMPTY;*/
 
     int action = ACT_UNKNOWN;
     if (cond & (CND_HIT_EMPTY | CND_EARLY))
@@ -273,25 +277,24 @@ __global__ void Trace(RayData * rays)
     }
 
     // GO NEXT
-    int i;  
-    if (exitMask == 1) {i = pos.x; ++pos.x;}
-    if (exitMask == 2) {i = pos.y; ++pos.y;}
-    if (exitMask == 4) {i = pos.z; ++pos.z;}
-    i = (i^(i+1))>>1;
-
-    int upcount = popc32(i);
-    if (level < upcount)
-      return;
-    level -= upcount;
-    if (upcount > 0)
+    int diff;  
+    if (exitMask == 1) {diff = pos.x; ++pos.x;}
+    if (exitMask == 2) {diff = pos.y; ++pos.y;}
+    if (exitMask == 4) {diff = pos.z; ++pos.z;}
+    diff = (diff^(diff+1))>>1;
+    if (diff != 0)
     {
+      int upcount = popc16(diff);
+      if (level < upcount)
+        return;
+      level -= upcount;
       nodePtr = stack[level];
       nodeInfo = GetNodeInfo(nodePtr);
+      pos.x >>= upcount;
+      pos.y >>= upcount;
+      pos.z >>= upcount;
+      nodeSize *= 1<<upcount;
     }
-    pos.x >>= upcount;
-    pos.y >>= upcount;
-    pos.z >>= upcount;
-    nodeSize *= 1<<upcount;
     t_enter = t_exit;
   }
 
