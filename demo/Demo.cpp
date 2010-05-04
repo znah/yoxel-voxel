@@ -10,9 +10,9 @@ const char * SceneName = "../data/coral.vox";
 
 Demo::Demo() 
 : m_pboNeedUnreg(false)
-, m_pos(-0.012421815f, 0.50748748f, 0.25519851f)
-, m_crs(0.0f)
-, m_pitch(27.0f)
+, m_pos(0.041262411f, 0.45078847f, 0.25723535f)
+, m_crs(315.0f)
+, m_pitch(-1.0f)
 , m_mouseMoving(false)
 , m_frameCount(0)
 , m_editAction(EditNone)
