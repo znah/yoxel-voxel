@@ -1,5 +1,17 @@
 from __future__ import with_statement
 from zgl import *
+
+def setup_perlin(prog):
+    perm = random.permutation(256).astype(uint8)[:,newaxis]
+    permTex = Texture1D(img = perm)
+    prog.uPerlinPerm = permTex
+
+    grad = array([
+        1,1,0,    -1,1,0,    1,-1,0,    -1,-1,0,
+        1,0,1,    -1,0,1,    1,0,-1,    -1,0,-1,
+        0,1,1,    0,-1,1,    0,1,-1,    0,-1,-1,
+        1,1,0,    0,-1,1,    -1,1,0,    0,-1,-1], float32).reshape(-1,3)
+    prog.uPerlinGrad = Texture1D(img = grad, format = GL_RGBA_FLOAT16_ATI)
     
 class App(ZglAppWX):
     
@@ -9,51 +21,47 @@ class App(ZglAppWX):
         ZglAppWX.__init__(self, size = size, viewControl = OrthoCamera())
 
         vortexFP = CGShader('fp40', '''
+          #include "perlin.cg"
+
           uniform float2 gridSize;
-          uniform float2 center;
-          
-          uniform float turn;
-          uniform float emit;
-          uniform float fade;
+          uniform float time;
+
+          float2 rot90(float2 v)
+          {
+            return float2(-v.y, v.x);
+          }
+
+          float3 f(float3 p)
+          {
+            float3 res = gnoise3d(p);
+            res += gnoise3d(p*float3(1.9, 1.9, 1.0));
+            return res;
+          }
 
           float4 main(float2 p : TEXCOORD0) : COLOR
           {
-            float2 r = p * gridSize - center;
-            float d = length(r);
-            r /= d;
-            d /= gridSize.x;
-            float2 t = float2(-r.y, r.x);
-            
-            t *= turn*d * exp(-d*d*fade);
-            return float4(t + emit*r, 0, 0);
+            p.x *= gridSize.x / gridSize.y;
+            float2 v ;
+            p*= 5;
+            float t = 1.0* time;
+            v.x = noise3d(float3(p, t));
+            v.y = noise3d(float3(p, t+9.5));
+
+            v *= 3.0;
+
+            return float4(v, 0, 0);
           }
         ''')
         vortexFP.gridSize = size
+        setup_perlin(vortexFP)
         flowBuf = RenderTexture( size = size / 2, format=GL_RGBA_FLOAT16_ATI)
         flowBuf.tex.filterLinear()
         @with_(glprofile('updateFlow'))
         def updateFlow():
-            with ctx(flowBuf, ortho, vortexFP , glstate(GL_BLEND)):
-                glBlendFunc(GL_ONE, GL_ONE);
-                glBlendEquation(GL_FUNC_ADD);
-                clearGLBuffers()
-                vortexFP(turn = 60.0, emit = 0.0, fade = 50, center = size*(0.3, 0.3))
+            with ctx(flowBuf, ortho, vortexFP(time = self.time)): # glstate(GL_BLEND)
                 drawQuad()
-
-                if self.viewControl.mButtons[0]:
-                    emit = 0.5
-                    turn = 30.0
-                elif self.viewControl.mButtons[2]:
-                    emit = -0.5
-                    turn = -30.0
-                else:
-                    emit = 0
-                    turn = -30.0
-                vortexFP(turn = turn, emit = emit)
-                pos = self.viewControl.mPos
-                pos = (pos[0], size[1]-pos[1])
-                vortexFP(center = pos)
-                drawQuad()
+                
+                
 
         noiseTex = Texture2D(random.rand(size[1], size[0], 4).astype(float32))
         noiseTex.genMipmaps()
@@ -74,7 +82,8 @@ class App(ZglAppWX):
           {
             float2 nvel = normalize(float2(-vel.y, vel.x));
             float4 rnd = tex2D(noise, p/*, vel/gridSize, nvel/gridSize*/);
-            float v = rnd.r;//frac(rnd.r + time);//sin(2*pi*rnd.r + time * 10.0)*0.5 + 0.5;
+            //float v = rnd.r;//frac(rnd.r + time);
+            float v = sin(2*pi*rnd.r + time * 10.0)*0.5 + 0.5;
             return v;
           }
 
@@ -113,7 +122,7 @@ class App(ZglAppWX):
 
           float4 c1 = float4(0.5, 0.5, 0.5, 1.0);
           float4 c2 = float4(v, v, v, 1.0);
-          float4 c = lerp(c1, c2, 2.0*speed);
+          float4 c = lerp(c1, c2, 2*speed);
 
           return c2;
         ''' )
