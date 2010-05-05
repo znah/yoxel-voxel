@@ -45,20 +45,21 @@ class App(ZglAppWX):
           {
             p.x *= gridSize.x / gridSize.y;
             float2 v ;
-            p*= 5;
+            p*= 10;
             float t = 2.0* time;
 
             v  = g(float3(p, t));
             v += g(float3(0.55*p, t*0.48));
 
             v += rot90(v)*2.0;
+            v *= 0.5;
 
             return float4(v, 0, 0);
           }
         ''')
         vortexFP.gridSize = size
         setup_perlin(vortexFP)
-        flowBuf = RenderTexture( size = size / 2, format=GL_RGBA_FLOAT16_ATI)
+        flowBuf = RenderTexture( size = size / 4, format=GL_RGBA_FLOAT16_ATI)
         flowBuf.tex.filterLinear()
         @with_(glprofile('updateFlow'))
         def updateFlow():
@@ -126,7 +127,7 @@ class App(ZglAppWX):
 
           float4 c1 = float4(0.5, 0.5, 0.5, 1.0);
           float4 c2 = float4(v, v, v, 1.0);
-          float4 c = lerp(c1, c2, 0.5 + speed);
+          float4 c = lerp(c1, c2, 0.5 + speed*2);
 
           return c;
         ''' )
