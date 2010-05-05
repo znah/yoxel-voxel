@@ -17,7 +17,7 @@ class App(ZglAppWX):
     
     
     def __init__(self):
-        size = V(1024, 768)
+        size = V(1600, 1024)
         ZglAppWX.__init__(self, size = size, viewControl = OrthoCamera())
 
         vortexFP = CGShader('fp40', '''
@@ -44,15 +44,20 @@ class App(ZglAppWX):
           float4 main(float2 p : TEXCOORD0) : COLOR
           {
             p.x *= gridSize.x / gridSize.y;
-            float2 v ;
-            p*= 10;
-            float t = 2.0* time;
-
-            v  = g(float3(p, t));
-            v += g(float3(0.55*p, t*0.48));
-
-            v += rot90(v)*2.0;
-            v *= 0.5;
+            float t = 1.0*time;
+            float2 v = float2(0);
+            p *= 2.0;
+            
+            float a = 1.0;
+            float s = 1.0;
+            for (int i = 0; i < 4; ++i)
+            {
+              v += a*g(float3(p*s, t*(i+1)*0.9123));
+              s *= 2.9123132;
+              a *= 0.6;
+            }
+            v += 2.0*rot90(v);
+            v *= 2.0;
 
             return float4(v, 0, 0);
           }
@@ -70,11 +75,11 @@ class App(ZglAppWX):
 
         noiseTex = Texture2D(random.rand(size[1], size[0], 4).astype(float32))
         noiseTex.genMipmaps()
-        noiseTex.filterLinearMipmap()
-        noiseTex.aniso = 4
+        #noiseTex.filterLinearMipmap()
+        noiseTex.setParams(*Texture.Repeat)
         
         flowVisFP = CGShader('fp40', '''
-          #line 62
+          #line 83
           uniform sampler2D flow;
           uniform sampler2D src;
           uniform sampler2D noise;
@@ -83,25 +88,52 @@ class App(ZglAppWX):
 
           const float pi = 3.141593;
 
-          float getnoise(float2 p, float2 vel)
+          float getnoise(float2 p)
           {
-            float2 nvel = normalize(float2(-vel.y, vel.x));
-            float4 rnd = tex2D(noise, p/*, vel/gridSize, nvel/gridSize*/);
-            //float v = rnd.r;//frac(rnd.r + time);
+            float4 rnd = tex2D(noise, p);
             float v = sin(2*pi*rnd.r + time * 10.0)*0.5 + 0.5;
+            v *= saturate(sin(p.x*20));
             return v;
+          }
+          
+          float getnoise_lerp(float2 p)
+          {
+            float2 dp = 1.0f / gridSize;
+            p *= gridSize;
+            float2 f = frac(p);
+            p = dp * (p-f);
+
+            float v0 = lerp(getnoise(p), getnoise(p + float2(dp.x, 0)), f.x);
+            p.y += dp.y;
+            float v1 = lerp(getnoise(p), getnoise(p + float2(dp.x, 0)), f.x);
+            return lerp(v0, v1, f.y);
           }
 
           float4 main(float2 p : TEXCOORD0) : COLOR
           {
             float2 vel = tex2D(flow, p).xy;
-            float2 sp = p * gridSize - vel;
-            
-            float a = tex2D(src, sp / gridSize).r;
-            float b = getnoise(p, vel);
-            float v = lerp(a, b, 0.05);//0.05
+            float2 sp = p - vel / gridSize;
             float speed = length(vel);
-            return float4(v, speed, 0, 0);
+
+            float3 a = float3(0);
+            float3 b = float3(0);
+            float c = 0;
+            float dt = 1.0 / speed;
+            for (float t = 0; t < 1.0; t += dt)
+            {
+              float2 pm = lerp(sp, p, t);
+              a += tex2D(src, pm).rgb;
+              b += float3(getnoise(pm));
+              
+              b.gb *= saturate(speed*0.5);
+
+              c += 1.0;
+            }
+            a /= c;
+            b /= c;
+
+            float3 v = lerp(a, b, 0.05);
+            return float4(v, speed);
           }
         ''')
         flowVisFP.noise = noiseTex
@@ -122,18 +154,22 @@ class App(ZglAppWX):
         texlookupFP = genericFP('''
           #line 104
           float4 data = tex2D(s_texture, tc0.xy);
-          float v = data.r;
-          float speed = data.g;
+          float3 v = data.rgb;
+          float speed = data.a;
 
-          float4 c1 = float4(0.5, 0.5, 0.5, 1.0);
-          float4 c2 = float4(v, v, v, 1.0);
-          float4 c = lerp(c1, c2, 0.5 + speed*2);
+          v = lerp(float3(0.5), v, 2.0);
 
-          return c;
+          return float4(v, 1.0);
         ''' )
+        self.lastTime = 0
+        dt = 1.0/60.0
+
         def display():
-            updateFlow()
-            updateFlowVis()
+            if self.time - self.lastTime > dt:
+                updateFlow()
+                updateFlowVis()
+                self.lastTime = self.time
+
             with ctx(self.viewControl.vp, ortho, texlookupFP( s_texture = visBuf.src.tex )):
                 drawQuad()
 
