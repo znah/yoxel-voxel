@@ -31,23 +31,27 @@ class App(ZglAppWX):
             return float2(-v.y, v.x);
           }
 
-          float3 f(float3 p)
+          float2 g(float3 p)
           {
-            float3 res = gnoise3d(p);
-            res += gnoise3d(p*float3(1.9, 1.9, 1.0));
-            return res;
+            float h = 0.1;
+            float v0 = noise3d(p);
+            float dx = noise3d(p+float3(h, 0, 0))-v0;
+            float dy = noise3d(p+float3(0, h, 0))-v0;
+            return float2(dx, dy) / h;
           }
+
 
           float4 main(float2 p : TEXCOORD0) : COLOR
           {
             p.x *= gridSize.x / gridSize.y;
             float2 v ;
             p*= 5;
-            float t = 1.0* time;
-            v.x = noise3d(float3(p, t));
-            v.y = noise3d(float3(p, t+9.5));
+            float t = 2.0* time;
 
-            v *= 3.0;
+            v  = g(float3(p, t));
+            v += g(float3(0.55*p, t*0.48));
+
+            v += rot90(v)*2.0;
 
             return float4(v, 0, 0);
           }
@@ -122,9 +126,9 @@ class App(ZglAppWX):
 
           float4 c1 = float4(0.5, 0.5, 0.5, 1.0);
           float4 c2 = float4(v, v, v, 1.0);
-          float4 c = lerp(c1, c2, 2*speed);
+          float4 c = lerp(c1, c2, 0.5 + speed);
 
-          return c2;
+          return c;
         ''' )
         def display():
             updateFlow()

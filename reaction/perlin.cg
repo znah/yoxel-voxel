@@ -5,8 +5,8 @@ uniform sampler1D uPerlinGrad;
 
 float3 _fade(float3 t)
 {
-  //return t * t * t * (t * (t * 6 - 15) + 10); // new curve
-  return t * t * (3 - 2 * t); // old curve
+  return t * t * t * (t * (t * 6 - 15) + 10); // new curve
+  //return t * t * (3 - 2 * t); // old curve
 }
 
 float _perm(float x)
@@ -17,11 +17,6 @@ float _perm(float x)
 float _grad(float x, float3 p)
 {
   return dot(tex1D(uPerlinGrad, x), p);
-}
-
-float3 _ggrad(float x, float3 p)
-{
-  return tex1D(uPerlinGrad, x);
 }
 
 // 3D version
@@ -55,31 +50,4 @@ float noise3d(float3 p)
 float noise3d(float x, float y, float z)
 {
   return noise3d(float3(x, y, z));
-}
-
-float3 gnoise3d(float3 p)
-{
-  float3 P = fmod(floor(p), 256.0);
-  p -= floor(p);
-  float3 f = _fade(p);
-
-  // HASH COORDINATES FOR 6 OF THE 8 CUBE CORNERS
-  float A = _perm(P.x) + P.y;
-  float AA = _perm(A) + P.z;
-  float AB = _perm(A + 1) + P.z;
-  float B =  _perm(P.x + 1) + P.y;
-  float BA = _perm(B) + P.z;
-  float BB = _perm(B + 1) + P.z;
-
-  // AND ADD BLENDED RESULTS FROM 8 CORNERS OF CUBE
-  return lerp(
-    lerp(lerp(_ggrad(_perm(AA), p),
-              _ggrad(_perm(BA), p + float3(-1, 0, 0)), f.x),
-         lerp(_ggrad(_perm(AB), p + float3(0, -1, 0)),
-              _ggrad(_perm(BB), p + float3(-1, -1, 0)), f.x), f.y),
-    lerp(lerp(_ggrad(_perm(AA + 1), p + float3(0, 0, -1)),
-              _ggrad(_perm(BA + 1), p + float3(-1, 0, -1)), f.x),
-         lerp(_ggrad(_perm(AB + 1), p + float3(0, -1, -1)),
-              _ggrad(_perm(BB + 1), p + float3(-1, -1, -1)), f.x), f.y),
-    f.z);
 }
