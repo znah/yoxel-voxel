@@ -58,9 +58,27 @@ __device__ bool walkBrick(RayData ray, float t_enter, float t_exit, float4 & acc
     return false;
 }
 
+
+__device__ float3 intersect(float3 orig, float3 dt, float3 lo, float3 hi, float & t_enter, float & t_exit)
+{
+    float3 tlo = dt*(lo - orig);
+    float3 thi = dt*(hi - orig);
+
+    float3 t1 = fminf(tlo, thi);
+    float3 t2 = fmaxf(tlo, thi);
+
+    t_enter = max(t1.x, max(t1.y, t1.z));
+    t_exit  = min(t2.x, min(t2.y, t2.z));
+
+    if (t_exit == t2.x) return make_float3(1, 0, 0);
+    if (t_exit == t2.y) return make_float3(0, 1, 0);
+    return make_float3(0, 0, 1);
+}
+
+
 __device__ float4 castRay(RayData ray)
 {
-    float3 t_coef, t_bias;
+    /*float3 t_coef, t_bias;
     t_coef.x = 1.0f / fabs(ray.dir.x);
     t_coef.y = 1.0f / fabs(ray.dir.y);
     t_coef.z = 1.0f / fabs(ray.dir.z);
@@ -72,15 +90,15 @@ __device__ float4 castRay(RayData ray)
     int octant_mask = 0;
     if (ray.dir.x < 0.0f) octant_mask ^= 1, t_bias.x = -t_coef.x - t_bias.x;
     if (ray.dir.y < 0.0f) octant_mask ^= 2, t_bias.y = -t_coef.y - t_bias.y;
-    if (ray.dir.z < 0.0f) octant_mask ^= 4, t_bias.z = -t_coef.z - t_bias.z;
+    if (ray.dir.z < 0.0f) octant_mask ^= 4, t_bias.z = -t_coef.z - t_bias.z;*/
 
-    float t_enter = fmaxf(t_bias.x, t_bias.y, t_bias.z);
-    float t_exit  = fminf(t_coef.x + t_bias.x, t_coef.y + t_bias.y, t_coef.z + t_bias.z);
-    
-    t_enter = fmaxf(0.0f, t_enter);
+    float3 dt = make_float3(1.0f) / ray.dir;
+
+    float t_enter, t_exit;
+    intersect(ray.orig, dt, make_float3(0.0), make_float3(1.0), t_enter, t_exit);
+
     if (t_exit < 0.0f || t_enter > t_exit)
         return make_float4(0, 0, 0, 0);
-
 
     const float gridSize  = 64.0f;
     const float brickSize = 1.0f / gridSize;
@@ -88,21 +106,28 @@ __device__ float4 castRay(RayData ray)
     float3 p = ray.orig + t_enter * ray.dir;
     p = make_float3(make_int3(p * gridSize)) * brickSize;
 
+    float3 dp;
+    dp.x = copysignf(1.0f, ray.dir.x);
+    dp.y = copysignf(1.0f, ray.dir.y);
+    dp.z = copysignf(1.0f, ray.dir.z);
+
+    float t_stop = t_exit;
+
     float4 accum = make_float4(0);
-    while (true)   
+    while (true)
     {
-      float3 t = (p + brickSize) * t_coef + t_bias;
-      float t2 = fmaxf(t.x, t.y, t.z);
-      if (t2 == t.x) p.x += brickSize;
-      if (t2 == t.y) p.y += brickSize;
-      if (t2 == t.z) p.z += brickSize;
-      
-      if (tex3D(markTex, p.x, p.y, p.z) != 0)
-        walkBrick(ray, t_enter, t2, accum);
-      t_enter = t2;
-      if (t_enter >= t_exit)
+      float3 step = intersect(ray.orig, dt, p, p+brickSize, t_enter, t_exit) * dp;
+      if (t_enter > t_stop)
         break;
+
+      float3 p2 = p + brickSize*0.5f;
+      //if (tex3D(markTex, p2.x, p2.y, p2.z) > 0)
+        //walkBrick(ray, t_enter, t_exit, accum);
+      accum.x += 0.1;
+      p += step;
     }
+
+    walkBrick(ray, t_enter, t_exit, accum);
     return accum;
 }
  
