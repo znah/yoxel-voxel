@@ -83,6 +83,7 @@ class App(ZglAppWX):
           float getnoise(float2 p)
           {
             float4 rnd = tex2D(noise, p);
+            //float v = rnd.r;
             float v = sin(2*pi*rnd.r + time * 10.0)*0.5 + 0.5;
             //v *= saturate(sin(p.x*20));
             return v;
@@ -126,7 +127,7 @@ class App(ZglAppWX):
         flowVisFP.flow = flowBuf.tex
         flowVisFP.gridSize = size
 
-        visBuf = PingPong(size = size, format = GL_RGBA_FLOAT16_ATI)
+        visBuf = PingPong(size = size)#, format = GL_RGBA_FLOAT16_ATI)
         visBuf.texparams(*Texture2D.Linear)
         with visBuf.src:
             clearGLBuffers()
