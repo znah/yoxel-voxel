@@ -85,7 +85,7 @@ class App(ZglAppWX):
             float4 rnd = tex2D(noise, p);
             //float v = rnd.r;
             float v = sin(2*pi*rnd.r + time * 10.0)*0.5 + 0.5;
-            //v *= saturate(sin(p.x*20));
+            //v *= saturate(sin(p.x*10));
             return v;
           }
           
@@ -103,7 +103,7 @@ class App(ZglAppWX):
             float2 gp = p * gridSize;
             float dist = length(mousePos - gp);
             
-            float3 col = lerp(float3(2, 2, 2), 
+            float3 col = lerp(float3(2.5, 1.5, 0), 
                               float3(1, 0, 0), 
                               saturate(0.1*speed));
             //float3 col  = float3(dist > 10 ? 0 : 50);
@@ -119,7 +119,7 @@ class App(ZglAppWX):
             a /= c;
             b /= c;
 
-            float3 v = lerp(a, b, 0.05);
+            float3 v = lerp(a, b, 0.1);
             return float4(v, speed);
           }
         ''')
