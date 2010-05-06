@@ -2,6 +2,8 @@
 
 uniform sampler1D uPerlinPerm;
 uniform sampler1D uPerlinGrad;
+uniform sampler2D uPerlinPerm2d;
+uniform sampler1D uPerlinGradPerm;
 
 float3 _fade(float3 t)
 {
@@ -11,39 +13,53 @@ float3 _fade(float3 t)
 
 float _perm(float x)
 {
-  return tex1D(uPerlinPerm, x / 256.0).r * 256;
+  return tex1D(uPerlinPerm, x).r;
 }
 
 float _grad(float x, float3 p)
 {
-  return dot(tex1D(uPerlinGrad, x), p);
+  return dot(tex1D(uPerlinGrad, x*16.0).xyz, p);
+}
+
+float _gradperm(float x, float3 p)
+{
+  //return _grad(_perm(x), p);
+  return dot(tex1D(uPerlinGradPerm, x).xyz, p);
+}
+
+float4 _perm2d(float2 p0)
+{
+/*  const float one = 1.0 / 256.0;
+  float A  = _perm(p0.x) + p0.y;
+  float AA = _perm(A);
+  float AB = _perm(A + one);
+  float B  = _perm(p0.x + one) + p0.y;
+  float BA = _perm(B);
+  float BB = _perm(B + one);
+  return float4(AA, BA, AB, BB);*/
+  return tex2D(uPerlinPerm2d, p0);
 }
 
 // 3D version
 float noise3d(float3 p)
 {
-  float3 P = fmod(floor(p), 256.0);
+  const float one = 1.0 / 256.0;
+  float3 p0 = frac(floor(p) * one);
   p -= floor(p);
   float3 f = _fade(p);
 
-  // HASH COORDINATES FOR 6 OF THE 8 CUBE CORNERS
-  float A = _perm(P.x) + P.y;
-  float AA = _perm(A) + P.z;
-  float AB = _perm(A + 1) + P.z;
-  float B =  _perm(P.x + 1) + P.y;
-  float BA = _perm(B) + P.z;
-  float BB = _perm(B + 1) + P.z;
+  float4 A = _perm2d(p0.xy) + p0.z;
 
   // AND ADD BLENDED RESULTS FROM 8 CORNERS OF CUBE
   return lerp(
-    lerp(lerp(_grad(_perm(AA), p),
-              _grad(_perm(BA), p + float3(-1, 0, 0)), f.x),
-         lerp(_grad(_perm(AB), p + float3(0, -1, 0)),
-              _grad(_perm(BB), p + float3(-1, -1, 0)), f.x), f.y),
-    lerp(lerp(_grad(_perm(AA + 1), p + float3(0, 0, -1)),
-              _grad(_perm(BA + 1), p + float3(-1, 0, -1)), f.x),
-         lerp(_grad(_perm(AB + 1), p + float3(0, -1, -1)),
-              _grad(_perm(BB + 1), p + float3(-1, -1, -1)), f.x), f.y),
+    lerp(lerp(_gradperm(A.x, p),
+              _gradperm(A.y, p + float3(-1, 0, 0)), f.x),
+         lerp(_gradperm(A.z, p + float3(0, -1, 0)),
+              _gradperm(A.w, p + float3(-1, -1, 0)), f.x), f.y),
+    lerp(lerp(_gradperm(A.x + one, p + float3(0, 0, -1)),
+              _gradperm(A.y + one, p + float3(-1, 0, -1)), f.x),
+         lerp(_gradperm(A.z + one, p + float3(0, -1, -1)),
+              _gradperm(A.w + one, p + float3(-1, -1, -1)), f.x), f.y),
     f.z);
 }
 
