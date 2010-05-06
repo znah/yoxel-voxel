@@ -1,23 +1,16 @@
 from __future__ import with_statement
 from zgl import *
+from perlin import setup_perlin
 
-def setup_perlin(prog):
-    perm = random.permutation(256).astype(uint8)[:,newaxis]
-    permTex = Texture1D(img = perm)
-    prog.uPerlinPerm = permTex
-
-    grad = array([
-        1,1,0,    -1,1,0,    1,-1,0,    -1,-1,0,
-        1,0,1,    -1,0,1,    1,0,-1,    -1,0,-1,
-        0,1,1,    0,-1,1,    0,1,-1,    0,-1,-1,
-        1,1,0,    0,-1,1,    -1,1,0,    0,-1,-1], float32).reshape(-1,3)
-    prog.uPerlinGrad = Texture1D(img = grad, format = GL_RGBA_FLOAT16_ATI)
     
 class App(ZglAppWX):
+
+    contrast = Range(0.0, 10.0, 0.0)
+    convolStep = Range(0.5, 5.0, 2.0)
     
     
     def __init__(self):
-        size = V(1600, 1024)
+        size = V(800, 600)
         ZglAppWX.__init__(self, size = size, viewControl = OrthoCamera())
 
         vortexFP = CGShader('fp40', '''
@@ -74,17 +67,16 @@ class App(ZglAppWX):
                 
 
         noiseTex = Texture2D(random.rand(size[1], size[0], 4).astype(float32))
-        noiseTex.genMipmaps()
-        #noiseTex.filterLinearMipmap()
-        noiseTex.setParams(*Texture.Repeat)
         
         flowVisFP = CGShader('fp40', '''
-          #line 83
+          #line 71
           uniform sampler2D flow;
           uniform sampler2D src;
           uniform sampler2D noise;
           uniform float2 gridSize;
           uniform float time;
+          uniform float2 mousePos;
+          uniform float convolStep;
 
           const float pi = 3.141593;
 
@@ -92,23 +84,10 @@ class App(ZglAppWX):
           {
             float4 rnd = tex2D(noise, p);
             float v = sin(2*pi*rnd.r + time * 10.0)*0.5 + 0.5;
-            v *= saturate(sin(p.x*20));
+            //v *= saturate(sin(p.x*20));
             return v;
           }
           
-          float getnoise_lerp(float2 p)
-          {
-            float2 dp = 1.0f / gridSize;
-            p *= gridSize;
-            float2 f = frac(p);
-            p = dp * (p-f);
-
-            float v0 = lerp(getnoise(p), getnoise(p + float2(dp.x, 0)), f.x);
-            p.y += dp.y;
-            float v1 = lerp(getnoise(p), getnoise(p + float2(dp.x, 0)), f.x);
-            return lerp(v0, v1, f.y);
-          }
-
           float4 main(float2 p : TEXCOORD0) : COLOR
           {
             float2 vel = tex2D(flow, p).xy;
@@ -118,14 +97,21 @@ class App(ZglAppWX):
             float3 a = float3(0);
             float3 b = float3(0);
             float c = 0;
-            float dt = 1.0 / speed;
+            float dt = convolStep / speed;
+
+            float2 gp = p * gridSize;
+            float dist = length(mousePos - gp);
+            
+            float3 col = lerp(float3(2, 2, 2), 
+                              float3(1, 0, 0), 
+                              saturate(0.1*speed));
+            //float3 col  = float3(dist > 10 ? 0 : 50);
+
             for (float t = 0; t < 1.0; t += dt)
             {
               float2 pm = lerp(sp, p, t);
               a += tex2D(src, pm).rgb;
-              b += float3(getnoise(pm));
-              
-              b.gb *= saturate(speed*0.5);
+              b += getnoise(pm) * col;
 
               c += 1.0;
             }
@@ -139,6 +125,7 @@ class App(ZglAppWX):
         flowVisFP.noise = noiseTex
         flowVisFP.flow = flowBuf.tex
         flowVisFP.gridSize = size
+
         visBuf = PingPong(size = size, format = GL_RGBA_FLOAT16_ATI)
         visBuf.texparams(*Texture2D.Linear)
         with visBuf.src:
@@ -147,6 +134,10 @@ class App(ZglAppWX):
         
         @with_(glprofile('updateFlowVis'))
         def updateFlowVis():
+            x, y = self.viewControl.mPos
+            y = self.viewControl.vp.size[1]-y-1
+            flowVisFP(mousePos = (x, y),
+                      convolStep = self.convolStep)
             with ctx(visBuf.dst, ortho, flowVisFP(src = visBuf.src.tex, time = self.time)):
                 drawQuad()
             visBuf.flip()
@@ -157,19 +148,23 @@ class App(ZglAppWX):
           float3 v = data.rgb;
           float speed = data.a;
 
-          v = lerp(float3(0.5), v, 2.0);
+          v = lerp(float3(0.5), v, 1.0+f_contrast);
 
           return float4(v, 1.0);
         ''' )
         self.lastTime = 0
-        dt = 1.0/60.0
+        dt = 1.0/50.0
 
         def display():
             if self.time - self.lastTime > dt:
-                updateFlow()
-                updateFlowVis()
+                with profile('update'):
+                    updateFlow()
+                    updateFlowVis()
                 self.lastTime = self.time
 
+            texlookupFP(
+              s_texture = visBuf.src.tex,
+              f_contrast = self.contrast)
             with ctx(self.viewControl.vp, ortho, texlookupFP( s_texture = visBuf.src.tex )):
                 drawQuad()
 
