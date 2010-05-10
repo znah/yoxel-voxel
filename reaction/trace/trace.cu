@@ -5,6 +5,7 @@ __constant__ float4x4 c_proj2wldMtx;
 __constant__ float3   c_eyePos;
 __constant__ int2     c_viewSize;
 
+
 texture<uchar,  3, cudaReadModeNormalizedFloat> volumeTex;   // 3D texture
 texture<float4, 1, cudaReadModeElementType>     transferTex; // 1D transfer function texture
 texture<uchar,  3, cudaReadModeElementType>     markTex;
@@ -40,12 +41,15 @@ __device__ RayData PrepareRay(int x, int y)
 
 __device__ bool walkBrick(RayData ray, float t_enter, float t_exit, float4 & accum)
 {
-    const float dt = 1.0f / 1024.0f;
+    const float dt = 0.5f / 256.0f;
+    const float invDt = 1.0f / dt;
+
+    t_enter = ceil(t_enter*invDt)*dt;
     for (float t = t_enter; t < t_exit; t += dt)
     {
         float3 p = ray.orig + t * ray.dir;
         float v = tex3D(volumeTex, p.x, p.y, p.z);
-        float4 col = make_float4(saturate( (v-0.5f)*4.0 ));
+        float4 col = make_float4( saturate(v*2.0 - 0.9) );
         col.w *= 0.5;
         col.x *= col.w;
         col.y *= col.w;
@@ -97,6 +101,7 @@ __device__ float4 castRay(RayData ray)
     float t_enter, t_exit;
     intersect(ray.orig, dt, make_float3(0.0), make_float3(1.0), t_enter, t_exit);
 
+    t_enter = max(t_enter, 0.0);
     if (t_exit < 0.0f || t_enter > t_exit)
         return make_float4(0, 0, 0, 0);
 
@@ -107,9 +112,9 @@ __device__ float4 castRay(RayData ray)
     p = make_float3(make_int3(p * gridSize)) * brickSize;
 
     float3 dp;
-    dp.x = copysignf(1.0f, ray.dir.x);
-    dp.y = copysignf(1.0f, ray.dir.y);
-    dp.z = copysignf(1.0f, ray.dir.z);
+    dp.x = copysignf(brickSize, ray.dir.x);
+    dp.y = copysignf(brickSize, ray.dir.y);
+    dp.z = copysignf(brickSize, ray.dir.z);
 
     float t_stop = t_exit;
 
@@ -121,13 +126,15 @@ __device__ float4 castRay(RayData ray)
         break;
 
       float3 p2 = p + brickSize*0.5f;
-      //if (tex3D(markTex, p2.x, p2.y, p2.z) > 0)
-        //walkBrick(ray, t_enter, t_exit, accum);
-      accum.x += 0.1;
+      if (tex3D(markTex, p2.x, p2.y, p2.z) > 0)
+      {
+        walkBrick(ray, t_enter, t_exit, accum);
+        if (accum.w > 0.99f)
+          break;
+
+      }
       p += step;
     }
-
-    walkBrick(ray, t_enter, t_exit, accum);
     return accum;
 }
  

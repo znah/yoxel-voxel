@@ -1,8 +1,8 @@
 from numpy import *
 
-a = load("a_512.npy")
+a = load("bonsai.npy")
 
-brick_size = bs = 8
+brick_size = bs = 4
 border = 1
 pbs = brick_size + border
 grid_size = gs = array(a.shape) / brick_size

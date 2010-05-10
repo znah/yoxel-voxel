@@ -55,11 +55,11 @@ class CuTracer(HasTraits):
         c_eyePos      = mod.get_global('c_eyePos')
 
         w, h = 1024, 768
-        self.a = a = zeros((h, w, 4), uint8) + 128
+        self.a = a = zeros((h, w, 4), uint8)
         viewTex = Texture2D(img = a)
         viewBuf  = CuGLBuf(a)
 
-        vol = load('a_512.npy')
+        vol = load('bonsai.npy')
         mark = load('mark.npy') 
         self.d_vol = d_vol = to_cuda_array3d(vol)  # protect from gc
         self.d_mark = d_mark = to_cuda_array3d(mark)  # protect from gc
