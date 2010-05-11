@@ -133,6 +133,7 @@ class Diffusion:
             dst[ofs] = acc;
         }
 
+
         const int TILE_DIM_X = 16;
         const int TILE_DIM_Y = 16;
         
@@ -150,10 +151,10 @@ class Diffusion:
 
            int ofs = x + y * VOL_DIM_X;
            const int stride_z = VOL_DIM_X * VOL_DIM_Y;
-           if (x < 0)            ofs += VOL_DIM_X;
-           if (y < 0)            ofs += stride_z;
-           if (x >= VOL_DIM_X-1) ofs -= VOL_DIM_X;
-           if (y >= VOL_DIM_Y-1) ofs -= stride_z;
+           if (x < 0)           ofs += VOL_DIM_X;
+           if (y < 0)           ofs += stride_z;
+           if (x > VOL_DIM_X-1) ofs -= VOL_DIM_X;
+           if (y > VOL_DIM_Y-1) ofs -= stride_z;
            smem[1][ty][tx] = src[ofs];
            if (valid)
              dst[ofs] = smem[1][ty][tx];
@@ -215,7 +216,7 @@ class Diffusion:
         }
 
         ''').render(v = vars(), g = globals())
-        mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd()+'/include'], no_extern_c = True) #options = ['--maxrregcount=16'])
+        mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd()+'/include'], no_extern_c = True, keep=True) #options = ['--maxrregcount=16'])
         d_fetch_reqs = mod.get_global('fetch_reqs')
         cu.memcpy_htod(d_fetch_reqs[0], fetch_reqs)
         srcTexRef = mod.get_texref('srcTex')
@@ -229,7 +230,7 @@ class Diffusion:
         @with_( cuprofile("DiffusionStep") )
         def step():
             #self.src.bind_to_texref(srcTexRef)
-            #DiffKernel(self.src, self.dst, block = block, grid = cu_grid)
+            #DiffKernel(self.src, self.dst, block = block, grid = cu_grid, texrefs = [srcTexRef])
             DiffKernel2(self.src, self.dst, block = block2, grid = grid2)
             self.flipBuffers()
         self.step = step
