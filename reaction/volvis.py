@@ -8,7 +8,7 @@ class VolumeRenderer(HasTraits):
     transferScale  = Range( 0.0, 2.0, 1.0 )
     stepsInTexel   = Range( 0.5, 4.0, 2.0 )
 
-    transferFunc   = Enum('gray', 'nv')
+    transferFunc   = Enum('nv', 'gray')
 
     volumeTex      = Any(editable = False)
     
