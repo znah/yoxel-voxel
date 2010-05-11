@@ -986,8 +986,9 @@ _profileCurNodeName = ""
 g_profileEnable = False           
 
 class profile:
-    def __init__(self, node):
-        self.nodeName = node
+    def __init__(self, name, log = False):
+        self.nodeName = name
+        self.log = log
             
     def __enter__(self):
         if not g_profileEnable:
@@ -1005,20 +1006,25 @@ class profile:
             return
         global _profileCurNodeName
         dt = (clock() - self.startTime) * 1000.0
-        node_data = _profileNodes.get( self.fullName, dict(ncalls=1, total = dt, max = dt, avg = dt) )
-        node_data['ncalls'] += 1
-        node_data['total']  += dt
-        node_data['max']    = max(dt, node_data['max'])
-        
-        relaxCoef = 0.05#min(0.5, dt / 50.0)
-        node_data['avg']    = (1.0 - relaxCoef) * node_data['avg'] + relaxCoef * dt
-
+        if self.fullName in _profileNodes:
+            node_data = _profileNodes.get( self.fullName )
+            node_data['ncalls'] += 1
+            node_data['total']  += dt
+            node_data['max']    = max(dt, node_data['max'])
+            relaxCoef = 0.1 #min(0.5, dt / 50.0)
+            node_data['avg']    = (1.0 - relaxCoef) * node_data['avg'] + relaxCoef * dt
+        else:
+            node_data = dict(ncalls=1, total = dt, max = dt, avg = dt)
+        if self.log:
+            log = node_data.get('log', [])
+            log.append(dt)
+            node_data['log'] = log
         _profileNodes[self.fullName] = node_data
         _profileCurNodeName = self.prevNodeName 
 
 class glprofile(profile):
-    def __init__(self, name):
-        profile.__init__(self, name + '_gl')
+    def __init__(self, name, log = False):
+        profile.__init__(self, name + '_gl', log)
     def __enter__(self):
         if not g_profileEnable:
             return
@@ -1046,6 +1052,16 @@ def dumpProfile():
         avg = node_data['avg']
         res += templ % (name, ncalls, avg, total, max_)
     return res
+
+
+def saveProfileLogs(fn):
+    logs = {}
+    for name in _profileNodes:
+        node_data = _profileNodes[name]
+        if 'log' in node_data:
+            a = array(node_data['log'], float32)
+            logs[name] = a
+    savez(fn, **logs)
 
 def with_(*context):
     def wrap(func):

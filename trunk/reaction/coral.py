@@ -182,7 +182,7 @@ class Coral(HasTraits):
 
     @with_( profile("calcAbsorb") )
     def calcAbsorb(self):
-        with glprofile('voxelize'):
+        with glprofile('voxelize', log = True):
             with self.voxelizer:
                 clearGLBuffers()
                 s = 1.0 / self.gridSize
@@ -190,12 +190,12 @@ class Coral(HasTraits):
                 drawArrays(GL_TRIANGLES, verts = self.positions, indices = self.faces)
             self.voxelizer.dumpToPBO()
 
-        with cuprofile("PrepareDiffusionVolume"):
+        with cuprofile("PrepareDiffusionVolume", log = True):
             gl2cudaMap = self.gl2cudaBuf.map()
             self.PrepareDiffusionVolume(gl2cudaMap.device_ptr(), gl2cudaMap.size())
             gl2cudaMap.unmap()
         
-        with cuprofile("Diffusion"):
+        with cuprofile("Diffusion", log = True):
             d_sinks = ga.to_gpu(self.positions + self.normals * self.mouthDist)
             self.MarkSinks(d_sinks, Diffusion.SINK)
             for i in xrange(self.diffuseStepNum):
@@ -212,16 +212,15 @@ class Coral(HasTraits):
             absorb = d_absorb.get()
         self.absorb = absorb / absorb.max()
 
-    @with_( profile("growMesh") )
+    @with_( profile("growMesh", log=True) )
     def growMesh(self):
         mergeDist = 0.75 * self.coralliteSpacing
         splitDist = 1.5  * self.coralliteSpacing
         self.mesh.grow(mergeDist, splitDist, self.absorb*self.growCoef)
         self.getMeshArrays()
 
-
         
-    @with_( profile("grow") )
+    @with_( profile("grow", log = True) )
     def grow(self):
         self.growMesh()
         self.calcAbsorb()
@@ -267,6 +266,8 @@ if __name__ == '__main__':
                 self.growLeft = 0
         def key_1(self):
             save_obj("t.obj", self.coral.positions, self.coral.faces)
+        def key_2(self):
+            saveProfileLogs('grow_log')
 
         def save_coral(self):
             fname = "coral_%03d" % (self.iterCount,)
