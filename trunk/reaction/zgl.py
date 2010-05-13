@@ -986,7 +986,7 @@ _profileCurNodeName = ""
 g_profileEnable = False           
 
 class profile:
-    def __init__(self, name, log = False):
+    def __init__(self, name, log = None):
         self.nodeName = name
         self.log = log
             
@@ -1015,15 +1015,18 @@ class profile:
             node_data['avg']    = (1.0 - relaxCoef) * node_data['avg'] + relaxCoef * dt
         else:
             node_data = dict(ncalls=1, total = dt, max = dt, avg = dt)
-        if self.log:
+        if self.log is not None:
             log = node_data.get('log', [])
-            log.append(dt)
+            if not iterable(self.log):
+                self.log = [self.log]
+
+            log.append([dt] + list(self.log))
             node_data['log'] = log
         _profileNodes[self.fullName] = node_data
         _profileCurNodeName = self.prevNodeName 
 
 class glprofile(profile):
-    def __init__(self, name, log = False):
+    def __init__(self, name, log = None):
         profile.__init__(self, name + '_gl', log)
     def __enter__(self):
         if not g_profileEnable:
@@ -1059,7 +1062,7 @@ def saveProfileLogs(fn):
     for name in _profileNodes:
         node_data = _profileNodes[name]
         if 'log' in node_data:
-            a = array(node_data['log'], float32)
+            a = array(node_data['log'])
             logs[name] = a
     savez(fn, **logs)
 

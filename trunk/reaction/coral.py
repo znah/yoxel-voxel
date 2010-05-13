@@ -182,7 +182,7 @@ class Coral(HasTraits):
 
     @with_( profile("calcAbsorb") )
     def calcAbsorb(self):
-        with glprofile('voxelize', log = True):
+        with glprofile('voxelize', log = (len(self.positions), len(self.faces))):
             with self.voxelizer:
                 clearGLBuffers()
                 s = 1.0 / self.gridSize
