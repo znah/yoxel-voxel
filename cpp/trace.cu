@@ -3,8 +3,6 @@
 #include "trace_cu.h"
 #include "trace_utils.h"
 
-#define USE_TEXLOOKUP
-
 #define INIT_THREAD \
   int xi = blockIdx.x * blockDim.x + threadIdx.x; \
   int yi = blockIdx.y * blockDim.y + threadIdx.y; \
@@ -41,7 +39,7 @@ texture<uint, 1, cudaReadModeElementType> nodes_tex;
 
 #define GET_FIELD( id, fld ) ( tree.nodes[id].fld )
 
-#ifdef USE_TEXLOOKUP
+#if USE_TEXLOOKUP
   #define NODE_SZ (sizeof(VoxNode)/4)
   #define GET_TEXNODE_FIELD( p, fld ) ( tex1Dfetch(nodes_tex, (p)+(fld)) )
 
@@ -181,8 +179,6 @@ __device__ void FindFirstChild2(float t_enter, float3 t_coef, float3 t_bias, int
   if (t_center.z < t_enter) ++pos.z;
 }
 
-//#define SHARED_STACK
-
 const int STACK_DEPTH = 16;
 const int BLOCK_THREADNUM = 128;
 
@@ -198,7 +194,7 @@ struct Stack
 
   __device__ void push(NodePtr p) 
   {
-#ifdef SHARED_STACK
+#if SHARED_STACK
     s_stack[sbase + (level++)*BLOCK_THREADNUM] = p;
 #else
     stack[level++] = p;
@@ -210,7 +206,7 @@ struct Stack
   __device__ NodePtr pop(int upcount) 
   {
     level -= upcount;
-#ifdef SHARED_STACK
+#if SHARED_STACK
     return s_stack[sbase + level*BLOCK_THREADNUM];
 #else
     return stack[level];

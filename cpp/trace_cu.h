@@ -1,5 +1,9 @@
 #pragma once
 
+#define SHARED_STACK   0
+#define USE_TEXLOOKUP  1
+
+
 #include "vox_node.h"
 
 struct VoxStructTree

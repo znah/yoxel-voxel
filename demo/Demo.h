@@ -74,4 +74,6 @@ private:
 
   float m_playStart;
   bool m_playing;
+
+  std::ofstream m_logFile;
 };
