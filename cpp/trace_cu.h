@@ -51,6 +51,7 @@ struct RayData
   int endNodeChild;
   float endNodeSize;
   int perfCount;
+  int unshuffleIndex;
 };
 
 
@@ -58,7 +59,7 @@ struct RayData
 extern "C" {
 #endif
 
-void Run_InitEyeRays(GridShape grid, RayData * rays, float * noiseBuf);
+void Run_InitEyeRays(GridShape grid, RayData * rays, float * noiseBuf, const int * shuffleBuf);
 void Run_Trace(GridShape grid, RayData * rays);
 void Run_ShadeSimple(GridShape grid, const RayData * eyeRays, uchar4 * img, ushort4 * accum);
 void Run_ShadeCounter(GridShape grid, const RayData * eyeRays, uchar4 * img);

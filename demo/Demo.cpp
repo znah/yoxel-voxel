@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "Demo.h"
 #include <cuda_gl_interop.h>
-#include "format.h"
 
 using std::cout;
 using std::endl;
@@ -209,8 +208,8 @@ void Demo::KeyDown(unsigned char key, int x, int y)
   if (key == 'w') m_motionVel.y = 1;
   if (key == 's') m_motionVel.y = -1;
 
-  if (key == '9') m_renderer.SetDetailCoef( m_renderer.GetDetailCoef() - 0.1f );
-  if (key == '0') m_renderer.SetDetailCoef( m_renderer.GetDetailCoef() + 0.1f );
+  if (key == '9') m_renderer.SetDetailCoef( m_renderer.GetDetailCoef() - 0.5f );
+  if (key == '0') m_renderer.SetDetailCoef( m_renderer.GetDetailCoef() + 0.5f );
 
   if (key == '-') m_renderer.SetFOV( m_renderer.GetFOV()*1.1f );
   if (key == '=') m_renderer.SetFOV( m_renderer.GetFOV()*0.9f );
@@ -228,6 +227,9 @@ void Demo::KeyDown(unsigned char key, int x, int y)
     mode = (mode + 1) % SVORenderer::SM_MAX;
     m_renderer.SetShadeMode(mode);
   }
+
+  if (key == '8')
+    m_renderer.SetShuffle(!m_renderer.GetShuffle());
 
   if (key == 'z')
   {
@@ -317,13 +319,13 @@ void Demo::Display()
   glDisable(GL_TEXTURE_2D);
 
   glColor4f(0, 1, 0, 1);
-  std::string info = format("trace time: {0}\n") % m_renderer.GetProfile().traceTime;
+  /*std::string info = format("trace time: {0}\n") % m_renderer.GetProfile().traceTime;
   if (m_recording)
     info += "REC ";
   if (m_playing)
-    info += "PLAY ";
+    info += "PLAY ";*/
   glWindowPos2i(20, m_viewSize.y - 20); 
-  glutBitmapString(GLUT_BITMAP_9_BY_15, (const unsigned char*)info.c_str());
+  glutBitmapString(GLUT_BITMAP_9_BY_15, (const unsigned char*)m_renderer.GetInfoString().c_str());
 
   glutSwapBuffers();
 }

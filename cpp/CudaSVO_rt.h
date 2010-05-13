@@ -20,6 +20,8 @@ public:
   void SetSVO(DynamicSVO * svo);
   void Update();
 
+  DynamicSVO * Source() const { return m_svo; }
+
   VoxNodeId GetRoot();
   VoxNode * GetNodes(int & size);
 };

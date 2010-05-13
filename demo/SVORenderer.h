@@ -34,11 +34,14 @@ public:
   void SetFOV(float fov) { CheckSet(m_fov, fov); }
   float GetFOV() const { return m_fov; }
 
-  void SetDetailCoef(float coef) { CheckSet(m_detailCoef, coef); }
+  void SetDetailCoef(float coef) { CheckSet(m_detailCoef, coef); printf("%f\n", coef); }
   float GetDetailCoef() const { return m_detailCoef; }
 
   void SetDither(float coef) { CheckSet(m_ditherCoef, coef); }
   float GetDither() const { return m_ditherCoef; }
+
+  void SetShuffle(bool enable) { CheckSet(m_shuffleEnabled, enable); }
+  bool GetShuffle() const { return m_shuffleEnabled; }
 
   void SetLight(int i, const LightParams & lp) { m_lights[i] = lp; }
 
@@ -52,12 +55,17 @@ public:
 
   const ProfileStats & GetProfile() const { return m_profStats; }
 
+  std::string GetInfoString() const;
+
 private:
   template <class T>
   void CheckSet(T & val, const T & newVal)
   {
     if (val != newVal)
+    {
       ResetAccum();
+      m_profStats = ProfileStats();
+    }
     val = newVal;
   }
 
@@ -71,6 +79,7 @@ private:
   
   float m_ditherCoef;
   int m_shadeMode;
+  bool m_shuffleEnabled;
 
   LightParams m_lights[MaxLightsNum];
 
@@ -79,6 +88,7 @@ private:
   CuVector<RayData> m_rayDataBuf;
   CuVector<float> m_noiseBuf;
   CuVector<ushort4> m_accumBuf;
+  CuVector<int> m_shuffleBuf;
 
   const textureReference * m_dataTexRef;
 

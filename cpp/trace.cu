@@ -70,7 +70,7 @@ __device__ VoxData GetVoxData  (VoxNodeId id) { return tree.nodes[id].data; }
 extern "C" {
 
 
-__global__ void InitEyeRays(RayData * rays, float * noiseBuf)
+__global__ void InitEyeRays(RayData * rays, const float * noiseBuf, const int * shuffleBuf)
 {
   INIT_THREAD
 
@@ -80,11 +80,17 @@ __global__ void InitEyeRays(RayData * rays, float * noiseBuf)
 
   int noiseBase = (tid*3 + rp.rndSeed) % (3*sx*sy-3);
   point_3f noiseShift = point_3f(noiseBuf[noiseBase], noiseBuf[noiseBase+1], noiseBuf[noiseBase+2]) * rp.ditherCoef;
-  rays[tid].pos = rp.eyePos + noiseShift;
-  rays[tid].dir = dir;
 
-  rays[tid].endNode = 0;
-  rays[tid].endNodeChild = EmptyNode;
+  int idx = tid;
+  if (shuffleBuf != NULL)
+    idx = shuffleBuf[tid];
+
+  rays[idx].pos = rp.eyePos + noiseShift;
+  rays[idx].dir = dir;
+
+  rays[idx].endNode = 0;
+  rays[idx].endNodeChild = EmptyNode;
+  rays[idx].unshuffleIndex = tid;
 }
 
 
@@ -175,10 +181,46 @@ __device__ void FindFirstChild2(float t_enter, float3 t_coef, float3 t_bias, int
   if (t_center.z < t_enter) ++pos.z;
 }
 
+//#define SHARED_STACK
+
+const int STACK_DEPTH = 16;
+const int BLOCK_THREADNUM = 128;
+
+__shared__ NodePtr s_stack[STACK_DEPTH * BLOCK_THREADNUM];
+
+struct Stack
+{
+  int level;
+  int sbase;
+  NodePtr stack[STACK_DEPTH];
+
+  __device__ Stack() : level(0), sbase(threadIdx.x + threadIdx.y * blockDim.x) {}
+
+  __device__ void push(NodePtr p) 
+  {
+#ifdef SHARED_STACK
+    s_stack[sbase + (level++)*BLOCK_THREADNUM] = p;
+#else
+    stack[level++] = p;
+#endif
+  }
+
+  __device__ bool trypop(int upcount) { return level >= upcount; }
+
+  __device__ NodePtr pop(int upcount) 
+  {
+    level -= upcount;
+#ifdef SHARED_STACK
+    return s_stack[sbase + level*BLOCK_THREADNUM];
+#else
+    return stack[level];
+#endif
+  }
+};
+
 __global__ void Trace(RayData * rays)
 {
   INIT_THREAD;
-
 
   RayData & ray = rays[tid];
 
@@ -214,9 +256,9 @@ __global__ void Trace(RayData * rays)
   int3 pos = make_int3(0);
   FindFirstChild2(t_enter, t_coef, t_bias, pos, 1.0f);
   float nodeSize = 0.5f;
+  int count = 0;
 
-  int level = 0;
-  NodePtr stack[16];
+  Stack stack;
 
   enum Action { ACT_UNKNOWN, ACT_SAVE, ACT_DOWN, ACT_NEXT };
   enum Condition {
@@ -228,33 +270,35 @@ __global__ void Trace(RayData * rays)
   };
   while (true)
   {
-    int exitMask = 1;
-    t_exit = (pos.x+1) * nodeSize * t_coef.x + t_bias.x;
-    float t = (pos.y+1) * nodeSize * t_coef.y + t_bias.y;
-    if (t < t_exit) t_exit = t, exitMask = 2;
-    t = (pos.z+1) * nodeSize * t_coef.z + t_bias.z;
-    if (t < t_exit) t_exit = t, exitMask = 4;
+    ++count;
+    float3 t2 = make_float3(pos + 1) * nodeSize * t_coef + t_bias;
+    t_exit = minv(t2);
 
     int realChildId = pos2ch(pos)^octant_mask;
-    uint cond = 0;
-    if (GetNullFlag(nodeInfo, realChildId))
-      cond |= CND_HIT_EMPTY;
-    if (GetLeafFlag(nodeInfo, realChildId))
-      cond |= CND_HIT_LEAF;
-    if (t_exit < 0.0f) 
-      cond |= CND_EARLY;
-    /*if (t_enter * rp.detailCoef > nodeSize)
-      cond |= CND_LOD;
-    if (GetEmptyFlag(GetNodeInfo(nodePtr))
-      cond |= CND_LOD_EMPTY;*/
 
-    int action = ACT_UNKNOWN;
-    if (cond & (CND_HIT_EMPTY | CND_EARLY))
+    int action = ACT_DOWN;
+    if (t_exit < 0.0f) 
       action = ACT_NEXT;
-    if (cond == CND_HIT_LEAF)
-      action = ACT_SAVE;
-    if (action == ACT_UNKNOWN)
-      action = ACT_DOWN;
+    else
+    {
+      if (/*stack.level > 8 ||*/ t_enter * rp.detailCoef > 2.0f * nodeSize) // LOD ?
+      {
+        if (GetEmptyFlag(nodeInfo))
+          action = ACT_NEXT;
+        else
+        {
+          realChildId = -1;
+          action = ACT_SAVE;
+        }
+      }
+      else
+      {
+        if (GetNullFlag(nodeInfo, realChildId))
+          action = ACT_NEXT;
+        else if (GetLeafFlag(nodeInfo, realChildId))
+          action = ACT_SAVE;
+      }
+    }
 
     if (action == ACT_SAVE)
     {
@@ -262,12 +306,13 @@ __global__ void Trace(RayData * rays)
       ray.endNodeChild = realChildId;
       ray.t = t_enter;
       ray.endNodeSize = nodeSize;
+      ray.perfCount = count;
       break;
     }
 
     if (action == ACT_DOWN)
     {
-      stack[level++] = nodePtr;
+      stack.push(nodePtr);
       VoxNodeId ch = GetChild(nodePtr, realChildId);
       nodePtr = GetNodePtr(ch);
       FindFirstChild2(t_enter, t_coef, t_bias, pos, nodeSize);
@@ -278,17 +323,19 @@ __global__ void Trace(RayData * rays)
 
     // GO NEXT
     int diff;  
-    if (exitMask == 1) {diff = pos.x; ++pos.x;}
-    if (exitMask == 2) {diff = pos.y; ++pos.y;}
-    if (exitMask == 4) {diff = pos.z; ++pos.z;}
+    if (t_exit == t2.x) {diff = pos.x; ++pos.x;}
+    if (t_exit == t2.y) {diff = pos.y; ++pos.y;}
+    if (t_exit == t2.z) {diff = pos.z; ++pos.z;}
     diff = (diff^(diff+1))>>1;
     if (diff != 0)
     {
       int upcount = popc16(diff);
-      if (level < upcount)
+      if (!stack.trypop(upcount))
+      {
+        ray.perfCount = count;
         return;
-      level -= upcount;
-      nodePtr = stack[level];
+      }
+      nodePtr = stack.pop(upcount);
       nodeInfo = GetNodeInfo(nodePtr);
       pos.x >>= upcount;
       pos.y >>= upcount;
@@ -297,88 +344,7 @@ __global__ void Trace(RayData * rays)
     }
     t_enter = t_exit;
   }
-
-
-  /*enum States { ST_EXIT, ST_ANALYSE, ST_SAVE, ST_GOUP, ST_GODOWN, ST_GONEXT };
-  int state = ST_ANALYSE;
-  while (state != ST_EXIT)
-  {
-    ++count;
-    switch (state)
-    {
-      case ST_ANALYSE:
-      {
-        childId = -1;
-        if (maxCoord(t1) * rp.detailCoef > nodeSize/2)  { state = GetEmptyFlag(GetNodeInfo(nodePtr)) ? ST_GOUP : ST_SAVE; break; }
-        
-        childId = FindFirstChild(t1, t2);
-        state = ST_GODOWN;
-        break;
-      }
-      
-      case ST_GODOWN:
-      {
-        if (minCoord(t2) < 0) { state = ST_GONEXT; break; }
-
-        VoxNodeInfo nodeInfo = GetNodeInfo(nodePtr);
-        int realChildId = childId^octant_mask;
-        if (GetLeafFlag(nodeInfo, realChildId)) { state = ST_SAVE; break; }
-        
-        // no performance gain for some reason
-        // if (GetNullFlag(nodeInfo, realChildId)) { state = ST_GONEXT; break; } 
-        
-        VoxNodeId ch = GetChild(nodePtr, realChildId);
-        if (IsNull(ch)) { state = ST_GONEXT; break; }
-        nodePtr = GetNodePtr(ch);
-        ++level;
-        nodeSize /= 2;
-
-        state = ST_ANALYSE;
-        break;
-      }
-      
-      case ST_GONEXT:
-      {
-        state = GoNext(childId, t1, t2, pos) ? ST_GODOWN : ST_GOUP;
-        break;
-      }
-
-      case ST_GOUP:
-      {
-        VoxNodeId p = GetParent(nodePtr);
-        if (IsNull(p)) 
-        { 
-          rays[tid].endNode = EmptyNode;
-          state = ST_EXIT; 
-          break; 
-        }
-
-        for (int i = 0; i < 3; ++i)
-        {
-          int mask = 1<<i;
-          float dt = t2[i] - t1[i];
-          ((childId & mask) == 0) ? t2[i] += dt : t1[i] -= dt;
-        }
-        childId = GetSelfChildId(GetNodeInfo(nodePtr))^octant_mask;
-        nodePtr = GetNodePtr(p);
-        --level;
-        nodeSize *= 2;
-        state = ST_GONEXT;
-        break;
-      }
-
-      case ST_SAVE:
-      {
-        rays[tid].endNode = Ptr2Id(nodePtr);
-        rays[tid].endNodeChild = childId^octant_mask;
-        rays[tid].t = maxCoord(t1);
-        rays[tid].endNodeSize = nodeSize;
-        state = ST_EXIT;
-        break;
-      }
-    }
-  }*/
-  //rays[tid].perfCount = count;
+  rays[tid].perfCount = count;
 }
 
 __device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
@@ -412,7 +378,8 @@ __global__ void ShadeCounter(const RayData * eyeRays, uchar4 * img)
 
   int count = eyeRays[tid].perfCount;
   count = min(count, 255);
-  img[tid] = make_uchar4(count, count, count, 255);
+  int idx = eyeRays[tid].unshuffleIndex;
+  img[idx] = make_uchar4(count, count, count, 255);
   return;
 }
 
@@ -456,23 +423,25 @@ __global__ void ShadeSimple(const RayData * eyeRays, uchar4 * img, ushort4 * acc
     res = fminf(CalcLighting(pt, norm, materialColor) * 256.0f, point_3f(255, 255, 255));
   }
 
+  int idx = eyeRays[tid].unshuffleIndex;
+
   ushort4 accRes = make_ushort4(res.x, res.y, res.z, 0);
   if (rp.accumIter > 0)
   {
-    ushort4 prev = accum[tid];
+    ushort4 prev = accum[idx];
     accRes.x += prev.x;
     accRes.y += prev.y;
     accRes.z += prev.z;
   }
   if (rp.accumIter < 255)
-    accum[tid] = accRes;
+    accum[idx] = accRes;
   float accumCoef = 1.0f / (rp.accumIter+1);
-  img[tid] = make_uchar4(accRes.x * accumCoef, accRes.y * accumCoef, accRes.z * accumCoef, 255);
+  img[idx] = make_uchar4(accRes.x * accumCoef, accRes.y * accumCoef, accRes.z * accumCoef, 255);
 }
 
-void Run_InitEyeRays(GridShape grid, RayData * rays, float * noiseBuf)
+void Run_InitEyeRays(GridShape grid, RayData * rays, float * noiseBuf, const int * shuffleBuf)
 {
-  InitEyeRays<<<grid.grid, grid.block>>>(rays, noiseBuf);
+  InitEyeRays<<<grid.grid, grid.block>>>(rays, noiseBuf, shuffleBuf);
 }
 
 void Run_Trace(GridShape grid, RayData * rays)
