@@ -107,7 +107,7 @@ def make_grid3d(space_size, block_size):
 
 
 class cuprofile(zgl.profile):
-    def __init__(self, name, log = False):
+    def __init__(self, name, log = None):
         zgl.profile.__init__(self, name + '_cu', log)
     def __enter__(self):
         if not zgl.g_profileEnable:
