@@ -140,7 +140,7 @@ void SVORenderer::ResetAccum()
 
 std::string SVORenderer::GetInfoString() const
 {
-  std::string res;
+  std::string res("--\n");
   res += format("resolution {0} {1}\n") % m_viewSize.x % m_viewSize.y;
   res += format("detailCoef {0}\n") % m_detailCoef;
   res += format("ditherCoef {0}\n") % m_ditherCoef;
@@ -148,6 +148,8 @@ std::string SVORenderer::GetInfoString() const
   res += format("svoSize {0}\n") % svoSize;
   res += format("shuffle {0}\n") % m_shuffleEnabled;
   res += format("prof.traceTime {0}\n") % m_profStats.traceTime;
+  res += format("USE_TEXLOOKUP {0}\n") % USE_TEXLOOKUP;
+  res += format("SHARED_STACK {0}\n") % SHARED_STACK;
   return res;
 }
 

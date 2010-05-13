@@ -20,6 +20,7 @@ Demo::Demo()
 , m_recording(false)
 , m_playStart(0)
 , m_playing(false)
+, m_logFile("trace.log", std::ios::app)
 {
   cout << "loading scene ...";
   if (!m_svo.Load(SceneName))
@@ -252,6 +253,11 @@ void Demo::KeyDown(unsigned char key, int x, int y)
       LoadLog();
       m_playStart = GetTime();
     }
+  }
+
+  if (key == ' ')
+  {
+    m_logFile << m_renderer.GetInfoString() << std::endl;
   }
 }
 
