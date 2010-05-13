@@ -33,6 +33,8 @@
   #endif
 
   #include <boost/noncopyable.hpp>
+
+  #include "format.h"
 #endif
 
 

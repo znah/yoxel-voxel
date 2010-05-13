@@ -12,6 +12,7 @@ SVORenderer::SVORenderer()
 , m_ditherCoef(1.0f/2048.0f)
 , m_accumIter(0)
 , m_shadeMode(SM_SIMPLE)
+, m_shuffleEnabled(false)
 {
   cudaGetTextureReference(&m_dataTexRef, "nodes_tex");
 
@@ -57,6 +58,14 @@ void SVORenderer::SetViewSize(int width, int height)
   
   m_noiseBuf.resize(noiseBuf.size());
   m_noiseBuf.write(0, noiseBuf.size(), &noiseBuf[0]);
+
+
+  std::vector<int> shuffleBuf(width * height);
+  for (int i = 0; i < (int)shuffleBuf.size(); ++i)
+    shuffleBuf[i] = i;
+  std::random_shuffle(shuffleBuf.begin(), shuffleBuf.end());
+  m_shuffleBuf.resize(shuffleBuf.size());
+  m_shuffleBuf.write(0, shuffleBuf.size(), &shuffleBuf[0]);
   
   m_accumBuf.resize(width * height);
   ResetAccum();
@@ -105,7 +114,8 @@ void SVORenderer::Render(void * d_dstBuf)
 
   CuSetSymbol(rp, "rp");
 
-  Run_InitEyeRays(make_grid2d(m_viewSize, point_2i(16, 16)), m_rayDataBuf.d_ptr(), m_noiseBuf.d_ptr());
+  Run_InitEyeRays(make_grid2d(m_viewSize, point_2i(16, 16)), m_rayDataBuf.d_ptr(), m_noiseBuf.d_ptr(),
+    m_shuffleEnabled ? m_shuffleBuf.d_ptr() : NULL);
   CUT_CHECK_ERROR("ttt");
 
   CuTimer timer;
@@ -113,7 +123,7 @@ void SVORenderer::Render(void * d_dstBuf)
   Run_Trace(make_grid2d(m_viewSize, point_2i(8, 16)), m_rayDataBuf.d_ptr());
   CUT_CHECK_ERROR("ttt");
   float traceTime = timer.stop();
-  m_profStats.traceTime = (m_profStats.traceTime == 0) ? traceTime : (0.5f * m_profStats.traceTime  + 0.5f * traceTime);
+  m_profStats.traceTime = (m_profStats.traceTime == 0) ? traceTime : (0.8f * m_profStats.traceTime  + 0.2f * traceTime);
   
 
   if (m_shadeMode == SM_SIMPLE)
@@ -127,3 +137,17 @@ void SVORenderer::ResetAccum()
 {
   m_accumIter = 0;
 }
+
+std::string SVORenderer::GetInfoString() const
+{
+  std::string res;
+  res += format("resolution {0} {1}\n") % m_viewSize.x % m_viewSize.y;
+  res += format("detailCoef {0}\n") % m_detailCoef;
+  res += format("ditherCoef {0}\n") % m_ditherCoef;
+  int svoSize = m_svo.Source()->GetNodes().getPageNum() * m_svo.Source()->GetNodes().getPageSize();
+  res += format("svoSize {0}\n") % svoSize;
+  res += format("shuffle {0}\n") % m_shuffleEnabled;
+  res += format("prof.traceTime {0}\n") % m_profStats.traceTime;
+  return res;
+}
+
