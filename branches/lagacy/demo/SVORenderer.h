@@ -56,6 +56,7 @@ public:
   const ProfileStats & GetProfile() const { return m_profStats; }
 
   std::string GetInfoString() const;
+  void SaveCounters(std::string filename);
 
 private:
   template <class T>

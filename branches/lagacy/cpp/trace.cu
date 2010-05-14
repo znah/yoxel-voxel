@@ -180,7 +180,7 @@ __device__ void FindFirstChild2(float t_enter, float3 t_coef, float3 t_bias, int
 }
 
 const int STACK_DEPTH = 16;
-const int BLOCK_THREADNUM = 128;
+const int BLOCK_THREADNUM = TRACE_BLOCK_X * TRACE_BLOCK_Y;
 
 __shared__ NodePtr s_stack[STACK_DEPTH * BLOCK_THREADNUM];
 
@@ -224,6 +224,7 @@ __global__ void Trace(RayData * rays)
     return;
   ray.endNode = EmptyNode;
   ray.perfCount = 0;
+  ray.enterTime = clock();
 
   float3 t_coef, t_bias;
   uint octant_mask = 0;
@@ -245,14 +246,18 @@ __global__ void Trace(RayData * rays)
   float t_enter = maxv(t_bias);
   float t_exit  = minv(t_coef + t_bias);
   if (t_exit < 0.0f || t_enter > t_exit)
-     return;
+  {
+    ray.exitTime = clock();
+    return;
+  }
+
+  int count = 0;
 
   NodePtr nodePtr = GetNodePtr(tree.root);
   VoxNodeInfo nodeInfo = GetNodeInfo(nodePtr);
   int3 pos = make_int3(0);
   FindFirstChild2(t_enter, t_coef, t_bias, pos, 1.0f);
   float nodeSize = 0.5f;
-  int count = 0;
 
   Stack stack;
 
@@ -277,7 +282,7 @@ __global__ void Trace(RayData * rays)
       action = ACT_NEXT;
     else
     {
-      if (/*stack.level > 8 ||*/ t_enter * rp.detailCoef > 2.0f * nodeSize) // LOD ?
+      if (t_enter * rp.detailCoef > 2.0f * nodeSize) // LOD ?
       {
         if (GetEmptyFlag(nodeInfo))
           action = ACT_NEXT;
@@ -301,8 +306,7 @@ __global__ void Trace(RayData * rays)
       ray.endNode = Ptr2Id(nodePtr);
       ray.endNodeChild = realChildId;
       ray.t = t_enter;
-      ray.endNodeSize = nodeSize;
-      ray.perfCount = count;
+      ray.endNodeSize = nodeSize; 
       break;
     }
 
@@ -327,10 +331,7 @@ __global__ void Trace(RayData * rays)
     {
       int upcount = popc16(diff);
       if (!stack.trypop(upcount))
-      {
-        ray.perfCount = count;
-        return;
-      }
+        break;
       nodePtr = stack.pop(upcount);
       nodeInfo = GetNodeInfo(nodePtr);
       pos.x >>= upcount;
@@ -340,7 +341,8 @@ __global__ void Trace(RayData * rays)
     }
     t_enter = t_exit;
   }
-  rays[tid].perfCount = count;
+  ray.perfCount = count;
+  ray.exitTime = clock();
 }
 
 __device__ point_3f CalcLighting(point_3f pos, point_3f normal, point_3f color)
