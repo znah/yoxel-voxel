@@ -2,6 +2,8 @@
 
 #define SHARED_STACK   0
 #define USE_TEXLOOKUP  1
+#define TRACE_BLOCK_X  8
+#define TRACE_BLOCK_Y  16
 
 
 #include "vox_node.h"
@@ -56,6 +58,8 @@ struct RayData
   float endNodeSize;
   int perfCount;
   int unshuffleIndex;
+  int enterTime;
+  int exitTime;
 };
 
 

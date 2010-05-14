@@ -66,11 +66,6 @@ private:
   void LoadLog();
 
   void ShootBall(const EditData & action);
-  typedef std::multimap<float, EditData> EditLog;
-  EditLog m_editLog;
-  EditLog m_playLog;
-  float m_recortStart;
-  bool m_recording;
 
   float m_playStart;
   bool m_playing;

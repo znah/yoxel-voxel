@@ -120,7 +120,7 @@ void SVORenderer::Render(void * d_dstBuf)
 
   CuTimer timer;
   timer.start();
-  Run_Trace(make_grid2d(m_viewSize, point_2i(8, 16)), m_rayDataBuf.d_ptr());
+  Run_Trace(make_grid2d(m_viewSize, point_2i(TRACE_BLOCK_X, TRACE_BLOCK_Y)), m_rayDataBuf.d_ptr());
   CUT_CHECK_ERROR("ttt");
   float traceTime = timer.stop();
   m_profStats.traceTime = (m_profStats.traceTime == 0) ? traceTime : (0.8f * m_profStats.traceTime  + 0.2f * traceTime);
@@ -153,3 +153,31 @@ std::string SVORenderer::GetInfoString() const
   return res;
 }
 
+void SVORenderer::SaveCounters(std::string filename)
+{
+  std::vector<RayData> rayBuf;
+  m_rayDataBuf.read(rayBuf);
+  std::vector<int> counters(rayBuf.size());
+  std::vector<int> enter(rayBuf.size());
+  std::vector<int> exit(rayBuf.size());
+  for (int i = 0; i < rayBuf.size(); ++i)
+  {
+    counters[i] = rayBuf[i].perfCount;
+    enter[i] = rayBuf[i].enterTime;
+    exit[i] = rayBuf[i].exitTime;
+  }
+
+  {
+    std::ofstream file(filename.c_str(), std::ios::binary);
+    file.write((char*)&counters[0], counters.size() * sizeof(counters[0]));
+  }
+  {
+    std::ofstream file(("enter_" + filename).c_str(), std::ios::binary);
+    file.write((char*)&enter[0], enter.size() * sizeof(enter[0]));
+  }
+  {
+    std::ofstream file(("exit_" + filename).c_str(), std::ios::binary);
+    file.write((char*)&exit[0], exit.size() * sizeof(exit[0]));
+  }
+
+}

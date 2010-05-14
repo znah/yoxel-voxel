@@ -16,10 +16,6 @@ Demo::Demo()
 , m_frameCount(0)
 , m_editAction(EditNone)
 , m_lastEditTime(0)
-, m_recortStart(0)
-, m_recording(false)
-, m_playStart(0)
-, m_playing(false)
 , m_logFile("trace.log", std::ios::app)
 {
   cout << "loading scene ...";
@@ -104,8 +100,6 @@ void Demo::DoEdit(const point_3f & fwdDir)
     action.sideGrow = m_editAction == EditGrowSide;
     action.mode = m_editAction == EditClear ? BUILD_MODE_CLEAR : BUILD_MODE_GROW;
     ShootBall(action);
-    if (m_recording)
-      m_editLog.insert(std::make_pair(GetTime() - m_recortStart, action));
   }
 }
 
@@ -171,19 +165,6 @@ void Demo::Idle()
     m_renderer.UpdateSVO();
     m_lastEditTime = curTime;
   }
-  if (m_playing)
-  {
-    float t = curTime - m_playStart;
-    bool changed = false;
-    while (!m_playLog.empty() && m_playLog.begin()->first < t)
-    {
-      ShootBall(m_playLog.begin()->second);
-      m_playLog.erase(m_playLog.begin());
-      changed = true;
-    }
-    if (changed)
-      m_renderer.UpdateSVO();
-  }
 
   void * d_pboPtr = 0;
   cudaGLMapBufferObject(&d_pboPtr, m_pboId); 
@@ -232,32 +213,14 @@ void Demo::KeyDown(unsigned char key, int x, int y)
   if (key == '8')
     m_renderer.SetShuffle(!m_renderer.GetShuffle());
 
-  if (key == 'z')
-  {
-    m_recording = !m_recording;
-    if (m_recording)
-    {
-      m_recortStart = GetTime();
-    }
-    else
-    {
-      SaveLog();
-    }
-  }
-
-  if (key == 'x') 
-  {
-    m_playing = !m_playing;
-    if (m_playing)
-    {
-      LoadLog();
-      m_playStart = GetTime();
-    }
-  }
-
   if (key == ' ')
   {
     m_logFile << m_renderer.GetInfoString() << std::endl;
+  }
+
+  if (key == 'z')
+  {
+    m_renderer.SaveCounters("dump.dat");
   }
 }
 
@@ -325,11 +288,6 @@ void Demo::Display()
   glDisable(GL_TEXTURE_2D);
 
   glColor4f(0, 1, 0, 1);
-  /*std::string info = format("trace time: {0}\n") % m_renderer.GetProfile().traceTime;
-  if (m_recording)
-    info += "REC ";
-  if (m_playing)
-    info += "PLAY ";*/
   glWindowPos2i(20, m_viewSize.y - 20); 
   glutBitmapString(GLUT_BITMAP_9_BY_15, (const unsigned char*)m_renderer.GetInfoString().c_str());
 
@@ -344,24 +302,5 @@ inline int GetStreamSize(Stream & ss)
   int size = ss.tellg();
   ss.seekg(curPos, std::ios::beg);
   return size;
-}
-
-void Demo::SaveLog()
-{
-  std::vector<LogItem> log(m_editLog.begin(), m_editLog.end());
-  std::ofstream file("log.dat", std::ios::binary);
-  file.write((char*)&log[0], sizeof(LogItem)*log.size());
-}
-
-void Demo::LoadLog()
-{
-  std::vector<LogItem> log;
-  std::ifstream file("log.dat", std::ios::binary);
-  if (file.is_open())
-  {
-    log.resize(GetStreamSize(file) / sizeof(LogItem));
-    file.read((char*)&log[0], sizeof(LogItem)*log.size());
-  }
-  m_playLog = EditLog(log.begin(), log.end());
 }
 
