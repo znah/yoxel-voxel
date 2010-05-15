@@ -5,7 +5,7 @@ class VolumeRenderer(HasTraits):
     density        = Range( 0.0, 1.0, 0.5)
     brightness     = Range( 0.0, 2.0, 1.0 )
     transferOffset = Range(-1.0, 1.0, 0.0 )
-    transferScale  = Range( 0.0, 2.0, 1.0 )
+    transferScale  = Range(-5.0, 5.0, 1.0 )
     stepsInTexel   = Range( 0.5, 4.0, 2.0 )
 
     transferFunc   = Enum('nv', 'gray')
@@ -90,7 +90,7 @@ class VolumeRenderer(HasTraits):
           {
             float3 invD = 1.0 / d;
             float3 tlo = invD*(-o);
-            float3 thi = invD*(float3(1.0, 1.0, 1.0)-o);
+            float3 thi = invD*(float3(0.5, 1.0, 1.0)-o);
 
             float3 t1 = min(tlo, thi);
             float3 t2 = max(tlo, thi);

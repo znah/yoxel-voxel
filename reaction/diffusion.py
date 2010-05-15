@@ -54,51 +54,58 @@ class Diffusion:
             return neib;
           }
           
-        const int TILE_DIM_X = 16;
+        const int TILE_DIM_X = 8;
         const int TILE_DIM_Y = 16;
 
         extern "C"
-        __global__ void Diffusion2(const float * src, float * dst)
+        __global__ void Diffusion(const float * src, float * dst, bool saturateMode)
         {
            __shared__ float smem[3][TILE_DIM_Y + 2][TILE_DIM_X + 2];
 
            int tx = threadIdx.x;
            int ty = threadIdx.y;
+           if (tx >= TILE_DIM_X + 2 || ty >= TILE_DIM_Y + 2)
+             return;
+
            int x = (tx-1) + blockIdx.x * TILE_DIM_X;
            int y = (ty-1) + blockIdx.y * TILE_DIM_Y;
 
            bool valid = tx >= 1 && ty >= 1 && tx <= TILE_DIM_X && ty <= TILE_DIM_Y;
 
+           if (x < 0)           x += VOL_DIM_X;
+           if (y < 0)           y += VOL_DIM_Y;
+           if (x > VOL_DIM_X-1) x -= VOL_DIM_X;
+           if (y > VOL_DIM_Y-1) y -= VOL_DIM_Y;
+
            int ofs = x + y * VOL_DIM_X;
            const int stride_z = VOL_DIM_X * VOL_DIM_Y;
-           if (x < 0)           ofs += VOL_DIM_X;
-           if (y < 0)           ofs += stride_z;
-           if (x > VOL_DIM_X-1) ofs -= VOL_DIM_X;
-           if (y > VOL_DIM_Y-1) ofs -= stride_z;
            smem[1][ty][tx] = src[ofs];
-           if (valid)
-             dst[ofs] = smem[1][ty][tx];
-
-           ofs += stride_z;
-           smem[2][ty][tx] = src[ofs];
+           smem[2][ty][tx] = smem[1][ty][tx];
 
            const int max_z = VOL_DIM_Z-1;
-           for (int z = 1; z < max_z; ++z, ofs += stride_z)
+           for (int z = 0; z <= max_z; ++z, ofs += stride_z)
            {
              smem[0][ty][tx] = smem[1][ty][tx];
              smem[1][ty][tx] = smem[2][ty][tx];
-             smem[2][ty][tx] = src[ofs + stride_z];
+             if (z < max_z)
+               smem[2][ty][tx] = src[ofs + stride_z];
              __syncthreads();
 
              if (!valid)
                continue;
-
              float self = smem[1][ty][tx];
-             if (self < 0)
+             if (self == OBSTACLE)
              {
                dst[ofs] = self;
                continue;
              }
+
+             if (!saturateMode && (self == SINK || z == 0 || z == max_z))
+             {
+               dst[ofs] = self;
+               continue;
+             }
+             self = max(self, 0.0);
 
              const float c0 = 1.0f / 3.0f, c1 = 1.0f / 18.0f, c2 = 1.0f / 36.0f;
              float acc = c0 * self;
@@ -132,23 +139,21 @@ class Diffusion:
 
              dst[ofs] = acc;
            }
-           if (valid)
-             dst[ofs] = smem[2][ty][tx];
         }
 
         ''').render(v = vars(), g = globals())
         mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd()+'/include'], no_extern_c = True, keep=True) #options = ['--maxrregcount=16'])
         srcTexRef = mod.get_texref('srcTex')
         
-        DiffKernel2 = mod.get_function('Diffusion2')
-        print "reg: %d,  lmem: %d " % (DiffKernel2.num_regs, DiffKernel2.local_size_bytes)
-        block2 = (16+2, 16+2, 1)
-        grid2 = (size / 16, size / 16)
+        DiffKernel = mod.get_function('Diffusion')
+        print "reg: %d,  lmem: %d " % (DiffKernel.num_regs, DiffKernel.local_size_bytes)
+        block2 = (8+2, 16+2, 1)
+        grid2 = (size / 8, size / 16)
 
         @with_( cuprofile("DiffusionStep") )
-        def step():
+        def step(saturate = False):
             self.src.bind_to_texref(srcTexRef)
-            DiffKernel2(self.src, self.dst, block = block2, grid = grid2, texrefs = [srcTexRef])
+            DiffKernel(self.src, self.dst, int32(saturate), block = block2, grid = grid2, texrefs = [srcTexRef])
             self.flipBuffers()
         self.step = step
     
@@ -157,6 +162,7 @@ class Diffusion:
 
         
 if __name__ == '__main__':
+    
     class App(ZglAppWX):
         volumeRender = Instance(VolumeRenderer)
 
@@ -166,23 +172,27 @@ if __name__ == '__main__':
             gridSize = 256
             
             a = zeros([gridSize]*3, float32)
-            col = linspace(0.0, 1.0, gridSize).astype(float32)
-            a[:] = col[...,newaxis, newaxis]
+            a[:128] = 1.0
+            #col = linspace(0.0, 1.0, gridSize).astype(float32)
+            #a[:] = col[...,newaxis, newaxis]
             
-            sinks = (random.rand(10000, 3)*(gridSize, gridSize/2, gridSize/2)).astype(int32)
-            for x, y, z in sinks:
-                a[z, y, x] = Diffusion.SINK
-            a[:, gridSize/2 + 1, :gridSize/2] = Diffusion.OBSTACLE
+            #sinks = (random.rand(10000, 3)*(gridSize, gridSize/2, gridSize/2)).astype(int32)
+            #for x, y, z in sinks:
+            #    a[z, y, x] = Diffusion.SINK
+            #a[:, gridSize/2 + 1, :gridSize/2] = Diffusion.OBSTACLE
             
             self.diffusion = Diffusion(gridSize)
             self.diffusion.src.set(a)
                         
             volumeTex = Texture3D( size = [gridSize]*3, format = GL_LUMINANCE_FLOAT32_ATI )
             self.volumeRender = VolumeRenderer(volumeTex)
-            self.step()
+            a = self.diffusion.src.get()
+            with self.volumeRender.volumeTex:
+                glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, a.shape[0], a.shape[1], a.shape[2], GL_LUMINANCE, GL_FLOAT, a)
+            #self.step()
 
         def step(self):
-            for i in xrange(50):
+            for i in xrange(1):
                 self.diffusion.step()
                 print '.',
             print
@@ -212,7 +222,7 @@ if __name__ == '__main__':
             a[10, 21, 30] = 0.0
             
             self.diffusion.src.set(a)
-            print self.diffusion.step(time_kernel = True)
+            print self.diffusion.step(saturate=True)
             a = self.diffusion.src.get()
             print a[9:,19:,29:][:3,:3,:3]
     '''    
