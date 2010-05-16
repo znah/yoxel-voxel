@@ -1,0 +1,223 @@
+%-------------------------------------------------------------------------------
+%                identification
+%-------------------------------------------------------------------------------
+\ProvidesPackage{bachelor}[2008/05/30 Bachelor style made by Godin]
+\NeedsTeXFormat{LaTeX2e}
+
+%-------------------------------------------------------------------------------
+%                package options
+%-------------------------------------------------------------------------------
+\newcommand\@todohide{\PackageWarning{todo}{TODO hided}}
+\DeclareOption{draft}{\renewcommand{\@todohide}[1]{#1}}
+\DeclareOption{showtodo}{\renewcommand\@todohide[1]{#1}}
+
+\ProcessOptions
+
+%-------------------------------------------------------------------------------
+%                required packages
+%-------------------------------------------------------------------------------
+
+%% ENCODINGS
+\usepackage[utf8x]{inputenc}
+\usepackage[T2A]{fontenc}
+
+%% LANGUAGES
+\RequirePackage[english,russian]{babel}
+
+%% OTHER
+\RequirePackage{cite}
+\usepackage{citehack}
+\RequirePackage{indentfirst}
+\RequirePackage{amsmath}
+\RequirePackage[unicode]{hyperref}
+\RequirePackage{ifpdf}
+\usepackage[usenames]{color}
+
+\usepackage{remreset}
+%% TODO wtf?
+\usepackage{ucs}
+
+% Геометрия страницы
+\RequirePackage[
+  a4paper,
+  top=2cm,
+  bottom=2cm,
+  left=3cm,
+  right=1cm,
+%   nofoot,
+  nohead
+]{geometry}
+% Полуторный межстрочный интервал
+% \renewcommand{\baselinestretch}{1.25}
+\renewcommand{\baselinestretch}{1.5}
+
+% Рисунки
+\RequirePackage{graphicx}
+\ifpdf
+  \graphicspath{{images/pdf/}} % путь к рисункам
+  \DeclareGraphicsExtensions{.pdf}
+\else
+  \graphicspath{{images/eps/}} % путь к рисункам
+  \DeclareGraphicsExtensions{.eps}
+\fi
+% Для подписей к рисункам и таблицам
+\usepackage{ccaption}
+% "Плавающие рисунки"
+\RequirePackage{floatflt, wrapfig}
+
+%%%%%%%%%%
+%HEADINGS%
+%%%%%%%%%%
+\RequirePackage{fancyhdr}
+
+\pagestyle{fancy}
+\renewcommand{\headrulewidth}{0pt}%
+\renewcommand{\footrulewidth}{0pt}%
+\fancyhf{}
+\chead{\arabic{page}}
+
+\fancypagestyle{plain}{\thispagestyle{fancy}}
+%%%%%%%%%%
+%%%%%%%%%%
+%%%%%%%%%%
+%%%%%%%%%%
+%%%Запрещает висячие строки
+\clubpenalty=10000
+\widowpenalty=10000
+
+\lccode`\-=`\-
+\lccode`\+=`\+
+\defaulthyphenchar=127
+\hfuzz=1.5pt
+
+%-------------------------------------------------------------------------------
+%                style definition
+%-------------------------------------------------------------------------------
+
+% term command
+\newcommand{\term}[2]{\emph{#1} --- #2}
+
+% todo command
+\newtoks\@todotoks\@todotoks{}
+\newcounter{todo}\setcounter{todo}{0}
+
+\makeatletter
+
+\newcommand{\todo}[1]{\@todohide{%
+    \refstepcounter{todo}\label{todopage:\thetodo}%
+        \colorbox{red}{TODO #1}%
+        \@todotoks\expandafter{\the\@todotoks\relax%
+            \todoitem{#1}}%
+}}
+
+\newcommand{\@todomarginpar}[1]{\marginpar{#1 (\ref{todolbl:\thetodo})}}
+\newcommand{\todoitem}[1]{%
+    \item \label{todolbl:\thetodo} %
+    \pagename~\pageref{todopage:\thetodo}:\ #1}
+
+\newcommand{\todos}{\@todohide{%
+  \clearpage\section*{TODOs}%
+  \begin{list}{\arabic{todo}.}{}
+  \usecounter{todo}
+  \the\@todotoks
+  \end{list}
+}}
+
+% TODO comment me
+\renewcommand{\paragraph}{\@startsection{paragraph}{4}{\z@}%
+                                    {0ex}
+                                    {-0.4em}%
+                                    {\normalfont\normalsize\bfseries\indent}}
+
+% Точки в конце chapter, section и subsection
+\renewcommand{\thechapter}{\@arabic\c@chapter.}
+\renewcommand{\thesection}{\thechapter\@arabic\c@section.}
+\renewcommand{\thesubsection}{\thesection\@arabic\c@subsection.}
+
+\renewcommand{\@chapapp}{ГЛАВА}
+
+\renewcommand{\@chapter}[2][k]{\ifnum \c@secnumdepth >\m@ne
+                         \refstepcounter{chapter}%
+                         \typeout{\@chapapp\space\thechapter}%
+                         \addcontentsline{toc}{chapter}%
+                                   {\@chapapp\space\protect\numberline{\thechapter} #1}%
+                    \else
+                      \addcontentsline{toc}{chapter}{#1}%
+                    \fi
+                    \chaptermark{#1}%
+                    \addtocontents{lof}{\protect\addvspace{10\p@}}%
+                    \addtocontents{lot}{\protect\addvspace{10\p@}}%
+                    \if@twocolumn
+                      \@topnewpage[\@makechapterhead{#2}]%
+                    \else
+                      \@makechapterhead{#2}%
+                      \@afterheading
+                    \fi}
+
+% Точки для chapter в оглавлении (NOTE: MakeUppercase не работает вместе с пакетом hyperref)
+% \renewcommand*\l@chapter[2]{\@dottedtocline{0}{0em}{1.6em}{\MakeUppercase{#1}}{#2}}
+\renewcommand*\l@chapter[2]{\@dottedtocline{0}{0em}{1.6em}{#1}{#2}}
+
+% Small Caps для section в оглавлении
+\renewcommand*\l@section[2]{\@dottedtocline{1}{1.5em}{2.3em}{\scshape #1}{#2}}
+
+% Заголовок нумеруемых chapter
+\renewcommand{\@makechapterhead}[1]{%
+  \vspace*{0\p@}% отступ сверху
+  {\parindent \z@ \raggedright
+    \centering % выравнивание по центру
+    \fontfamily{cmss} % Computer Modern без засечек
+    \ifnum \c@secnumdepth >\m@ne
+        %\LARGE
+        \bfseries \MakeUppercase{\@chapapp\space \thechapter}
+    \fi
+    \interlinepenalty\@M
+    %\LARGE 
+    \bfseries \MakeUppercase{#1}\par\nobreak
+    \vskip 10\p@% отступ снизу
+  }}
+
+% Заголовок ненумерумых chapter
+\renewcommand{\@makeschapterhead}[1]{%
+  \vspace*{0\p@}% отступ сверху
+  {\parindent \z@ \raggedright
+    \centering % выравнивание по центру
+    \fontfamily{cmss} % Computer Modern без засечек
+    \interlinepenalty\@M
+    %\LARGE 
+    \bfseries \MakeUppercase{#1}\par\nobreak
+    \vskip 10\p@% отступ снизу
+  }}
+
+% Заголовок section
+\renewcommand{\section}{\@startsection{section}{1}{\z@}%
+  {3.5ex \@plus 1ex \@minus .2ex}%
+  {2.3ex \@plus .2ex}%
+  {\normalfont
+  %\Large
+  \bfseries\scshape\centering}}
+
+% Заголовок subsection с выравниванием по центру
+\renewcommand{\subsection}{\@startsection{subsection}{2}{\z@}%
+                                     {-3.25ex\@plus -1ex \@minus -.2ex}%
+                                     {1.5ex \@plus .2ex}%
+                                     {\normalfont
+                                       % \large
+                                       \bfseries\centering}}
+
+% Сквозная нумерация рисунков и таблиц
+\makeatletter
+\@removefromreset{table}{chapter}
+\@removefromreset{figure}{chapter}
+\makeatother
+\renewcommand{\thetable}{\arabic{table}}
+\renewcommand{\thefigure}{\arabic{figure}}
+
+% Точка в подписях к рисункам
+\captiondelim{.~}
+
+% нумерация формул
+%\numberwithin{equation}{section}
+%\renewcommand{\theequation}{\thesection.\arabic{equation}}
+
+\endinput
