@@ -10,6 +10,10 @@ class VolumeRenderer(HasTraits):
 
     transferFunc   = Enum('nv', 'gray')
 
+    sliceX         = Range(-1.0, 1.0, 0.0)
+    sliceY         = Range(-1.0, 1.0, 0.0)
+    sliceZ         = Range(-1.0, 1.0, 0.0)
+
     volumeTex      = Any(editable = False)
     
     _ = Python(editable = False)
@@ -27,7 +31,7 @@ class VolumeRenderer(HasTraits):
         if self.volumeTex is not None:
             self.traceFP.dt = 1.0 / (self.volumeTex.size[0] * self.stepsInTexel)
             self.volumeTex.filterLinear()
-            self.volumeTex.setParams(*Texture.Clamp)
+            self.volumeTex.setParams(*Texture.ClampToEdge)
             self.traceFP.volume = self.volumeTex
             
     
@@ -39,7 +43,7 @@ class VolumeRenderer(HasTraits):
         def makeTransTex(a):
             tex = Texture1D(a, format = GL_RGBA8)
             tex.filterLinear()
-            tex.setParams(*Texture.Clamp)
+            tex.setParams(*Texture.ClampToEdge)
             return tex
 
         gray = makeTransTex(array([
@@ -61,15 +65,20 @@ class VolumeRenderer(HasTraits):
             
         self.traceVP = CGShader('vp40', '''
           #line 58
+          uniform float far;
+          uniform float near;
+
           float4 main(float2 p : POSITION, 
-             out float3 rayDir : TExCOORD0,
-             out float3 eyePos : TExCOORD1) : POSITION
+             out float3 rayDir : TEXCOORD0,
+             out float3 eyePos : TEXCOORD1,
+             out float2 screenPos : TEXCOORD2) : POSITION
           {
-            float4 projVec = float4(p * 2.0 - float2(1.0, 1.0), 0, 1);
+            float4 projVec = float4(p * 2.0 - float2(1.0, 1.0), -near, near);
             float4 wldVec = mul(glstate.matrix.inverse.mvp, projVec);
             eyePos = mul(glstate.matrix.inverse.modelview[0], float4(0, 0, 0, 1)).xyz;
             wldVec /= wldVec.w;
             rayDir = wldVec.xyz - eyePos;
+            screenPos = p;
             return projVec;
           }
         
@@ -85,12 +94,20 @@ class VolumeRenderer(HasTraits):
           uniform float brightness;
           uniform float transferOffset;
           uniform float transferScale;
+
+          uniform float3 slice;
+
+          uniform float useDepth;
+          uniform sampler2D depthTex;
+          uniform float near;
+          uniform float far;
+
          
           void hitBox(float3 o, float3 d, out float tenter, out float texit)
           {
             float3 invD = 1.0 / d;
-            float3 tlo = invD*(-o);
-            float3 thi = invD*(float3(0.5, 1.0, 1.0)-o);
+            float3 tlo = invD*(saturate(slice) - o);
+            float3 thi = invD*(saturate(slice+1.0) - o);
 
             float3 t1 = min(tlo, thi);
             float3 t2 = max(tlo, thi);
@@ -109,9 +126,12 @@ class VolumeRenderer(HasTraits):
             return normalize(n);
           }*/
 
-          float4 main( float3 rayDir: TEXCOORD0, float3 eyePos : TEXCOORD1) : COLOR 
+          float4 main( float3 rayDir    : TEXCOORD0, 
+                       float3 eyePos    : TEXCOORD1,  
+                       float2 screenPos : TEXCOORD2) : COLOR 
           {
-            rayDir = normalize(rayDir);
+            float projCoef = length(rayDir);
+            rayDir /= projCoef;
             float t1, t2;
             hitBox(eyePos, rayDir, t1, t2);
             t1 = max(0.0, t1);
@@ -119,11 +139,18 @@ class VolumeRenderer(HasTraits):
               return float4(0, 0, 0, 0);
             float3 p = eyePos + rayDir * t1;
 
-            float step = dt;// * max(t1, 0.1);
+            if (useDepth > 0.5)
+            {
+              float depth = tex2D(depthTex, screenPos);
+              float z = -2.0*far*near / ( depth * (far-near) - (far+near) );
+              float t = z*projCoef / near;
+              t2 = min(t2, t);
+            }
+
+            float step = dt;
             float4 accum = float4(0);
             for (float t = t1; t < t2; t += step, p += step * rayDir)
             {
-              //step = dt * max(t1, 0.1);
               float sample = tex3D(volume, p).r;
               float4 col = tex1D(transferTex, (sample - transferOffset) * transferScale);
               col.a *= density;
@@ -137,10 +164,16 @@ class VolumeRenderer(HasTraits):
         ''')
         self.updateShaderParams()
         
-    def render(self):
+    def render(self, depthTex = None, near = 1.0, far = 10.0):
         if self.volumeTex is None:
             return
-        with ctx(self.traceVP, self.traceFP):
+        self.traceFP.slice = (self.sliceX, self.sliceY, self.sliceZ)
+        if depthTex is not None:
+            self.traceFP.depthTex = depthTex
+            self.traceFP.useDepth = 1.0
+        else:
+            self.traceFP.useDepth = 0.0
+        with ctx(self.traceVP(near = near, far = far), self.traceFP(near = near, far = far)):
             drawQuad()
         
         
