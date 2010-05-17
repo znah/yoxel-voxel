@@ -8,12 +8,9 @@ from voxelizer import Voxelizer
 from mesh import create_box
 from volvis import VolumeRenderer
 
-
-
-
 class Coral(HasTraits):
     gridSize         = ReadOnly()
-    diffuseStepNum   = Float(50) 
+    diffuseStepNum   = Int(50) 
     growCoef         = Float(1.0)
     mouthDist        = Float(3.0)
     coralliteSpacing = Float(1.5)
@@ -205,19 +202,22 @@ class Coral(HasTraits):
             self.MarkSinks(d_sinks, Diffusion.SINK)
             for i in xrange(self.diffuseStepNum):
                 self.diffusion.step()
-            self.MarkSinks(d_sinks, 0.0)
-            self.diffusion.step(saturate=False)
+            #self.MarkSinks(d_sinks, 0.0)
+            self.diffusion.step(saturate=True)
             d_absorb = ga.zeros(len(d_sinks), float32)
             self.FetchSinks(d_sinks, d_absorb)
             absorb = d_absorb.get()
 
-            #ttt = self.diffusion.src.get()
-            #outLayer = ttt[-1]
-            #bottomLayer = ttt[0]
-            #outFlux = self.gridSize**2 - sum(outLayer)
-            #inFlux = sum(absorb) + sum(bottomLayer)
-            #print outFlux, inFlux
-            print sum(absorb)
+            '''
+            ttt = self.diffusion.src.get()
+            save('ttt', ttt)
+            outLayer = ttt[-1]
+            bottomLayer = ttt[0]
+            outFlux = self.gridSize**2 - sum(outLayer)
+            inFlux = sum(absorb) + sum(bottomLayer)
+            print outFlux, inFlux, outFlux-inFlux
+            #print sum(absorb)
+            '''
 
         self.absorb = absorb / absorb.max()
 
@@ -242,14 +242,16 @@ if __name__ == '__main__':
         saveGrowIters  = Bool(False)
         
         volumeRender   = Instance(VolumeRenderer)
-        renderMode = Enum('mesh', 'volume')
+        showMesh       = Bool(True)
+        showVolume     = Bool(False)
         
         traits_view = View(Item(name='iterCount', style='readonly'),
                            Item(name='batchIters'),
                            Item(name='coral'),
                            Item(name='volumeRender'),
                            Item(name='saveGrowIters'),
-                           Item(name='renderMode'),
+                           Item(name='showMesh'),
+                           Item(name='showVolume'),
                            resizable = True,
                            buttons = ["OK"],
                            title='Coral')
@@ -263,6 +265,7 @@ if __name__ == '__main__':
 
             self.viewControl.speed = 0.2
             self.viewControl.zNear = 0.01
+            self.viewControl.zFar  = 10.0
 
             self.growLeft = 0
 
@@ -277,6 +280,9 @@ if __name__ == '__main__':
             
             self.volumeRender = VolumeRenderer()
 
+        def resize(self, x, y):
+            self.depthTex = Texture2D(size=(x, y), format=GL_DEPTH_COMPONENT24, srcFormat=GL_DEPTH_COMPONENT)
+
         def key_SPACE(self):
             if self.growLeft == 0:
                 self.growLeft = self.batchIters
@@ -287,11 +293,12 @@ if __name__ == '__main__':
         def key_2(self):
             saveProfileLogs('grow_log')
         def key_3(self):
-            a = self.coral.diffusion.src.get()
-            tex = Texture3D(img=a, format = GL_LUMINANCE8)
-            self.volumeRender.volumeTex = tex
-            self.renderMode = 'volume'
-            
+            self.showVolume = not self.showVolume
+            if self.showVolume:
+                print self.showVolume
+                a = self.coral.diffusion.src.get()
+                tex = Texture3D(img=a, format = GL_LUMINANCE8)
+                self.volumeRender.volumeTex = tex
 
         def save_coral(self):
             fname = "coral_%03d" % (self.iterCount,)
@@ -322,22 +329,28 @@ if __name__ == '__main__':
                 if self.saveGrowIters:
                     self.save_coral()
             
-            with self.viewControl.with_vp:
-                if self.renderMode == 'mesh':
+            if self.showMesh:
+                with ctx(self.viewControl.with_vp, glstate(GL_DEPTH_TEST, GL_DEPTH_CLAMP_NV)):
                     scale = 1.0 / self.coral.gridSize
                     glScale(scale, scale, scale)
-                    with glstate(GL_DEPTH_TEST, GL_DEPTH_CLAMP_NV):
-                        glColor3f(0.5, 0.5, 0.5)
+                    glColor3f(0.5, 0.5, 0.5)
+                    with glstate(GL_POLYGON_OFFSET_FILL):
+                        glPolygonOffset(1.0, 1.0)
                         drawArrays(GL_TRIANGLES, verts = self.coral.positions, indices = self.coral.faces)
 
-                        glColor3f(1, 1, 1)
-                        with glstate(GL_POLYGON_OFFSET_LINE):
-                            glPolygonOffset(-1, -1)
-                            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-                            drawArrays(GL_TRIANGLES, verts = self.coral.positions, indices = self.coral.faces)
-                            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-                        self.drawBox()
-                else:
-                    self.volumeRender.render()
-    
+                    glColor3f(1, 1, 1)
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+                    drawArrays(GL_TRIANGLES, verts = self.coral.positions, indices = self.coral.faces)
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+                    self.drawBox()
+
+            if self.showVolume:
+                with ctx(self.depthTex):
+                    w, h = self.viewSize
+                    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, 0, 0, w, h, 0)
+                with ctx(self.viewControl.with_vp, glstate(GL_BLEND)):
+                    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                    glBlendEquation(GL_FUNC_ADD);
+                    self.volumeRender.render(self.depthTex)
+                    
     App().run()

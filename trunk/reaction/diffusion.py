@@ -13,33 +13,18 @@ class Diffusion:
         
         self.src = ga.zeros(shape, float32)
         self.dst = ga.zeros(shape, float32)
-        
-        block = (16, 4, 4)
-        grid, cu_grid = make_grid3d(shape, block)
+
+        tile = (8, 16)
         
         code = Template('''
           {{g.cu_header}}
         
-          #line 44
+          #line 21
           texture<float, 1> srcTex;
 
           #define OBSTACLE {{v.self.OBSTACLE}}f 
           #define SINK     {{v.self.SINK}}f
           
-          const int BLOCK_DIM_X = {{v.block[0]}};
-          const int BLOCK_DIM_Y = {{v.block[1]}};
-          const int BLOCK_DIM_Z = {{v.block[2]}};
-          const int BLOCK_SIZE  = BLOCK_DIM_X*BLOCK_DIM_Y*BLOCK_DIM_Z;
-
-          const int SHRD_DIM_X = {{v.block[0]}} + 2;
-          const int SHRD_DIM_Y = {{v.block[1]}} + 2;
-          const int SHRD_DIM_Z = {{v.block[2]}} + 2;
-          const int SHRD_SIZE  = SHRD_DIM_X*SHRD_DIM_Y*SHRD_DIM_Z;
-
-          const int GRID_DIM_X = {{v.grid[0]}};
-          const int GRID_DIM_Y = {{v.grid[1]}};
-          const int GRID_DIM_Z = {{v.grid[2]}};
-
           const int VOL_DIM_X = {{v.size}};
           const int VOL_DIM_Y = {{v.size}};
           const int VOL_DIM_Z = {{v.size}};
@@ -54,106 +39,120 @@ class Diffusion:
             return neib;
           }
           
-        const int TILE_DIM_X = 8;
-        const int TILE_DIM_Y = 16;
+          const int TILE_DIM_X = {{v.tile[0]}};
+          const int TILE_DIM_Y = {{v.tile[1]}};
 
-        extern "C"
-        __global__ void Diffusion(const float * src, float * dst, bool saturateMode)
-        {
-           __shared__ float smem[3][TILE_DIM_Y + 2][TILE_DIM_X + 2];
+          const int ACTIVE_THREAD_NUM = (TILE_DIM_X+2) * (TILE_DIM_Y+2);
 
-           int tx = threadIdx.x;
-           int ty = threadIdx.y;
-           if (tx >= TILE_DIM_X + 2 || ty >= TILE_DIM_Y + 2)
-             return;
+          __shared__ float smem[3][TILE_DIM_Y + 2][TILE_DIM_X + 2];
 
-           int x = (tx-1) + blockIdx.x * TILE_DIM_X;
-           int y = (ty-1) + blockIdx.y * TILE_DIM_Y;
+          extern "C"
+          __global__ void Diffusion(const float * src, float * dst, bool saturateMode)
+          {
+             bool active = threadIdx.x < ACTIVE_THREAD_NUM;
+             int tx = threadIdx.x % (TILE_DIM_X+2);
+             int ty = threadIdx.x / (TILE_DIM_X+2);
 
-           bool valid = tx >= 1 && ty >= 1 && tx <= TILE_DIM_X && ty <= TILE_DIM_Y;
+             int x = (tx-1) + blockIdx.x * TILE_DIM_X;
+             int y = (ty-1) + blockIdx.y * TILE_DIM_Y;
 
-           if (x < 0)           x += VOL_DIM_X;
-           if (y < 0)           y += VOL_DIM_Y;
-           if (x > VOL_DIM_X-1) x -= VOL_DIM_X;
-           if (y > VOL_DIM_Y-1) y -= VOL_DIM_Y;
+             bool inside = tx >= 1 && ty >= 1 && tx <= TILE_DIM_X && ty <= TILE_DIM_Y;
 
-           int ofs = x + y * VOL_DIM_X;
-           const int stride_z = VOL_DIM_X * VOL_DIM_Y;
-           smem[1][ty][tx] = src[ofs];
-           smem[2][ty][tx] = smem[1][ty][tx];
+             if (x < 0)           x += VOL_DIM_X;
+             if (y < 0)           y += VOL_DIM_Y;
+             if (x > VOL_DIM_X-1) x -= VOL_DIM_X;
+             if (y > VOL_DIM_Y-1) y -= VOL_DIM_Y;
 
-           const int max_z = VOL_DIM_Z-1;
-           for (int z = 0; z <= max_z; ++z, ofs += stride_z)
-           {
-             smem[0][ty][tx] = smem[1][ty][tx];
-             smem[1][ty][tx] = smem[2][ty][tx];
-             if (z < max_z)
-               smem[2][ty][tx] = src[ofs + stride_z];
-             __syncthreads();
-
-             if (!valid)
-               continue;
-             float self = smem[1][ty][tx];
-             if (self == OBSTACLE)
+             int ofs = x + y * VOL_DIM_X;
+             const int stride_z = VOL_DIM_X * VOL_DIM_Y;
+             if (active)
              {
-               dst[ofs] = self;
-               continue;
+               smem[1][ty][tx] = src[ofs];
+               smem[2][ty][tx] = smem[1][ty][tx];
              }
 
-             if (!saturateMode && (self == SINK || z == 0 || z == max_z))
+             const int max_z = VOL_DIM_Z-1;
+             for (int z = 0; z <= max_z; ++z, ofs += stride_z)
              {
-               dst[ofs] = self;
-               continue;
+               if (active)
+               {
+                 smem[0][ty][tx] = smem[1][ty][tx];
+                 smem[1][ty][tx] = smem[2][ty][tx];
+                 if (z < max_z)
+                   smem[2][ty][tx] = src[ofs + stride_z];
+               }
+               __syncthreads();
+
+               if (!inside || !active)
+                 continue;
+               
+               float self = smem[1][ty][tx];
+               if (self == OBSTACLE)
+               {
+                 dst[ofs] = self;
+                 continue;
+               }
+
+               if (!saturateMode && (self == SINK || z == 0 || z == max_z))
+               {
+                 dst[ofs] = self;
+                 continue;
+               }
+               self = max(self, 0.0);
+
+               const float c0 = 1.0f / 3.0f, c1 = 1.0f / 18.0f, c2 = 1.0f / 36.0f;
+               float acc = c0 * self;
+
+               float adj1 = 0.0f;
+               adj1 += getflux(self, smem[1][ty][tx+1] );
+               adj1 += getflux(self, smem[1][ty][tx-1] );
+               adj1 += getflux(self, smem[1][ty+1][tx] );
+               adj1 += getflux(self, smem[1][ty-1][tx] );
+               adj1 += getflux(self, smem[0][ty][tx] );
+               adj1 += getflux(self, smem[2][ty][tx] );
+               acc += c1 * adj1;
+
+               float adj2 = 0.0f;
+               adj2 += getflux(self, smem[1][ty+1][tx+1] );
+               adj2 += getflux(self, smem[1][ty+1][tx-1] );
+               adj2 += getflux(self, smem[1][ty-1][tx+1] );
+               adj2 += getflux(self, smem[1][ty-1][tx-1] );
+
+               adj2 += getflux(self, smem[0][ty][tx+1] );
+               adj2 += getflux(self, smem[0][ty][tx-1] );
+               adj2 += getflux(self, smem[2][ty][tx+1] );
+               adj2 += getflux(self, smem[2][ty][tx-1] );
+
+               adj2 += getflux(self, smem[0][ty+1][tx] );
+               adj2 += getflux(self, smem[0][ty-1][tx] );
+               adj2 += getflux(self, smem[2][ty+1][tx] );
+               adj2 += getflux(self, smem[2][ty-1][tx] );
+
+               acc += c2 * adj2;
+
+               dst[ofs] = acc;
              }
-             self = max(self, 0.0);
-
-             const float c0 = 1.0f / 3.0f, c1 = 1.0f / 18.0f, c2 = 1.0f / 36.0f;
-             float acc = c0 * self;
-
-             float adj1 = 0.0f;
-             adj1 += getflux(self, smem[1][ty][tx+1] );
-             adj1 += getflux(self, smem[1][ty][tx-1] );
-             adj1 += getflux(self, smem[1][ty+1][tx] );
-             adj1 += getflux(self, smem[1][ty-1][tx] );
-             adj1 += getflux(self, smem[0][ty][tx] );
-             adj1 += getflux(self, smem[2][ty][tx] );
-             acc += c1 * adj1;
-
-             float adj2 = 0.0f;
-             adj2 += getflux(self, smem[1][ty+1][tx+1] );
-             adj2 += getflux(self, smem[1][ty+1][tx-1] );
-             adj2 += getflux(self, smem[1][ty-1][tx+1] );
-             adj2 += getflux(self, smem[1][ty-1][tx-1] );
-
-             adj2 += getflux(self, smem[0][ty][tx+1] );
-             adj2 += getflux(self, smem[0][ty][tx-1] );
-             adj2 += getflux(self, smem[2][ty][tx+1] );
-             adj2 += getflux(self, smem[2][ty][tx-1] );
-
-             adj2 += getflux(self, smem[0][ty+1][tx] );
-             adj2 += getflux(self, smem[0][ty-1][tx] );
-             adj2 += getflux(self, smem[2][ty+1][tx] );
-             adj2 += getflux(self, smem[2][ty-1][tx] );
-
-             acc += c2 * adj2;
-
-             dst[ofs] = acc;
-           }
-        }
-
+          }
         ''').render(v = vars(), g = globals())
         mod = SourceModule(code, include_dirs = [os.getcwd(), os.getcwd()+'/include'], no_extern_c = True, keep=True) #options = ['--maxrregcount=16'])
         srcTexRef = mod.get_texref('srcTex')
         
         DiffKernel = mod.get_function('Diffusion')
         print "reg: %d,  lmem: %d " % (DiffKernel.num_regs, DiffKernel.local_size_bytes)
-        block2 = (8+2, 16+2, 1)
-        grid2 = (size / 8, size / 16)
+
+        #block = (tile[0]+2, tile[1]+2, 1)
+        thread_n = (tile[0]+2) * (tile[1]+2)
+        thread_n = ((thread_n+31) / 32) * 32
+
+        block = (thread_n, 1, 1)
+        grid = (size / tile[0], size / tile[1])
+        
+
 
         @with_( cuprofile("DiffusionStep") )
         def step(saturate = False):
             self.src.bind_to_texref(srcTexRef)
-            DiffKernel(self.src, self.dst, int32(saturate), block = block2, grid = grid2, texrefs = [srcTexRef])
+            DiffKernel(self.src, self.dst, int32(saturate), block = block, grid = grid, texrefs = [srcTexRef])
             self.flipBuffers()
         self.step = step
     
@@ -162,7 +161,7 @@ class Diffusion:
 
         
 if __name__ == '__main__':
-    
+    '''
     class App(ZglAppWX):
         volumeRender = Instance(VolumeRenderer)
 
@@ -213,19 +212,29 @@ if __name__ == '__main__':
     class App(ZglAppWX):
         def __init__(self):
             ZglAppWX.__init__(self, viewControl = FlyCamera())
-            self.diffusion = Diffusion(64)
-            a = zeros((64,)*3, float32)
-            
-            a[9:,19:,29:][:3,:3,:3] = Diffusion.SINK
-            a[11, 20, 30] = Diffusion.OBSTACLE
-            a[10, 20, 30] = 1.0
-            a[10, 21, 30] = 0.0
-            
+            n = 64
+            self.diffusion = Diffusion(n)
+            a = zeros((n,)*3, float32)
+
+            col = linspace(0.0, 1.0, n).astype(float32)
+            a[:] = col[...,newaxis, newaxis]
+            a[30:,30:,30:][:10, :10, :10] = Diffusion.SINK
             self.diffusion.src.set(a)
-            print self.diffusion.step(saturate=True)
+            
+            for i in xrange(20000):
+                self.diffusion.step(saturate=False)
+                if i % 100 == 0:
+                    print '.'
+            self.diffusion.step(saturate=True)
             a = self.diffusion.src.get()
-            print a[9:,19:,29:][:3,:3,:3]
-    '''    
+            out1 = sum(a[30:,30:,30:][:10, :10, :10])
+            out2 = sum(a[0])
+            in1 = n**2 - sum(a[-1])
+            print in1 - out1 - out2
+            print in1, out1, out2
+
+            save('a', a)
+        
     import pycuda.autoinit
     App().run()
     

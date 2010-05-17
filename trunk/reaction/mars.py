@@ -154,7 +154,7 @@ class App(ZglAppWX):
         pstate[..., 2] = 0.02 + (pstate[..., 2])  # radius
         pstate[..., 3] = (2 * pstate[..., 3] - 1)*2 # curl
         self.particles = PingPong(img=pstate, format = GL_RGBA_FLOAT32_ATI)
-        self.partVBO = BufferObject(pstate, GL_STREAM_COPY)
+        self.partVBO = BufferObject(data=pstate, use=GL_STREAM_COPY)
 
         flowBufSize = 256
         self.flowTex = RenderTexture(size = (flowBufSize, flowBufSize), format = GL_RGBA_FLOAT32_ATI)

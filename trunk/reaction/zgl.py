@@ -316,6 +316,31 @@ class TextureArray(Texture3D):
     def __init__(self, *args, **kargs):
         Texture3D.__init__(self, *args, **kargs)
 
+class BufferObject:
+    def __init__(self, data = None, use = GL_STATIC_DRAW):
+        self.handle = int(glGenBuffers(1))
+        self._as_parameter_ = self.handle
+
+        class Binder:
+            def __init__(self, parent, target):
+                self.parent = parent
+                self.target = target
+            def __enter__(self):
+                glBindBuffer(self.target, self.parent)
+            def __exit__(self, *args):
+                glBindBuffer(self.target, 0)
+        self.pixelPack    = Binder(self, GL_PIXEL_PACK_BUFFER)
+        self.pixelUnpack  = Binder(self, GL_PIXEL_UNPACK_BUFFER)
+        self.array        = Binder(self, GL_ARRAY_BUFFER)
+        self.elementArray = Binder(self, GL_ELEMENT_ARRAY_BUFFER)
+
+        if data is not None:
+            with self.array:
+                glBufferData(GL_ARRAY_BUFFER, data, use)
+                
+    def __del__(self):
+        glDeleteBuffers([self._as_parameter_])
+
 
 class Framebuffer:
     def __init__(self):
@@ -327,6 +352,17 @@ class Framebuffer:
     def __exit__(self, *args):
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
+class Renderbuffer:
+    def __init__(self):
+        self._as_parameter_ = glGenRenderbuffers(1)
+    def __del__(self):
+        glDeleteRenderbuffers(1, [self._as_parameter_])
+    def __enter__(self):
+        glBindRenderbuffer(GL_RENDERBUFFER, self)
+    def __exit__(self, *args):
+        glBindRenderbuffer(GL_RENDERBUFFER, 0)
+
+
 class RenderTexture:
     def __init__(self, depth = False, **args):
         self.fbo = Framebuffer()
@@ -334,11 +370,8 @@ class RenderTexture:
         with self.fbo:
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.tex, 0)
             if depth:
-                self.depthRB = glGenRenderbuffers(1)
-                glBindRenderbuffer(GL_RENDERBUFFER, self.depthRB)
-                glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, self.size()[0], self.size()[1])
-                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, self.depthRB)
-                glBindRenderbuffer(GL_RENDERBUFFER, 0)
+                self.depthTex = Texture2D(size=self.size(), format=GL_DEPTH_COMPONENT24, srcFormat=GL_DEPTH_COMPONENT)
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, self.depthTex, 0)
 
     def size(self):
         return self.tex.size
@@ -564,30 +597,6 @@ class FlyCamera(WXAdapter):
             v *= 10
         self.eye += v*self.speed*dt
 
-class BufferObject:
-    def __init__(self, data = None, use = GL_STATIC_DRAW):
-        self.handle = int(glGenBuffers(1))
-        self._as_parameter_ = self.handle
-
-        class Binder:
-            def __init__(self, parent, target):
-                self.parent = parent
-                self.target = target
-            def __enter__(self):
-                glBindBuffer(self.target, self.parent)
-            def __exit__(self, *args):
-                glBindBuffer(self.target, 0)
-        self.pixelPack    = Binder(self, GL_PIXEL_PACK_BUFFER)
-        self.pixelUnpack  = Binder(self, GL_PIXEL_UNPACK_BUFFER)
-        self.array        = Binder(self, GL_ARRAY_BUFFER)
-        self.elementArray = Binder(self, GL_ELEMENT_ARRAY_BUFFER)
-
-        if data is not None:
-            with self.array:
-                glBufferData(GL_ARRAY_BUFFER, data, use)
-                
-    def __del__(self):
-        glDeleteBuffers([self._as_parameter_])
 
 class OrthoCamera(WXAdapter):
     def __init__(self):
@@ -691,6 +700,7 @@ class ZglAppWX(HasTraits):
         self.canvas = canvas = glcanvas.GLCanvas(frame, -1)
         self.initSize = size
         self.viewControl = viewControl
+        self.viewSize = size
 
         canvas.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)
         canvas.Bind(wx.EVT_PAINT, self.OnPaint)
@@ -808,6 +818,8 @@ class ZglAppWX(HasTraits):
     def OnSize(self, event):
         x, y = self.canvas.GetClientSize()
         safe_call(self.viewControl, 'resize', x, y)
+        self.viewSize = self.viewControl.vp.size
+        safe_call(self, 'resize', x, y)
         self.canvas.Refresh(False)
 
     def drawText(self, pos, s, color = (0.5, 1, 0.5, 1)):
