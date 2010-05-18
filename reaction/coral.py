@@ -244,6 +244,12 @@ if __name__ == '__main__':
         volumeRender   = Instance(VolumeRenderer)
         showMesh       = Bool(True)
         showVolume     = Bool(False)
+
+        orbitCamera    = Bool(False)
+        orbitPitch     = Range(-90.0, 90.0, -45.0)
+        orbitDist      = Range(0.0, 5.0, 1.0)
+        orbitCenterZ   = Range(0.0, 1.0, 0.5)
+        orbitSpeed     = Range(0.0, 90.0, 45.0)
         
         traits_view = View(Item(name='iterCount', style='readonly'),
                            Item(name='batchIters'),
@@ -252,6 +258,16 @@ if __name__ == '__main__':
                            Item(name='saveGrowIters'),
                            Item(name='showMesh'),
                            Item(name='showVolume'),
+                           
+                           Group(
+                           Item(name='orbitCamera'),
+                           Item(name='orbitPitch'),
+                           Item(name='orbitDist'),
+                           Item(name='orbitCenterZ'),
+                           Item(name='orbitSpeed'),
+                           label = 'Orbit Camera',
+                           show_border = True),
+
                            resizable = True,
                            buttons = ["OK"],
                            title='Coral')
@@ -329,6 +345,20 @@ if __name__ == '__main__':
                 if self.saveGrowIters:
                     self.save_coral()
             
+            if self.orbitCamera:
+               c = V(0.5, 0.5, self.orbitCenterZ)
+               crs = self.time * self.orbitSpeed
+               pitch = self.orbitPitch
+
+               self.viewControl.course = crs
+               self.viewControl.pitch = pitch
+
+               crs = radians(crs)
+               pitch = radians(pitch)
+               cp = cos(pitch)
+               d = V(cos(crs)*cp, sin(crs)*cp, sin(pitch))
+               self.viewControl.eye = c-d*self.orbitDist
+
             if self.showMesh:
                 with ctx(self.viewControl.with_vp, glstate(GL_DEPTH_TEST, GL_DEPTH_CLAMP_NV)):
                     scale = 1.0 / self.coral.gridSize

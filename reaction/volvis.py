@@ -1,6 +1,7 @@
 from __future__ import with_statement
 from zgl import *
 
+
 class VolumeRenderer(HasTraits):
     density        = Range( 0.0, 1.0, 0.5)
     brightness     = Range( 0.0, 2.0, 1.0 )
