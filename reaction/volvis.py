@@ -5,7 +5,7 @@ class VolumeRenderer(HasTraits):
     density        = Range( 0.0, 1.0, 0.5)
     brightness     = Range( 0.0, 2.0, 1.0 )
     transferOffset = Range(-1.0, 1.0, 0.0 )
-    transferScale  = Range(-5.0, 5.0, 1.0 )
+    transferScale  = Range(-50.0, 50.0, 1.0 )
     stepsInTexel   = Range( 0.5, 4.0, 2.0 )
 
     transferFunc   = Enum('nv', 'gray')
@@ -64,19 +64,23 @@ class VolumeRenderer(HasTraits):
         self.trans = {'nv': nv, 'gray': gray}
             
         self.traceVP = CGShader('vp40', '''
-          #line 58
-          uniform float far;
-          uniform float near;
+          #line 68
 
           float4 main(float2 p : POSITION, 
              out float3 rayDir : TEXCOORD0,
              out float3 eyePos : TEXCOORD1,
-             out float2 screenPos : TEXCOORD2) : POSITION
+             out float2 screenPos : TEXCOORD2,
+             out float3 eyeRayDir : TEXCOORD3) : POSITION
           {
-            float4 projVec = float4(p * 2.0 - float2(1.0, 1.0), -near, near);
+            float4 projVec = float4(p * 2.0 - float2(1.0, 1.0), 0.0, 1.0);
+            
             float4 wldVec = mul(glstate.matrix.inverse.mvp, projVec);
-            eyePos = mul(glstate.matrix.inverse.modelview[0], float4(0, 0, 0, 1)).xyz;
             wldVec /= wldVec.w;
+            float4 eyeVec = mul(glstate.matrix.inverse.projection, projVec);
+            eyeVec /= eyeVec.w;
+            eyeRayDir = eyeVec.xyz;
+
+            eyePos = mul(glstate.matrix.inverse.modelview[0], float4(0, 0, 0, 1)).xyz;
             rayDir = wldVec.xyz - eyePos;
             screenPos = p;
             return projVec;
@@ -85,7 +89,7 @@ class VolumeRenderer(HasTraits):
         ''')
 
         self.traceFP = CGShader('gp4fp', '''
-        # line 44
+        # line 93
           uniform sampler1D transferTex;
           uniform sampler3D volume;
           
@@ -99,9 +103,6 @@ class VolumeRenderer(HasTraits):
 
           uniform float useDepth;
           uniform sampler2D depthTex;
-          uniform float near;
-          uniform float far;
-
          
           void hitBox(float3 o, float3 d, out float tenter, out float texit)
           {
@@ -116,22 +117,12 @@ class VolumeRenderer(HasTraits):
             texit  = min(t2.x, min(t2.y, t2.z));
           }
 
-          /*float3 getnormal(float3 p)
-          {
-            float d = 0.2/256.0;
-            float x = tex3D(volume, p + float3(d, 0, 0)).r - tex3D(volume, p - float3(d, 0, 0)).r;
-            float y = tex3D(volume, p + float3(0, d, 0)).r - tex3D(volume, p - float3(0, d, 0)).r;
-            float z = tex3D(volume, p + float3(0, 0, d)).r - tex3D(volume, p - float3(0, 0, d)).r;
-            float3 n = -0.5*float3(x, y, z);
-            return normalize(n);
-          }*/
-
           float4 main( float3 rayDir    : TEXCOORD0, 
                        float3 eyePos    : TEXCOORD1,  
-                       float2 screenPos : TEXCOORD2) : COLOR 
+                       float2 screenPos : TEXCOORD2,
+                       float3 eyeRayDir : TEXCOORD3) : COLOR 
           {
-            float projCoef = length(rayDir);
-            rayDir /= projCoef;
+            rayDir = normalize(rayDir);
             float t1, t2;
             hitBox(eyePos, rayDir, t1, t2);
             t1 = max(0.0, t1);
@@ -142,8 +133,11 @@ class VolumeRenderer(HasTraits):
             if (useDepth > 0.5)
             {
               float depth = tex2D(depthTex, screenPos);
-              float z = -2.0*far*near / ( depth * (far-near) - (far+near) );
-              float t = z*projCoef / near;
+              float4 v = float4( 2.0*float3(screenPos, depth)-1.0, 1.0 );
+              v = mul( glstate.matrix.inverse.projection, v );
+              v /= v.w;
+              float rayZ = normalize(eyeRayDir).z;
+              float t = v.z / rayZ;
               t2 = min(t2, t);
             }
 
@@ -164,7 +158,7 @@ class VolumeRenderer(HasTraits):
         ''')
         self.updateShaderParams()
         
-    def render(self, depthTex = None, near = 1.0, far = 10.0):
+    def render(self, depthTex = None):
         if self.volumeTex is None:
             return
         self.traceFP.slice = (self.sliceX, self.sliceY, self.sliceZ)
@@ -173,7 +167,7 @@ class VolumeRenderer(HasTraits):
             self.traceFP.useDepth = 1.0
         else:
             self.traceFP.useDepth = 0.0
-        with ctx(self.traceVP(near = near, far = far), self.traceFP(near = near, far = far)):
+        with ctx(self.traceVP, self.traceFP):
             drawQuad()
         
         
@@ -181,7 +175,7 @@ if __name__ == "__main__":
 
     class App(ZglAppWX):
         volumeRender = Instance(VolumeRenderer)    
-        
+
         def __init__(self):
             ZglAppWX.__init__(self, viewControl = FlyCamera())
 
@@ -193,11 +187,30 @@ if __name__ == "__main__":
             data = swapaxes(data, 0, 1)
             self.volumeRender = VolumeRenderer(Texture3D(img=data))
 
+            verts, idxs, quads = create_box()
+            verts = 0.5 * verts + 0.25
+            def drawBox():
+                glColor(0.5, 0.5, 0.5)
+                drawArrays(GL_QUADS, verts = verts, indices = quads)
+            self.drawBox = drawBox
+
+            self.depthTex = Texture2D()
+
+            self.viewControl.zNear = 0.01
+            self.viewControl.zFar  = 10.0
+
         def display(self):
             clearGLBuffers()
-            with ctx(self.viewControl.with_vp):
-                self.volumeRender.render()
-
+            with self.viewControl.with_vp:
+                with glstate(GL_DEPTH_TEST):
+                    self.drawBox()
+                with ctx(self.depthTex):
+                    w, h = self.viewSize
+                    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, 0, 0, w, h, 0)
+                with glstate(GL_BLEND):
+                    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                    glBlendEquation(GL_FUNC_ADD);
+                    self.volumeRender.render(self.depthTex)
 
     if __name__ == "__main__":
         App().run()
