@@ -3,19 +3,6 @@ from zgl import *
 import _coralmesh
 
 
-def create_box():
-    verts = indices((2, 2, 2), float32).T.reshape(-1,3)
-    idxs = [ 0, 2, 3, 1,
-             0, 1, 5, 4, 
-             4, 5, 7, 6,
-             1, 3, 7, 5,
-             0, 4, 6, 2,
-             2, 6, 7, 3]
-    quad_idxs = array(idxs, uint32).reshape(-1,4)
-    trg_idxs = quad_idxs[:,(0, 1, 2, 0, 2, 3)].reshape((-1,3))  # quads -> triangles
-    return verts, trg_idxs, quad_idxs
-
-
 def create_box_mesh():
     verts, idxs, qidxs = create_box()
     
