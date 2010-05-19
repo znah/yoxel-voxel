@@ -282,7 +282,7 @@ __global__ void Trace(RayData * rays)
       action = ACT_NEXT;
     else
     {
-      if (t_enter * rp.detailCoef > 2.0f * nodeSize) // LOD ?
+      if (/*t_enter * rp.detailCoef > 2.0f * nodeSize*/ rp.minNodeSize > nodeSize) // LOD ?
       {
         if (GetEmptyFlag(nodeInfo))
           action = ACT_NEXT;

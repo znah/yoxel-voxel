@@ -31,6 +31,7 @@ struct RenderParams
   int viewHeight;
 
   float detailCoef;
+  float minNodeSize;
 
   float3 eyePos;
   float3 dir;

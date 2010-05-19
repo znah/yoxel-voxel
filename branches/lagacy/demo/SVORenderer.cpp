@@ -13,6 +13,7 @@ SVORenderer::SVORenderer()
 , m_accumIter(0)
 , m_shadeMode(SM_SIMPLE)
 , m_shuffleEnabled(false)
+, m_lodLimit(16)
 {
   cudaGetTextureReference(&m_dataTexRef, "nodes_tex");
 
@@ -85,6 +86,7 @@ void SVORenderer::Render(void * d_dstBuf)
   rp.viewWidth = m_viewSize.x;
   rp.viewHeight = m_viewSize.y;
   rp.detailCoef = m_detailCoef * cg::grad2rad(m_fov / 2) / m_viewSize.x;
+  rp.minNodeSize = 1.0 / (1<<m_lodLimit);
 
   rp.eyePos = make_float3(m_pos);
 
@@ -150,6 +152,7 @@ std::string SVORenderer::GetInfoString() const
   res += format("prof.traceTime {0}\n") % m_profStats.traceTime;
   res += format("USE_TEXLOOKUP {0}\n") % USE_TEXLOOKUP;
   res += format("SHARED_STACK {0}\n") % SHARED_STACK;
+  res += format("lodLimit {0}\n") % m_lodLimit;
   return res;
 }
 
