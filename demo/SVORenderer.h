@@ -48,6 +48,10 @@ public:
   void SetShadeMode(int mode) { CheckSet(m_shadeMode, mode); }
   int GetShadeMode() const { return m_shadeMode; }
 
+  void SetLodLimit(int limit) { CheckSet(m_lodLimit, limit); }
+  int GetLodLimit() const { return m_lodLimit; }
+
+
   void Render(void * d_dstBuf);
   void UpdateSVO();
 
@@ -85,6 +89,7 @@ private:
   LightParams m_lights[MaxLightsNum];
 
   float m_detailCoef;
+  int m_lodLimit;
 
   CuVector<RayData> m_rayDataBuf;
   CuVector<float> m_noiseBuf;
@@ -94,6 +99,6 @@ private:
   const textureReference * m_dataTexRef;
 
   int m_accumIter;
-
+  
   ProfileStats m_profStats;
 };

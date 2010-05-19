@@ -17,6 +17,8 @@ Demo::Demo()
 , m_editAction(EditNone)
 , m_lastEditTime(0)
 , m_logFile("trace.log", std::ios::app)
+, m_showInfo(true)
+, m_curResIdx(0)
 {
   cout << "loading scene ...";
   if (!m_svo.Load(SceneName))
@@ -33,6 +35,15 @@ Demo::Demo()
 
   m_lastTime = GetTime();
   m_lastFPSTime = GetTime();
+
+  for(int x = 256; x <= 2048; x += 256)
+  {
+    int y = x*3/4;
+    m_resList.push_back(point_2i(x, y));
+  }
+  m_curResIdx = 3;
+  point_2i res = m_resList[m_curResIdx];
+  glutReshapeWindow(res.x, res.y);
 }
 
 float Demo::GetTime() { return glutGet(GLUT_ELAPSED_TIME) / 1000.0f; }
@@ -212,15 +223,24 @@ void Demo::KeyDown(unsigned char key, int x, int y)
 
   if (key == '8')
     m_renderer.SetShuffle(!m_renderer.GetShuffle());
-
   if (key == ' ')
-  {
     m_logFile << m_renderer.GetInfoString() << std::endl;
-  }
-
   if (key == 'z')
-  {
     m_renderer.SaveCounters("dump.dat");
+  if (key == 'p')
+    m_showInfo = !m_showInfo;
+
+  if (key == ',')
+  {
+    int sz = m_resList.size();
+    m_curResIdx = (m_curResIdx + 1) % sz;
+    point_2i res = m_resList[m_curResIdx];
+    glutReshapeWindow(res.x, res.y);
+  }
+  if (key == '.')
+  {
+    int lod = (m_renderer.GetLodLimit() + 1) % 16;
+    m_renderer.SetLodLimit(lod);
   }
 }
 
@@ -287,9 +307,12 @@ void Demo::Display()
   glEnd();
   glDisable(GL_TEXTURE_2D);
 
-  glColor4f(0, 1, 0, 1);
-  glWindowPos2i(20, m_viewSize.y - 20); 
-  glutBitmapString(GLUT_BITMAP_9_BY_15, (const unsigned char*)m_renderer.GetInfoString().c_str());
+  if (m_showInfo)
+  {
+    glColor4f(0, 1, 0, 1);
+    glWindowPos2i(20, m_viewSize.y - 20); 
+    glutBitmapString(GLUT_BITMAP_9_BY_15, (const unsigned char*)m_renderer.GetInfoString().c_str());
+  }
 
   glutSwapBuffers();
 }

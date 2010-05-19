@@ -46,6 +46,8 @@ private:
   float m_lastTime;
   float m_lastFPSTime;
   int m_frameCount;
+  
+  bool m_showInfo;
 
   enum EditAction { EditNone, EditGrow, EditClear, EditGrowSide };
   EditAction m_editAction;
@@ -61,14 +63,11 @@ private:
     Color32 color;
     bool sideGrow;
   };
-  typedef std::pair<float, EditData> LogItem;
-  void SaveLog();
-  void LoadLog();
 
   void ShootBall(const EditData & action);
 
-  float m_playStart;
-  bool m_playing;
-
   std::ofstream m_logFile;
+
+  std::vector<point_2i> m_resList;
+  int m_curResIdx;
 };
