@@ -1,4 +1,43 @@
-\chapter*{Визуализация SVO}
-\addcontentsline{toc}{chapter}{Визуализация SVO}
+\chapter{Визуализация SVO}
+%\addcontentsline{toc}{chapter}{Визуализация SVO}
 
 В данной главе изложены некоторые наблюдения, полученные в ходе работ над визуализацией воксельной сцены, представленной ввиде SVO.
+
+\begin{figure}[ht]
+\center
+\includegraphics[width=\textwidth]{trace.jpg}
+\caption{Тестовая сцена}
+\label{fig:trace}
+\end{figure}
+
+Большинство экспериметров с варьированием параметров трассировщика проведено на сцене, показанной на рис.~\ref{fig:trace}. Время работы текущей версии GPU трассировщика лучей при построении данного изображения в разрешении 1024x768 составляет около 34~мс. 
+
+\section{Исследование производителности трассировщика лучей}
+
+\begin{figure}[ht]
+\center
+\includegraphics[width=\textwidth]{trace_iters.jpg}
+\caption{Количество итераций алогритма }
+\label{fig:trace_iters}
+\end{figure}
+
+На рис.~\ref{fig:trace_iters} оттенками серого показано количество итераций, требуемых для трассировки каждого луча. На каждой итерации осуществляется одно из следующих действий:
+
+\begin{itemize}
+  \item Спуск вниз по октарному дереву на один уровень.
+  \item Переход к следующему пересекаемому лучем узлу дерева, с возможным подьемом на несколько уровней.
+  \item Сохранение результата при пересечении луча с непустым вокселем.
+\end{itemize}
+
+
+\section{Сокрытие артефактов вокселизации}
+
+\begin{figure}[htp]
+  \begin{center}
+    \subfigure[Без сокрытия]{\label{fig:blur-a}\includegraphics[width=.45\textwidth]{trace_blur1.jpg}}
+    \subfigure[Со случайными смещениями начальных точек лучей]{\label{fig:blur-b}\includegraphics[width=.45\textwidth]{trace_blur2.jpg}} \\
+    \subfigure[Усредненное по нескольким кадрам изобрадение]{\label{fig:blur-c}\includegraphics[width=.7\textwidth]{trace_blur3.jpg}}
+  \end{center}
+  \caption{Various edge detection algorithms}
+  \label{fig:edge}
+\end{figure}

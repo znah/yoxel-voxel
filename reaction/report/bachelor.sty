@@ -54,16 +54,17 @@
 % Рисунки
 \RequirePackage{graphicx}
 \ifpdf
-  \graphicspath{{images/pdf/}} % путь к рисункам
+  \graphicspath{{images/}} % путь к рисункам
   \DeclareGraphicsExtensions{.pdf}
 \else
-  \graphicspath{{images/eps/}} % путь к рисункам
+  \graphicspath{{images/}} % путь к рисункам
   \DeclareGraphicsExtensions{.eps}
 \fi
 % Для подписей к рисункам и таблицам
 \usepackage{ccaption}
 % "Плавающие рисунки"
 \RequirePackage{floatflt, wrapfig}
+\usepackage{subfigure}  % package for subfigure formatting
 
 %%%%%%%%%%
 %HEADINGS%
