@@ -55,7 +55,7 @@ def make_trace_res_time_chart():
     plot_t_rc('data/trace_notex.log'  , u'No texture fetch' )
     pl.legend(loc='best')
     
-    pl.xlabel(u'Кол-во лучей (млн.)')
+    pl.xlabel(u'Количество лучей (млн.)')
     pl.ylabel(u'Время (мс)')
 
     pl.savefig('images/trace_res_time.pdf')
@@ -128,6 +128,55 @@ def make_trace_enter_exit():
     pl.savefig('images/trace_scheduler.pdf')
     
 
+def make_voxel_time():
+    logs = load('data/grow_log.npz')
+    fig = pl.figure()
+    fig.subplots_adjust(left = 0.08, right=0.95, bottom = 0.1, top=0.95)
+    
+    a = logs['grow.calcAbsorb.voxelize_gl']
+    dt, vn, fn = a.T
+
+    pl.plot(vn, dt)
+    n = 65536
+    pl.vlines(n, 0, 14, linestyle='--')
+    pl.text(n+1000, 10, str(n))
+    pl.xlabel(u'Количество вершин')
+    pl.ylabel(u'Время (мс)')
+    pl.ylim([0, 14])
+    
+    pl.savefig('images/voxel_time.pdf')
+    
+    
+def make_coralgrow_time():
+    logs = load('data/grow_log.npz')
+    fig = pl.figure()
+    fig.subplots_adjust(left = 0.08, right=0.95, bottom = 0.1, top=0.95)
+    
+    # ['grow.calcAbsorb.voxelize_gl', 
+    #  'grow.calcAbsorb.PrepareDiffusionVolume_cu', 
+    #  'grow.calcAbsorb.Diffusion_cu', 
+    #   grow.growMesh', 'grow']
+    
+    
+    totalTime = logs['grow'][:,0]
+    x = r_[:len(totalTime)]
+    growMeshTime = logs['grow.growMesh'][:,0]
+    diffusionTime = logs['grow.calcAbsorb.Diffusion_cu'][:,0]
+    otherTime = totalTime-growMeshTime-diffusionTime
+    
+    pl.plot(totalTime, 'k-', label=u'Полное время')
+    pl.plot(growMeshTime, 'k:.', label=u'Обновление полигональной модели')
+    pl.plot(diffusionTime, 'k:', label=u'Диффузия (50 итераций)')
+    pl.plot(otherTime, 'k-.', label=u'Прочее')
+    
+    pl.ylim(0, 800)
+    
+    pl.legend(loc='best')   
+    pl.xlabel(u'Итерация')
+    pl.ylabel(u'Время (мс)')
+    
+    pl.savefig('images/coral_grow_time.pdf')
+    
 
 make_count_chart('data/dumps/iter_count.dat', 'images/trace_iters.png') 
 os.system('gm convert -quality 90 images/trace_iters.png images/trace_iters.jpg')
@@ -135,6 +184,7 @@ os.system('gm convert -quality 90 images/trace_iters.png images/trace_iters.jpg'
 make_trace_res_time_chart()
 make_trace_lod_time_chart()
 make_trace_enter_exit()
+make_voxel_time()
 
-#pl.show()
+make_coralgrow_time()
 
