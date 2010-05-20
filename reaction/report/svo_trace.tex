@@ -3,7 +3,7 @@
 
 В данной главе изложены некоторые наблюдения, полученные в ходе работ над визуализацией воксельной сцены, представленной ввиде SVO.
 
-\begin{figure}[ht]
+\begin{figure}[h]
 \center
 \includegraphics[width=\textwidth]{trace.jpg}
 \caption{Тестовая сцена}
@@ -14,10 +14,10 @@
 
 \section{Исследование производителности трассировщика лучей}
 
-\begin{figure}[ht]
+\begin{figure}[h]
 \center
 \includegraphics[width=\textwidth]{trace_iters.jpg}
-\caption{Количество итераций алогритма }
+\caption{Количество итераций алогритма трассировки}
 \label{fig:trace_iters}
 \end{figure}
 
@@ -29,21 +29,44 @@
   \item Сохранение результата при пересечении луча с непустым вокселем.
 \end{itemize}
 
+Среднее количество итераций близко к 50, однако для некоторых пикселей, как видно на рисунке, оно дистигает нескольких сотен.
+
+\begin{figure}[h]
+\center
+\includegraphics[width=\textwidth]{trace_res_time.pdf}
+\caption{Зависимость времени трассировки от разрешения}
+\label{fig:trace_res_time}
+\end{figure}
+
+\begin{figure}[h]
+\center
+\includegraphics[width=\textwidth]{trace_lod_time.pdf}
+\caption{Зависимость времени трассировки глубины дерева}
+\label{fig:trace_lod_time}
+\end{figure}
+
+
+\begin{figure}[h]
+\center
+\includegraphics[width=\textwidth]{trace_scheduler.pdf}
+\caption{Диаграмма исполнения для когерентных и перемешанных потоков}
+\label{fig:trace_scheduler}
+\end{figure}
+
+
 \begin{itemize}
-  \item грифики времени трассировки от разрешения для разных режимов трассировщика
-  \item время от макс уровня детализации
   \item диаграмы запуска потоков (нормальная и с шафлом), балансировка выч. нагрузки (бакалаврская)
 \end{itemize}
 
 
 \section{Сокрытие артефактов вокселизации}
 
-\begin{figure}[htp]
+\begin{figure}[h]
   \begin{center}
     \subfigure[Без сокрытия]{\label{fig:blur-a}\includegraphics[width=.45\textwidth]{trace_blur1.jpg}}
     \subfigure[Со случайными смещениями начальных точек лучей]{\label{fig:blur-b}\includegraphics[width=.45\textwidth]{trace_blur2.jpg}} \\
-    \subfigure[Усредненное по нескольким кадрам изобрадение]{\label{fig:blur-c}\includegraphics[width=.7\textwidth]{trace_blur3.jpg}}
+    \subfigure[Усредненное по нескольким кадрам изображение]{\label{fig:blur-c}\includegraphics[width=.7\textwidth]{trace_blur3.jpg}}
   \end{center}
-  \caption{Various edge detection algorithms}
+  \caption{Сокрытие артефактов вокселизации}
   \label{fig:edge}
 \end{figure}
