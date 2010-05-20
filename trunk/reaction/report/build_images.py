@@ -22,7 +22,7 @@ def make_count_chart(inName, outName):
 
 
 make_count_chart('data/dumps/iter_count.dat', 'images/trace_iters.png') 
-os.system('imconvert -quality 90 images/trace_iters.png images/trace_iters.jpg')
+os.system('gm convert -quality 90 images/trace_iters.png images/trace_iters.jpg')
 
 
 
