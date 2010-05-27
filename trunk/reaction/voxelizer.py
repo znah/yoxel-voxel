@@ -322,7 +322,6 @@ class App(ZglAppWX):
 
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
-        self.fragProg = CGShader('fp40', TestShaders, entry = 'TexCoordFP')
 
         size = 512
         self.simpleVox = Voxelizer(size)
