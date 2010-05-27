@@ -92,8 +92,8 @@ class App(ZglAppWX):
         self.tileProvider = TileProvider("img/sand.jpg", 512, 512, 8)
         self.virtualTex = vtex.VirtualTexture(self.tileProvider, 15)
         
-        self.texFrag = CGShader("fp40", TestShaders, entry = 'TexLookupFP')
-        self.texFrag.tex = self.virtualTex.cacheTex
+        self.texFrag = genericFP('tex2D(s_tex, tc0.xy)')
+        self.texFrag.s_tex = self.virtualTex.cacheTex
 
         self.vtexFrag = CGShader("fp40", fileName = 'vtex.cg')
         self.vtexFeedbackFrag = CGShader("gp4fp", fileName = 'vtex.cg', entry = 'feedback')

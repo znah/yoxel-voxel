@@ -81,8 +81,8 @@ class App(ZglAppWX):
         ''')
         self.occlusion2Frag.heightmap = heightmap
         
-        self.texFrag = CGShader('fp40', TestShaders, entry = 'TexLookupFP')
-        self.texFrag.tex = self.occlusion.tex
+        self.texFrag = genericFP('tex2D(s_tex, tc0.xy)')
+        self.texFrag.s_tex = self.occlusion.tex
         self.occlusion.tex.filterLinear()
         
         self.blur = Blur(heightmap.size)
@@ -105,8 +105,8 @@ class App(ZglAppWX):
         with ctx(self.occlusion, ortho, self.occlusion2Frag):
             drawQuad()
             
-        self.texFrag.tex = self.blur(self.occlusion.tex, self.afterBlur)    
-        self.texFrag.tex.filterLinear()
+        self.texFrag.s_tex = self.blur(self.occlusion.tex, self.afterBlur)    
+        self.texFrag.s_tex.filterLinear()
         
         
         '''

@@ -1129,26 +1129,7 @@ def genericFP(inline_code, profile = 'fp40'):
     ''' % (uniforms, inline_code)
     return CGShader(profile, code)
 
-TestShaders = '''
-  uniform sampler2D tex;
-
-  float4 TexCoordFP( float3 tc: TEXCOORD0 ) : COLOR 
-  { 
-    return float4(tc, 1); 
-  }
-
-  float4 ColorFP( float4 color: COLOR ) : COLOR 
-  { 
-    return color; 
-  }
-  
-  float4 TexLookupFP( float2 tc: TEXCOORD0 ) : COLOR 
-  { 
-    return tex2D(tex, tc);
-  }
 '''
-"""
-
 from __future__ import with_statement
 from zgl import *
     
@@ -1164,4 +1145,4 @@ class App(ZglAppWX):
 
 if __name__ == "__main__":
     App().run()
-"""
+'''
