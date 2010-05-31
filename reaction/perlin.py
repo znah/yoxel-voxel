@@ -48,6 +48,8 @@ if __name__ == "__main__":
 
              float4 main(float2 pos: TEXCOORD0) : COLOR
              {
+               return abs(noise3d(float3(pos*50, time)));
+
                float ac = 0.5*noise3d(pos.x*10, pos.y*10, 23.0)+0.5;
 
                float a = 1.0, s = 5.0, v = 0;
