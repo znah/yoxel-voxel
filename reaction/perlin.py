@@ -35,6 +35,14 @@ def setup_perlin(prog):
     gradperm = grad[perm%16]
     prog.uPerlinGrad = Texture1D(img = grad, format = GL_RGBA_FLOAT16_ATI)
     prog.uPerlinGradPerm = Texture1D(img = gradperm, format = GL_RGBA_FLOAT16_ATI)
+
+    gradperm2d = zeros((256, 256, 4), uint8)
+    gradperm2d[:,:,3] = perm2d[:,:,0]
+    gradperm2d[:,:,0:3] = grad[perm2d[:,:,0]%16] * 64 + 64
+
+    prog.uPerlinGradPerm2d = Texture2D(img = gradperm2d)
+
+
     
 
 if __name__ == "__main__":
@@ -48,8 +56,14 @@ if __name__ == "__main__":
 
              float4 main(float2 pos: TEXCOORD0) : COLOR
              {
-               return abs(noise3d(float3(pos*50, time)));
+               float3 p = float3(pos*50, time);
+               float c = 0.7071;
+               //p = float3((p.x-p.z)*c, p.y, (p.x+p.z)*c);
+               //return 0.5*noise3d(p)+0.5;
 
+               float v = pos.x < 0.5 ? snoise(p*0.7)*0.7 : noise3d(p);
+               return 0.5*v+0.5;
+               /*
                float ac = 0.5*noise3d(pos.x*10, pos.y*10, 23.0)+0.5;
 
                float a = 1.0, s = 5.0, v = 0;
@@ -59,7 +73,7 @@ if __name__ == "__main__":
                  a *= ac;
                  s *= 1.96876;
                }
-               return float4(0.5*v+0.5);
+               return float4(0.5*v+0.5);*/
     
              }
 
