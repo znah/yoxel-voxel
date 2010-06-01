@@ -28,11 +28,13 @@ class App(ZglAppWX):
 
           float2 g(float3 p)
           {
-            float h = 0.1;
+            /*float h = 0.1;
             float v0 = noise3d(p);
             float dx = noise3d(p+float3(h, 0, 0))-v0;
             float dy = noise3d(p+float3(0, h, 0))-v0;
-            return float2(dx, dy) / h;
+            return float2(dx, dy) / h;*/
+            return snoiseGrad(p*0.4).xy*0.4;
+
           }
 
 
@@ -93,9 +95,9 @@ class App(ZglAppWX):
             float4 rnd = tex2D(noise, p);
             //float v = rnd.r;
             float v = sin(2*pi*rnd.r + time * 0.1)*0.5 + 0.5;
-            if (v < 0.99)
-              v = 0;
-            v *= 20;
+            //if (v < 0.99)
+            //  v = 0;
+            //v *= 20;
             //v *= saturate(sin(p.x*10));
             return v;
           }
