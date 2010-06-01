@@ -183,3 +183,105 @@ float snoise(float3 P) {
   return 32.0 * (n0 + n1 + n2 + n3);
 }
 
+
+float surflet(float3 Pi, float3 Pf)
+{
+  float perm = tex2D(uPerlinGradPerm2d, Pi.xy).a;
+  float3 grad = tex2D(uPerlinGradPerm2d, vec2(perm, Pi.z)).rgb * 4.0 - 1.0;
+  float t = 0.6 - dot(Pf, Pf);
+  float n;
+  if (t < 0.0) n = 0.0;
+  else {
+    t *= t;
+    n = t * t * dot(grad, Pf);
+  }
+  return n;
+}
+
+float4 surfletGrad(float3 Pi, float3 Pf)
+{
+  float perm = tex2D(uPerlinGradPerm2d, Pi.xy).a;
+  float3 grad = tex2D(uPerlinGradPerm2d, vec2(perm, Pi.z)).rgb * 4.0 - 1.0;
+  float t = 0.6 - dot(Pf, Pf);
+  float4 n = float4(0);
+  if (t >= 0.0) 
+  {
+    float t2 = t*t;
+    float t3 = t2*t;
+    float f = t2*t2;
+    float3 df = -8.0*t3*Pf;
+    
+    n.w = dot(grad, Pf);
+    n.xyz = df*n.w + grad*f;
+    n.w *= f;
+  }
+  return n;
+}
+
+/*
+ * 3D simplex noise. Comparable in speed to classic noise, better looking.
+ */
+float snoise2(float3 P) {
+
+// The skewing and unskewing factors are much simpler for the 3D case
+#define F3 0.333333333333
+#define G3 0.166666666667
+
+  // Skew the (x,y,z) space to determine which cell of 6 simplices we're in
+  float s = (P.x + P.y + P.z) * F3; // Factor for 3D skewing
+  float3 Pi = floor(P + s);
+  float t = (Pi.x + Pi.y + Pi.z) * G3;
+  float3 P0 = Pi - t; // Unskew the cell origin back to (x,y,z) space
+  Pi = Pi * ONE + ONEHALF; // Integer part, scaled and offset for texture lookup
+
+  float3 Pf0 = P - P0;  // The x,y distances from the cell origin
+
+  // For the 3D case, the simplex shape is a slightly irregular tetrahedron.
+  // To find out which of the six possible tetrahedra we're in, we need to
+  // determine the magnitude ordering of x, y and z components of Pf0.
+  float3 o1;
+  float3 o2;
+  simplex(Pf0, o1, o2);
+
+  float n0 = surflet(Pi, Pf0);
+  float n1 = surflet(Pi + o1*ONE, Pf0 - o1 + G3);
+  float n2 = surflet(Pi + o2*ONE, Pf0 - o2 + 2.0 * G3);
+  float n3 = surflet(Pi + ONE, Pf0 - float3(1.0-3.0*G3));
+  
+  // Sum up and scale the result to cover the range [-1,1]
+  return 32.0 * (n0 + n1 + n2 + n3);
+}
+
+
+float4 snoiseGrad(float3 P) {
+
+// The skewing and unskewing factors are much simpler for the 3D case
+#define F3 0.333333333333
+#define G3 0.166666666667
+
+  // Skew the (x,y,z) space to determine which cell of 6 simplices we're in
+  float s = (P.x + P.y + P.z) * F3; // Factor for 3D skewing
+  float3 Pi = floor(P + s);
+  float t = (Pi.x + Pi.y + Pi.z) * G3;
+  float3 P0 = Pi - t; // Unskew the cell origin back to (x,y,z) space
+  Pi = Pi * ONE + ONEHALF; // Integer part, scaled and offset for texture lookup
+
+  float3 Pf0 = P - P0;  // The x,y distances from the cell origin
+
+  // For the 3D case, the simplex shape is a slightly irregular tetrahedron.
+  // To find out which of the six possible tetrahedra we're in, we need to
+  // determine the magnitude ordering of x, y and z components of Pf0.
+  float3 o1;
+  float3 o2;
+  simplex(Pf0, o1, o2);
+
+  float4 n0 = surfletGrad(Pi, Pf0);
+  float4 n1 = surfletGrad(Pi + o1*ONE, Pf0 - o1 + G3);
+  float4 n2 = surfletGrad(Pi + o2*ONE, Pf0 - o2 + 2.0 * G3);
+  float4 n3 = surfletGrad(Pi + ONE, Pf0 - float3(1.0-3.0*G3));
+  
+  // Sum up and scale the result to cover the range [-1,1]
+  return 32.0 * (n0 + n1 + n2 + n3);
+}
+
+

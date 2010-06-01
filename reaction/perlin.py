@@ -54,6 +54,7 @@ if __name__ == "__main__":
 
              uniform float time;
 
+
              float4 main(float2 pos: TEXCOORD0) : COLOR
              {
                float3 p = float3(pos*50, time);
@@ -61,8 +62,9 @@ if __name__ == "__main__":
                //p = float3((p.x-p.z)*c, p.y, (p.x+p.z)*c);
                //return 0.5*noise3d(p)+0.5;
 
-               float v = pos.x < 0.5 ? snoise(p*0.7)*0.7 : noise3d(p);
-               return 0.5*v+0.5;
+               float4 v = snoiseGrad(p);
+
+               return abs(v*0.2);
                /*
                float ac = 0.5*noise3d(pos.x*10, pos.y*10, 23.0)+0.5;
 
