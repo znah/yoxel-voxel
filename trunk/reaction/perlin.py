@@ -38,7 +38,21 @@ def setup_perlin(prog):
 
     gradperm2d = zeros((256, 256, 4), uint8)
     gradperm2d[:,:,3] = perm2d[:,:,0]
-    gradperm2d[:,:,0:3] = grad[perm2d[:,:,0]%16] * 64 + 64
+    gradperm2d[:,:,0:3] = grad[perm2d[:,:,0]%16] * 127 + 127
+
+    
+    
+    a = random.rand(256, 256, 4)
+    g = a[...,:3]
+    g[:] = 2.0*g-1.0
+    g /= (sum(g*g, axis=2)**0.5)[...,newaxis]
+    g *= sqrt(2.0)
+    g[:] = 0.5*g+0.5
+    gradperm2d = (a*255).astype(uint8)
+    
+
+    im = PIL.Image.fromarray(gradperm2d)
+    im.save('t.png')
 
     prog.uPerlinGradPerm2d = Texture2D(img = gradperm2d)
 
@@ -57,26 +71,24 @@ if __name__ == "__main__":
 
              float4 main(float2 pos: TEXCOORD0) : COLOR
              {
-               float3 p = float3(pos*50, time);
-               float c = 0.7071;
+               float3 p = float3(pos*50, 0);
+               //float c = 0.7071;
                //p = float3((p.x-p.z)*c, p.y, (p.x+p.z)*c);
                //return 0.5*noise3d(p)+0.5;
 
                float4 v = snoiseGrad(p);
-
-               return abs(v*0.2);
-               /*
-               float ac = 0.5*noise3d(pos.x*10, pos.y*10, 23.0)+0.5;
+               return length(v.xy)*0.2;
+               
+               /*float ac = 0.5;//0.5*snoise(float3(pos.x*10, pos.y*10, 23.0))+0.5;
 
                float a = 1.0, s = 5.0, v = 0;
-               for (int i = 0; i < 6; ++i)
+               for (int i = 0; i < 8; ++i)
                {
-                 v += a * noise3d(pos.x*s, pos.y*s, time+i*0.123);
+                 v += a * snoise2(float3(pos.x*s, pos.y*s, time+i*0.123));
                  a *= ac;
                  s *= 1.96876;
                }
-               return float4(0.5*v+0.5);*/
-    
+               return float4(abs(v));*/
              }
 
             ''')
