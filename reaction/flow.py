@@ -33,7 +33,7 @@ class App(ZglAppWX):
             float dx = noise3d(p+float3(h, 0, 0))-v0;
             float dy = noise3d(p+float3(0, h, 0))-v0;
             return float2(dx, dy) / h;*/
-            return snoiseGrad(p*0.4).xy*0.4;
+            return snoiseGrad(p*0.8).xy*0.4;
 
           }
 
@@ -78,7 +78,7 @@ class App(ZglAppWX):
         noiseTex = Texture2D(random.rand(size[1], size[0], 4).astype(float32))
         
         flowVisFP = CGShader('fp40', '''
-          #line 74
+          #line 82
           uniform sampler2D flow;
           uniform sampler2D src;
           uniform sampler2D noise;
@@ -138,6 +138,7 @@ class App(ZglAppWX):
 
             float3 v = lerp(a, b, blendCoef);
             return float4(v, speed);
+            //return float4(vel, 0, 1);
           }
         ''')
         flowVisFP.noise = noiseTex

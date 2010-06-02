@@ -58,6 +58,8 @@ class Diffusion:
 
              bool inside = tx >= 1 && ty >= 1 && tx <= TILE_DIM_X && ty <= TILE_DIM_Y;
 
+             //x &= (VOL_DIM_X-1);
+             //y &= (VOL_DIM_Y-1);
              if (x < 0)           x += VOL_DIM_X;
              if (y < 0)           y += VOL_DIM_Y;
              if (x > VOL_DIM_X-1) x -= VOL_DIM_X;
@@ -71,7 +73,7 @@ class Diffusion:
                smem[2][ty][tx] = smem[1][ty][tx];
              }
 
-             const int max_z = VOL_DIM_Z-1;
+             const int max_z = VOL_DIM_Z-1;               
              for (int z = 0; z <= max_z; ++z, ofs += stride_z)
              {
                if (active)
@@ -161,7 +163,7 @@ class Diffusion:
 
         
 if __name__ == '__main__':
-    '''
+    
     class App(ZglAppWX):
         volumeRender = Instance(VolumeRenderer)
 
@@ -171,14 +173,14 @@ if __name__ == '__main__':
             gridSize = 256
             
             a = zeros([gridSize]*3, float32)
-            a[:128] = 1.0
-            #col = linspace(0.0, 1.0, gridSize).astype(float32)
-            #a[:] = col[...,newaxis, newaxis]
+            #a[:128] = 1.0
+            col = linspace(0.0, 1.0, gridSize).astype(float32)
+            a[:] = col[...,newaxis, newaxis]
             
-            #sinks = (random.rand(10000, 3)*(gridSize, gridSize/2, gridSize/2)).astype(int32)
-            #for x, y, z in sinks:
-            #    a[z, y, x] = Diffusion.SINK
-            #a[:, gridSize/2 + 1, :gridSize/2] = Diffusion.OBSTACLE
+            sinks = (random.rand(10000, 3)*(gridSize, gridSize/2, gridSize/2)).astype(int32)
+            for x, y, z in sinks:
+                a[z, y, x] = Diffusion.SINK
+            a[:, gridSize/2 + 1, :gridSize/2] = Diffusion.OBSTACLE
             
             self.diffusion = Diffusion(gridSize)
             self.diffusion.src.set(a)
@@ -191,7 +193,7 @@ if __name__ == '__main__':
             #self.step()
 
         def step(self):
-            for i in xrange(1):
+            for i in xrange(20):
                 self.diffusion.step()
                 print '.',
             print
@@ -209,6 +211,7 @@ if __name__ == '__main__':
                 self.volumeRender.render()
 
     '''
+    
     class App(ZglAppWX):
         def __init__(self):
             ZglAppWX.__init__(self, viewControl = FlyCamera())
@@ -234,7 +237,7 @@ if __name__ == '__main__':
             print in1, out1, out2
 
             save('a', a)
-        
+    '''    
     import pycuda.autoinit
     App().run()
     
