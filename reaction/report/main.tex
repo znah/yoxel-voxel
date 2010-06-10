@@ -5,7 +5,7 @@
 %opening
 \begin{document}
 
-\title{Картинки и графики}
+\title{Моделирование динамических процессов на регулярных решетках с использованием графических ускорителей}
 \author{А. С. Мордвинцев}
 \date{\today}
 
@@ -18,9 +18,52 @@
 
 \tableofcontents
 
-\include{coral}
-\include{svo_trace}
-\include{voxelization}
+\chapter*{Введение}
+\addcontentsline{toc}{chapter}{Введение}
+
+\chapter{Воксельная графика}
+\section{Представление трехмерных сцен}
+\subsection{Полигональное}
+\subsection{Массив вокселей}
+\subsection{Разреженные структуры данных: воксельное октарное дерево}
+\section{Визуализация воксельных объектов}
+\section{Использование GPU для ускорения операций с воксельными объектами}
+\subsection{Технология CUDA}
+\subsection{Трассировка лучей}
+\subsection{Вокселизация с тспользованием растеризатора GPU}
+\section{Полип-ориентированная модель роста коралла}
+
+\chapter{Особенности реализации воксельных алгоритмов на GPU}
+\section{CPU-GPU реализация Полип-ориентированной модели роста коралла}
+\subsection{Архитектура приложения}
+\subsection{Вокселизация полигональной сетки}
+\subsection{Расчет диффузии}
+\subsection{Обновление полигональной сетки}
+\section{Визуализация воксельного октарного дерева методом обратной трассировки лучей}
+\subsection{Архитектура приложения}
+
+\chapter{Исследование эффективности GPU-операций над воксельными объектами}
+\section{Анализ производетельности этапов модели роста кораллов}
+\section{Анализ производетельности трассировки лучей в воксельном октарном дереве}
+\subsection{Особенности работы с памятью и их влияние на производительность}
+\subsection{Балансировка вычислительной нагрузки}
+
+\chapter*{Заключение}
+\addcontentsline{toc}{chapter}{Заключение}
+
+\addcontentsline{toc}{chapter}{Литература}
+\begin{thebibliography}{99}
+
+\end{thebibliography}
+
+
+
+%\include{intro}
+
+%\include{cuda}
+%\include{coral}
+%\include{svo_trace}
+%\include{voxelization}
 
 
 %\appendix
