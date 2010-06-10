@@ -16,7 +16,7 @@ def make_count_chart(inName, outName):
 
     ax = fig.add_subplot(111)
 
-    cax = ax.imshow(a, origin='bottom', interpolation='nearest', cmap=pl.cm.gray_r)
+    cax = ax.imshow(a, origin='bottom', interpolation='nearest')#, cmap=pl.cm.gray_r)
 
     fig.colorbar(cax)
     
@@ -58,7 +58,7 @@ def make_trace_res_time_chart():
     pl.xlabel(u'Количество лучей (млн.)')
     pl.ylabel(u'Время (мс)')
 
-    pl.savefig('images/trace_res_time.pdf')
+    pl.savefig('images/trace_res_time.png')
 
 
 def make_trace_lod_time_chart():
@@ -83,7 +83,7 @@ def make_trace_lod_time_chart():
     pl.ylabel(u'Время (мс)')
     pl.legend(loc='best')
     
-    pl.savefig('images/trace_lod_time.pdf')
+    pl.savefig('images/trace_lod_time.png')
 
 def make_trace_enter_exit():
     def loaddmp(fn):
@@ -101,6 +101,10 @@ def make_trace_enter_exit():
         
         pl.plot(t1, 'o')
         pl.plot(t2, 'o', color='red')
+        
+        #dt = t2-t1
+        #pl.hist(dt, bins=50)
+        
 
     fig = pl.figure(figsize=(8, 4))
     fig.subplots_adjust(left = 0.08, right=0.95, bottom = 0.1, top=0.95)
@@ -125,7 +129,7 @@ def make_trace_enter_exit():
     ax1.set_ylabel(u'время (такты)')
     ax2.set_ylabel(u'время (такты)')
     
-    pl.savefig('images/trace_scheduler.pdf')
+    pl.savefig('images/trace_enter_exit.png')
     
 
 def make_voxel_time():
@@ -144,7 +148,7 @@ def make_voxel_time():
     pl.ylabel(u'Время (мс)')
     pl.ylim([0, 14])
     
-    pl.savefig('images/voxel_time.pdf')
+    pl.savefig('images/voxel_time.png')
     
     
 def make_coralgrow_time():
@@ -176,15 +180,17 @@ def make_coralgrow_time():
     pl.ylabel(u'Время (мс)')
     
     pl.savefig('images/coral_grow_time.pdf')
+    pl.savefig('images/coral_grow_time.png')
     
 
-make_count_chart('data/dumps/iter_count.dat', 'images/trace_iters.png') 
-os.system('gm convert -quality 90 images/trace_iters.png images/trace_iters.jpg')
+#make_count_chart('data/dumps/iter_count.dat', 'images/trace_iters.png') 
+#os.system('gm convert -quality 90 images/trace_iters.png images/trace_iters.jpg')
 
-make_trace_res_time_chart()
-make_trace_lod_time_chart()
-make_trace_enter_exit()
+#make_trace_res_time_chart()
+#make_trace_lod_time_chart()
+#make_trace_enter_exit()
 make_voxel_time()
 
-make_coralgrow_time()
+#make_coralgrow_time()
 
+pl.show()

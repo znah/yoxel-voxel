@@ -104,7 +104,7 @@ class App(ZglAppWX):
         self.lastGrowTime = self.time
 
     def display(self):
-        clearGLBuffers()
+        clearGLBuffers()#color=(0.9, 0.9, 0.9, 1))
         self.draw()
 
 if __name__ == "__main__":
