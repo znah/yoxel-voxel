@@ -2,6 +2,8 @@
 
 \usepackage{bachelor}
 \usepackage{algorithmic} % псевдокод
+\usepackage{listings}
+\lstset{language=C++, texcl=true, frame=lines, basicstyle=\ttfamily}  % latex в комментариях 
 
 %opening
 \begin{document}
@@ -25,40 +27,45 @@
 
 
 \chapter{Особенности реализации воксельных алгоритмов на GPU}
-\section{CPU-GPU реализация Полип-ориентированной модели роста коралла}
-\subsection{Архитектура приложения}
-\subsection{Вокселизация полигональной сетки}
-\subsection{Расчет диффузии}
-\subsection{Обновление полигональной сетки}
+%\section{CPU-GPU реализация Полип-ориентированной модели роста коралла}
+%\subsection{Архитектура приложения}
+%\subsection{Вокселизация полигональной сетки}
+%\subsection{Расчет диффузии}
+%\subsection{Обновление полигональной сетки}
 \section{Визуализация воксельного октарного дерева методом обратной трассировки лучей}
 \subsection{Архитектура приложения}
 
+\subsection{Сокрытие артефактов вокселизации}
+
+Так как вся сцена, при использовании данного подхода, представляет собой множество кубических вокселей, они становятся очень заметны, когда наблюдатель находится радом с коверхностью какого-либо объекта. Для борьбы с этим явлением в данной работе были примены два следующих приема:
+\begin{itemize}
+\item к начальной позиции каждого трассируемого луча прибавляется случайное смещение, размер которого сравним с размером вокселя,
+\item в моменты времени, когда сцена на экране остается неизменной, производится усреднение значений цветов нескольких последовательных кадров, отрисованных с разными отклонениями начальных позиций лучей.
+\end{itemize}
+Эти два приема приводят к тому, что близкие к наблюдателю воксели отображаются ввиде расплывчатых пятен, похожих на эффект фокального размытия, встречающися в фотографии. Примеры работы этих техник можно увидеть на рис.~\ref{fig:voxel_blur}.
+
+\begin{figure}[h]
+  \begin{center}
+    \subfigure[Без сокрытия]{\label{fig:blur-a}\includegraphics[width=.45\textwidth]{trace_blur1.jpg}}
+    \subfigure[Со случайными смещениями начальных точек лучей]{\label{fig:blur-b}\includegraphics[width=.45\textwidth]{trace_blur2.jpg}} \\
+    \subfigure[Усредненное по нескольким кадрам изображение]{\label{fig:blur-c}\includegraphics[width=.7\textwidth]{trace_blur3.jpg}}
+  \end{center}
+  \caption{Сокрытие артефактов вокселизации}
+  \label{fig:voxel_blur}
+\end{figure}
+
 \chapter{Исследование эффективности GPU-операций над воксельными объектами}
-\section{Анализ производетельности этапов модели роста кораллов}
-\section{Анализ производетельности трассировки лучей в воксельном октарном дереве}
-\subsection{Особенности работы с памятью и их влияние на производительность}
-\subsection{Балансировка вычислительной нагрузки}
+%\section{Анализ производетельности этапов модели роста кораллов}
+
+\include{svo_trace}
 
 \chapter*{Заключение}
 \addcontentsline{toc}{chapter}{Заключение}
 
-\addcontentsline{toc}{chapter}{Литература}
-\begin{thebibliography}{99}
 
-\end{thebibliography}
-
-
-
-%\include{intro}
-
-%\include{cuda}
-%\include{coral}
-%\include{svo_trace}
-%\include{voxelization}
-
-
-%\appendix
-%\renewcommand{\appendixname}{Приложение}
+\appendix
+\renewcommand{\appendixname}{Приложение}
+\include{app}
 
 \include{bibl}
 
