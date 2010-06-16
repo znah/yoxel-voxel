@@ -1,10 +1,50 @@
-\section*{Приложение A. Реализация на центральном процессоре}
-\addcontentsline{toc}{section}{Приложение A. Реализация на центральном процессоре}
-\label{apx:impl_cpu}
+\section*{Приложение A. Фрагментный шейдер, используемый при вокселизации}
+\addcontentsline{toc}{section}{Приложение A. Фрагментный шейдер, используемый при вокселизации}
+\label{apx:voxelization_code}
+\begin{lstlisting}[caption={Фрагментный шейдер, используемый при вокселизации}]
+uniform usampler1D columnBits;
+uniform float sliceNum;
+          
+struct PixelOutput
+{
+  uint4 s0 : COLOR0;
+  uint4 s1 : COLOR1;
+  uint4 s2 : COLOR2;
+  uint4 s3 : COLOR3;
+  uint4 s4 : COLOR4;
+  uint4 s5 : COLOR5;
+  uint4 s6 : COLOR6;
+  uint4 s7 : COLOR7;
+};
 
-Для начала опишем структуру данных, используемую для представления состояния ячейки решетки.
-\begin{lstlisting}[caption={Структура данных для представления ячейки}]
-// Будем использовать в вычислениях числа с одинарной точностью
-typedef float LBfloat;
+uint4 slice(float z0, uint bits)
+{
+  const uint4 zeros = uint4(0);
+  const uint4 ones  = uint4(0xffffffff);
+  if (z < z0)
+    return zeros;
+  if (z < z0 + 1.0f)
+    return bits;
+  return ones;
+}
 
+PixelOutput main(float3 pos : TEXCOORD0)
+{
+  PixelOutput output;
+            
+  const float sliceDepth = 128.0f;
+  const float halfVoxel = 0.5f / sliceDepth;
+  float z = pos.z * sliceNum - halfVoxel;
+  uint4 bits = tex1D( columnBits, frac(z) );
+            
+  output.s0 = slice(0.0f, bits);
+  output.s1 = slice(1.0f, bits);
+  output.s2 = slice(2.0f, bits);
+  output.s3 = slice(3.0f, bits);
+  output.s4 = slice(4.0f, bits);
+  output.s5 = slice(5.0f, bits);
+  output.s6 = slice(6.0f, bits);
+  output.s7 = slice(7.0f, bits);
+  return output;
+}
 \end{lstlisting}
