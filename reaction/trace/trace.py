@@ -106,7 +106,7 @@ class App(ZglAppWX):
     renderer = Instance(CuTracer)    
     
     def __init__(self):
-        ZglAppWX.__init__(self, viewControl = FlyCamera(), zglpath='..', size = (1024, 768))
+        ZglAppWX.__init__(self, viewControl = FlyCamera(), size = (1024, 768))
         
         self.renderer = renderer = CuTracer()
 
