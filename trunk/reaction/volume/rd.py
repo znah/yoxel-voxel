@@ -133,7 +133,7 @@ class App(ZglAppWX):
     iterPerFrame = Int(20)
     
     def __init__(self):
-        ZglAppWX.__init__(self, viewControl = FlyCamera(), zglpath='..')
+        ZglAppWX.__init__(self, viewControl = FlyCamera())
         
         self.rd = ReactDiff(64)
         a = self.rd.d_dst.get()

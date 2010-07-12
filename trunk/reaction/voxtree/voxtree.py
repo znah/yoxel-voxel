@@ -37,7 +37,7 @@ class App(ZglAppWX):
 
 
     def __init__(self):
-        ZglAppWX.__init__(self, viewControl = OrthoCamera(), zglpath='..')
+        ZglAppWX.__init__(self, viewControl = OrthoCamera())
         import pycuda.gl.autoinit
 
         brick_pool = BrickPool()

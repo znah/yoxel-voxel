@@ -1,5 +1,6 @@
 from __future__ import with_statement
 import sys
+import os
 import wx
 from wx import glcanvas
 from OpenGL.GL import *
@@ -21,15 +22,15 @@ from ctypes import cdll, c_int, c_uint, c_float, c_char_p, c_long
 
 
 ############### framebuffer_object wrappers ##############
-glGenFramebuffers = wrapper.wrapper(glGenFramebuffers).setOutput(
-                'framebuffers', 
-                lambda x: (x,), 
-                'n')
+#glGenFramebuffers = wrapper.wrapper(glGenFramebuffers).setOutput(
+#                'framebuffers', 
+#                lambda x: (x,), 
+#                'n')
                 
-glGenRenderbuffers = wrapper.wrapper(glGenRenderbuffers).setOutput(
-                'renderbuffers', 
-                lambda x: (x,), 
-                'n')
+#glGenRenderbuffers = wrapper.wrapper(glGenRenderbuffers).setOutput(
+#                'renderbuffers', 
+#                lambda x: (x,), 
+#                'n')
 #############################################################
 
 def FixFramebufferAPI():
@@ -694,8 +695,11 @@ def safe_call(obj, method, *l, **d):
 class ZglAppWX(HasTraits):
     _ = Python(editable = False)
 
-    def __init__(self, title = "ZglAppWX", size = (800, 600), viewControl = None, vsync = 0, zglpath = '.'):
+    def __init__(self, title = "ZglAppWX", size = (800, 600), viewControl = None, vsync = 0):
         HasTraits.__init__(self)
+        
+        zglpath = os.path.dirname(__file__)
+
         self.app = wx.PySimpleApp()
         self.frame = frame = wx.Frame(None, wx.ID_ANY, title)
         self.canvas = canvas = glcanvas.GLCanvas(frame, -1)
