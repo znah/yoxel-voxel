@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from __future__ import with_statement
 import sys
 import os
@@ -18,7 +20,7 @@ from enthought.traits.ui.api import *
 from StringIO import StringIO
 import re
 
-from ctypes import cdll, c_int, c_uint, c_float, c_char_p, c_long
+from ctypes import cdll, c_int, c_uint, c_float, c_char_p, c_long, c_void_p, POINTER
 
 
 ############### framebuffer_object wrappers ##############
@@ -86,6 +88,9 @@ cgGLSetParameter4f.argtypes = [c_int, c_float, c_float, c_float, c_float]
 cgSetParameter1i = cg.cgSetParameter1i
 cgSetParameter1i.argtypes = [c_int, c_int]
 
+cgSetMatrixParameterfr = cg.cgSetMatrixParameterfr
+cgSetMatrixParameterfr.argtypes = [c_int, POINTER(c_float)]
+
 cgGLSetTextureParameter = cggl.cgGLSetTextureParameter
 cgGLSetTextureParameter.argtypes = [c_int, c_uint]
 
@@ -98,12 +103,17 @@ cgProfiles = {"fp30"  : 6149,
               "gp4vp" : 7011,
               "gp4gp" : 7012}
 
+def _cgSetMatrixParam(p, v, rown, coln):
+    v = v[:rown, :coln].astype(float32)
+    cgSetMatrixParameterfr(p, v.ctypes.data_as(POINTER(c_float)))
+
 cgParamSetters = {
   cg.cgGetType("float")     : lambda p, v : cgGLSetParameter1f(p, v),
   cg.cgGetType("int")       : lambda p, v : cgSetParameter1i(p, v),
   cg.cgGetType("float2")    : lambda p, v : cgGLSetParameter2f(p, v[0], v[1]),
   cg.cgGetType("float3")    : lambda p, v : cgGLSetParameter3f(p, v[0], v[1], v[2]),
   cg.cgGetType("float4")    : lambda p, v : cgGLSetParameter4f(p, v[0], v[1], v[2], v[3]),
+  cg.cgGetType("float3x3")  : lambda p, v : _cgSetMatrixParam(p, v, 3, 3),
   cg.cgGetType("sampler1D") : lambda p, v : cgGLSetTextureParameter(p, v),
   cg.cgGetType("sampler2D") : lambda p, v : cgGLSetTextureParameter(p, v),
   cg.cgGetType("sampler3D") : lambda p, v : cgGLSetTextureParameter(p, v),
@@ -1135,18 +1145,19 @@ def genericFP(inline_code, profile = 'fp40'):
     return CGShader(profile, code)
 
 '''
-from __future__ import with_statement
+# -*- coding: utf-8 -*-
 from zgl import *
     
 class App(ZglAppWX):
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = OrthoCamera())
-        self.fragProg = genericFP('tc0')
+        fragProg = genericFP('tc0')
     
-    def display(self):
-        clearGLBuffers()
-        with ctx(self.viewControl.with_vp, self.fragProg):
-            drawQuad()
+        def display():
+            clearGLBuffers()
+            with ctx(self.viewControl.with_vp, fragProg):
+                drawQuad()
+        self.display = display
 
 if __name__ == "__main__":
     App().run()
