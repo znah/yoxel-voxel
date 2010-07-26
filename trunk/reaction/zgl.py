@@ -19,6 +19,7 @@ from enthought.traits.api import *
 from enthought.traits.ui.api import *
 from StringIO import StringIO
 import re
+import inspect
 
 from ctypes import cdll, c_int, c_uint, c_float, c_char_p, c_long, c_void_p, POINTER
 
@@ -511,6 +512,8 @@ class FlyCamera(WXAdapter):
 
         self.boost = False
 
+        self.invertMouse = False
+
         self.with_vp = ctx(self.vp, self)
 
     def __setattr__(self, name, val):
@@ -558,6 +561,9 @@ class FlyCamera(WXAdapter):
     def mouseMove(self, x, y):
         dx = x - self.mPos[0]
         dy = y - self.mPos[1]
+        if self.invertMouse:
+            dx = -dx
+            dy = -dy
         if self.mButtons[0]:
             self.course -= dx * self.sensitivity
             self.pitch = clip(self.pitch - dy * self.sensitivity, -89.9, 89.9)
@@ -700,7 +706,8 @@ class OrthoCamera(WXAdapter):
 
 def safe_call(obj, method, *l, **d):
     if hasattr(obj, method):
-        getattr(obj, method)(*l, **d)
+        f = getattr(obj, method)
+        f(*l, **d)
 
 class ZglAppWX(HasTraits):
     _ = Python(editable = False)
@@ -722,7 +729,7 @@ class ZglAppWX(HasTraits):
 
         canvas.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
         canvas.Bind(wx.EVT_KEY_UP, self.OnKeyUp)
-        canvas.Bind(wx.EVT_MOUSE_EVENTS, self.OnMouse)
+        canvas.Bind(wx.EVT_MOUSE_EVENTS, self._OnMouse)
 
         canvas.Bind(wx.EVT_IDLE, self.OnIdle)
         
@@ -822,11 +829,18 @@ class ZglAppWX(HasTraits):
         code = event.GetKeyCode()
         if code in self.key2name:
             safe_call(self, 'key_' + self.key2name[code])
+
         safe_call(self.viewControl, 'OnKeyDown', event)
 
     def OnKeyUp(self, event):
+        code = event.GetKeyCode()
+        if code in self.key2name:
+            safe_call(self, 'keyup_' + self.key2name[code])
+
         safe_call(self.viewControl, 'OnKeyUp', event)
 
+    def _OnMouse(self, evt):
+        self.OnMouse(evt)
     def OnMouse(self, evt):
         safe_call(self.viewControl, 'OnMouse', evt)
 
@@ -999,7 +1013,7 @@ def create_box():
     return verts, trg_idxs, quad_idxs
 
     
-def drawArrays(primitive, verts = None, indices = None, tc0 = None, normals = None):
+def drawArrays(primitive, verts = None, indices = None, tc0 = None, tc1 = None, tc2 = None, tc3 = None, normals = None):
     states = []
     if verts is not None:
         glVertexPointer( verts.shape[-1], arrayToGLType(verts), verts.strides[-2], verts)
@@ -1007,10 +1021,17 @@ def drawArrays(primitive, verts = None, indices = None, tc0 = None, normals = No
     if normals is not None:
         glNormalPointer( arrayToGLType(verts), verts.strides[-2], normals)
         states.append( GL_NORMAL_ARRAY )
-    if tc0 is not None:
-       glClientActiveTexture(GL_TEXTURE0) 
-       glTexCoordPointer(tc0.shape[-1], arrayToGLType(tc0), tc0.strides[-2], tc0)
-       states.append( (GL_TEXTURE_COORD_ARRAY, 0) )
+
+    def set_tc(i, tc):
+        if tc is not None:
+            glClientActiveTexture(GL_TEXTURE0 + i) 
+            glTexCoordPointer(tc.shape[-1], arrayToGLType(tc), tc.strides[-2], tc)
+            states.append( (GL_TEXTURE_COORD_ARRAY, i) )
+    set_tc(0, tc0)
+    set_tc(1, tc1)
+    set_tc(2, tc2)
+    set_tc(3, tc3)
+
     with glstate(*states):
         if indices is not None:
             # TODO: index types other that uint32
