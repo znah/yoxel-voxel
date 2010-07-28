@@ -780,6 +780,8 @@ class ZglAppWX(HasTraits):
         codes += [ (code, chr(code)) for code in xrange( ord('A'), ord('Z')+1 )]
         codes += [ (code, chr(code)) for code in xrange( ord('0'), ord('9')+1 )]
         self.key2name = dict(codes)
+        self.key2name[wx.WXK_PRIOR] = "PAGEUP"  # dumb wx
+
 
     def run(self):
         self.canvas.Bind(wx.EVT_SIZE, self.OnSize)
