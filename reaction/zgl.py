@@ -703,6 +703,12 @@ class OrthoCamera(WXAdapter):
     def update(self, dt):
         pass
 
+    def centerTo(self, pos):
+        r = asarray(self.rect).reshape(-1, 2)
+        r -= r.mean(0)
+        r += (pos[0], pos[1])
+        self.rect = r.ravel()
+
 
 def safe_call(obj, method, *l, **d):
     if hasattr(obj, method):
