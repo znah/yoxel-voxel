@@ -444,16 +444,19 @@ class PingPong:
         self.src.texparams(*args)
         self.dst.texparams(*args)
 
-def drawQuad(rect = (0, 0, 1, 1)):
+def drawQuad(rect = (0, 0, 1, 1), tex_rect=None):
+    if tex_rect is None:
+        tex_rect = rect
     glBegin(GL_QUADS)
-    def vert(x, y):
-        glTexCoord2f(x, y)
+    def vert(x, y, tx, ty):
+        glTexCoord2f(tx, ty)
         glVertex2f(x, y)
     (x1, y1, x2, y2) = rect
-    vert(x1, y1)
-    vert(x2, y1)
-    vert(x2, y2)
-    vert(x1, y2)
+    (tx1, ty1, tx2, ty2) = tex_rect
+    vert(x1, y1, tx1, ty1)
+    vert(x2, y1, tx2, ty1)
+    vert(x2, y2, tx2, ty2)
+    vert(x1, y2, tx1, ty2)
     glEnd()
 
 def drawVerts(primitive, pos, texCoord = None):
