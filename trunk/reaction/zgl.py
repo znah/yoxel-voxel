@@ -964,7 +964,7 @@ def drawGrid(w, h = None, normalized = True):
         verts = zeros((h, w, 2), float32)
         verts[...,1], verts[...,0] = indices((h, w))
         if normalized:
-            verts /= (w, h)
+            verts /= (w-1, h-1)
     
         idxgrid = arange(h*w).reshape(h, w)
         idxs= zeros((h-1, w-1, 4), uint32)
