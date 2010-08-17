@@ -150,6 +150,12 @@ def checkCGerror():
     print listing
     raise Exception(msg, listing)
 
+
+class Bunch:
+    def __init__(self, **kwds):
+        self.__dict__.update(kwds)
+
+
 def V(*args):
     if len(args) == 1:
         return array(args[0], float32)
