@@ -437,7 +437,7 @@ class Ortho:
     def __exit__(self, *args):
         pass
 
-ortho = Ortho()
+ortho01 = Ortho()
 
 class PingPong:
     def __init__(self, **args):

@@ -111,7 +111,7 @@ def display():
     startTime = time.clock()
     for i in xrange(ipf):
         reactFrag.texture = pp.src.tex
-        with ctx(pp.dst, reactFrag, ortho):
+        with ctx(pp.dst, reactFrag, ortho01):
             drawQuad()
         pp.flip()
     glFinish()
@@ -135,7 +135,7 @@ def display():
 
     glViewport(0, 0, viewSize[0], viewSize[1])
     visFrag.texture = pp.src.tex
-    with ortho:
+    with ortho01:
         with visFrag:
             drawQuad()
         glWindowPos2i(100, 100);
@@ -172,7 +172,7 @@ def keyDown(key, x, y):
     reactFrag(fc = fc, kc = kc)
 
 def dropDrop(x, y):
-    with ctx(pp.src, colorFrag, ortho):
+    with ctx(pp.src, colorFrag, ortho01):
         glColor4f(0.5, 0.25, 0, 0)
         glPointSize(10.0)
         glBegin(GL_POINTS)

@@ -31,7 +31,7 @@ class Blur:
         return self.pp.src.tex
         
     def _pass(self, src, dst, d):
-        with ctx(dst, ortho, self.prog(src = src, d = d)):
+        with ctx(dst, ortho01, self.prog(src = src, d = d)):
             drawQuad()
     
     
@@ -102,7 +102,7 @@ class App(ZglAppWX):
         blurred = self.blur(self.heightmap, self.blurIterNum)
         self.occlusion2Frag.blurred = blurred
         self.occlusion2Frag(coef = self.occlusionCoef, occlPow = self.occlusionPow)
-        with ctx(self.occlusion, ortho, self.occlusion2Frag):
+        with ctx(self.occlusion, ortho01, self.occlusion2Frag):
             drawQuad()
             
         self.texFrag.s_tex = self.blur(self.occlusion.tex, self.afterBlur)    
@@ -114,7 +114,7 @@ class App(ZglAppWX):
           maxSampleDist = self.maxSampleDist, 
           occlusionPower = self.occlusionPower,
           distFadePower = self.distFadePower)
-        with ctx(self.occlusion, ortho, self.occlusionFrag):
+        with ctx(self.occlusion, ortho01, self.occlusionFrag):
             drawQuad()
         '''    
 

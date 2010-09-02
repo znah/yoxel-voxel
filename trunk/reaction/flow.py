@@ -70,7 +70,7 @@ class App(ZglAppWX):
         flowBuf.tex.filterLinear()
         @with_(glprofile('updateFlow'))
         def updateFlow():
-            with ctx(flowBuf, ortho, vortexFP(time = self.time)): # glstate(GL_BLEND)
+            with ctx(flowBuf, ortho01, vortexFP(time = self.time)): # glstate(GL_BLEND)
                 drawQuad()
                 
                 
@@ -158,7 +158,7 @@ class App(ZglAppWX):
             flowVisFP(mousePos = (x, y),
                       convolStep = self.convolStep,
                       blendCoef = self.blendCoef)
-            with ctx(visBuf.dst, ortho, flowVisFP(src = visBuf.src.tex, time = self.time)):
+            with ctx(visBuf.dst, ortho01, flowVisFP(src = visBuf.src.tex, time = self.time)):
                 drawQuad()
             visBuf.flip()
 
@@ -186,7 +186,7 @@ class App(ZglAppWX):
             texlookupFP(
               s_texture = visBuf.src.tex,
               f_gamma = self.gamma)
-            with ctx(self.viewControl.vp, ortho, texlookupFP( s_texture = visBuf.src.tex )):
+            with ctx(self.viewControl.vp, ortho01, texlookupFP( s_texture = visBuf.src.tex )):
                 drawQuad()
 
         self.display = display

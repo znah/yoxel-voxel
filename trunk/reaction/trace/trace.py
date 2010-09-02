@@ -124,7 +124,7 @@ class App(ZglAppWX):
                 
             with self.viewControl.with_vp:
                  tex = self.renderer.render()
-            with ctx(self.viewControl.vp, ortho, texFrag(s_tex = tex)):
+            with ctx(self.viewControl.vp, ortho01, texFrag(s_tex = tex)):
                  drawQuad()
 
         self.display = display
