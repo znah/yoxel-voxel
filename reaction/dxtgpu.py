@@ -23,7 +23,7 @@ class DXT1Compressor:
     def compress(self, srcTexture):
         self.dxt1Frag.image = srcTexture
         self.dxt1Frag.imageSize = self.size
-        with ctx(self.dxtBuf, ortho, self.dxt1Frag, self.resultPBO.pixelPack):
+        with ctx(self.dxtBuf, ortho01, self.dxt1Frag, self.resultPBO.pixelPack):
             drawQuad()
             OpenGL.raw.GL.glReadPixels(0, 0, self.dxtSize[0], self.dxtSize[1], GL_LUMINANCE_ALPHA_INTEGER_EXT, GL_UNSIGNED_INT, None)
 

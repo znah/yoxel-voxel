@@ -66,7 +66,7 @@ class TexFlowVis(object):
         self.sandUpdate.sandTex = self.sandTex.src.tex
         self.sandUpdate.dt = dt
         self.sandUpdate.flowTex = flowTex
-        with ctx(self.sandTex.dst, self.sandUpdate, ortho):
+        with ctx(self.sandTex.dst, self.sandUpdate, ortho01):
             drawQuad()
         self.sandTex.flip()
 
@@ -119,7 +119,7 @@ class NoiseFlowVis(object):
         self.sandUpdate.sandTex = self.sandTex.src.tex
         self.sandUpdate.dt = dt
         self.sandUpdate.flowTex = flowTex
-        with ctx(self.sandTex.dst, self.sandUpdate, ortho):
+        with ctx(self.sandTex.dst, self.sandUpdate, ortho01):
             drawQuad()
         self.sandTex.flip()
 
@@ -234,7 +234,7 @@ class App(ZglAppWX):
         glBlendEquation(GL_FUNC_ADD);
 
         flags = [GL_POINT_SPRITE, GL_VERTEX_PROGRAM_POINT_SIZE_ARB, GL_BLEND]
-        with ctx(self.flowTex, ortho, self.vortexVert, self.vortexFrag, glstate(*flags)):
+        with ctx(self.flowTex, ortho01, self.vortexVert, self.vortexFrag, glstate(*flags)):
             glClearColor(0, 0, 0, 0)
             glClear(GL_COLOR_BUFFER_BIT)
             with self.partVBO.array:
@@ -245,7 +245,7 @@ class App(ZglAppWX):
         self.partUpdateProg.dt = dt
         self.partUpdateProg.partTex = self.particles.src.tex
         self.partUpdateProg.flowTex = self.flowTex.tex
-        with ctx(self.particles.dst, ortho, self.partUpdateProg):
+        with ctx(self.particles.dst, ortho01, self.partUpdateProg):
             drawQuad()
             with self.partVBO.pixelPack:
                 OpenGL.raw.GL.glReadPixels(0, 0, self.psize[0], self.psize[1], GL_RGBA, GL_FLOAT, None)

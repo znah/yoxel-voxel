@@ -105,7 +105,7 @@ class Voxelizer:
                 glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, self.slices, 0, i)
             glDrawBuffers(sliceNum, GL_COLOR_ATTACHMENT0+arange(sliceNum))
 
-        self.vpCtx = ctx(Viewport(0, 0, self.size, self.size), ortho)
+        self.vpCtx = ctx(Viewport(0, 0, self.size, self.size), ortho01)
 
         self.clear()
 
@@ -269,7 +269,7 @@ class Voxelizer:
         densityFrag.slices = self.slices
         densityFrag.dx = 0.5 / self.size
 
-        viewCtx = ctx(Viewport(0, 0, halfSize, halfSize), ortho)
+        viewCtx = ctx(Viewport(0, 0, halfSize, halfSize), ortho01)
 
         import itertools as it
 
