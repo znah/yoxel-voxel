@@ -72,6 +72,9 @@ cgGLUnbindProgram  = cggl.cgGLUnbindProgram
 cgGetNamedParameter = cg.cgGetNamedParameter
 cgGetNamedParameter.argtypes = [c_int, c_char_p]
 
+cgCompileProgram = cg.cgGetNamedParameter
+cgCompileProgram.argtypes = [c_int]
+
 cgGetParameterType = cg.cgGetParameterType
 
 cgGLSetParameter1f = cggl.cgGLSetParameter1f
@@ -94,6 +97,12 @@ cgSetMatrixParameterfr.argtypes = [c_int, POINTER(c_float)]
 
 cgGLSetTextureParameter = cggl.cgGLSetTextureParameter
 cgGLSetTextureParameter.argtypes = [c_int, c_uint]
+
+cgSetArraySize = cg.cgSetArraySize
+cgSetArraySize.argtypes = [c_int, c_int]
+
+cgSetParameterValuefr = cg.cgSetParameterValuefr
+cgSetParameterValuefr.argtypes = [c_int, c_int, POINTER(c_float)]
 
 
 cgProfiles = {"fp30"  : 6149, 
@@ -208,6 +217,15 @@ class CGShader:
         for name in args:
             setattr(self, name, args[name])
         return self
+
+    def set_array(self, name, data):
+        param = cgGetNamedParameter(self._prog, name)
+        if param == 0:
+            raise Exception("unknown shader param", name)
+        data = ascontiguousarray( data, float32 )
+        cgSetParameterValuefr(param, data.size, data.ctypes.data_as(POINTER(c_float)))
+        checkCGerror()
+       
 
 class Texture(object):
     Target = None  # to be set by subclass
@@ -473,6 +491,20 @@ def drawVerts(primitive, pos, texCoord = None):
         glVertex(*pos[i])
     glEnd()
     
+def drawAxes(d = 1.0):
+    glBegin(GL_LINES)
+    glColor (1, 0, 0, 1)
+    glVertex(0, 0, 0)
+    glVertex(d, 0, 0)
+    glColor (0, 1, 0, 1)
+    glVertex(0, 0, 0)
+    glVertex(0, d, 0)
+    glColor (0, 0, 1, 1)
+    glVertex(0, 0, 0)
+    glVertex(0, 0, d)
+    glEnd()
+
+
 class Viewport:
     def __init__(self, x = 0, y = 0, width = 1, height = 1):
         self.origin = (x, y)
@@ -503,14 +535,14 @@ class WXAdapter:
 
 
 class FlyCamera(WXAdapter):
-    def __init__(self):
+    def __init__(self, typical_z = 10.0):
         self.eye = (0.0, 0.0, 0.0)
         self.course = 0
         self.pitch = 0
         self.fovy = 40
         self.vp = Viewport()
-        self.zNear = 1.0
-        self.zFar  = 1000.0
+        self.zNear = 1e-2 * typical_z
+        self.zFar  = 1e+2 * typical_z
         
         self.mButtons = zeros((3,), bool) # left, middle, right
         self.mPos = (0, 0)
