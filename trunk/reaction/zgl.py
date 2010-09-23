@@ -404,9 +404,9 @@ class RenderTexture:
     def __init__(self, depth = False, **args):
         self.fbo = Framebuffer()
         self.tex = Texture2D(**args)
-        with self.fbo:
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.tex, 0)
-            if depth:
+        self.attach_lod(0)
+        if depth:
+            with self.fbo:
                 self.depthTex = Texture2D(size=self.size(), format=GL_DEPTH_COMPONENT24, srcFormat=GL_DEPTH_COMPONENT)
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, self.depthTex, 0)
 
@@ -422,6 +422,11 @@ class RenderTexture:
 
     def texparams(self, *args):
         self.tex.setParams(*args)
+
+    def attach_lod(self, lod):
+        with self.fbo:
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.tex, lod)
+        
 
 
 class ctx:
@@ -780,7 +785,7 @@ class ZglAppWX(HasTraits):
 
         canvas.Bind(wx.EVT_IDLE, self.OnIdle)
         
-        frame.Bind(wx.EVT_CLOSE, self.OnClose)
+        frame.Bind(wx.EVT_CLOSE, self._OnClose)
        
         frame.Show(True)
         canvas.SetCurrent()
@@ -839,7 +844,8 @@ class ZglAppWX(HasTraits):
         self.dt = 0
         self.app.MainLoop()
 
-    def OnClose(self, event):
+    def _OnClose(self, event):
+        safe_call(self, "OnClose")
         self.app.Exit()
 
     def OnIdle(self, event):
