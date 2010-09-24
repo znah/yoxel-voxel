@@ -762,7 +762,7 @@ def safe_call(obj, method, *l, **d):
         f(*l, **d)
 
 class ZglAppWX(HasTraits):
-    _ = Python(editable = False)
+    _ = Python(editable = False, transient = True)
 
     def __init__(self, title = "ZglAppWX", size = (800, 600), viewControl = None, vsync = 0):
         HasTraits.__init__(self)
