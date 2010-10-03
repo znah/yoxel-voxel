@@ -488,6 +488,20 @@ def drawQuad(rect = (0, 0, 1, 1), tex_rect=None):
     vert(x1, y2, tx1, ty2)
     glEnd()
 
+def draw_rect(rect = (0, 0, 1, 1), tex_rect=(0, 0, 1, 1)):
+    glBegin(GL_QUADS)
+    def vert(x, y, tx, ty):
+        glTexCoord2f(tx, ty)
+        glVertex2f(x, y)
+    (x1, y1, x2, y2) = ravel(rect)
+    (tx1, ty1, tx2, ty2) = ravel(tex_rect)
+    vert(x1, y1, tx1, ty1)
+    vert(x2, y1, tx2, ty1)
+    vert(x2, y2, tx2, ty2)
+    vert(x1, y2, tx1, ty2)
+    glEnd()
+
+
 def drawVerts(primitive, pos, texCoord = None):
     glBegin(primitive)
     for i in xrange(len(pos)):
@@ -1195,7 +1209,13 @@ def setattrs(obj, **args):
     return obj
 
 
+_genericFP_cache = {}
+
 def genericFP(inline_code, profile = 'fp40'):
+    cache_name = inline_code + '_' + profile
+    if cache_name in _genericFP_cache:
+        return _genericFP_cache[cache_name]
+
     uniforms = set( re.findall("(([a-z0-9]+)_\w+)", inline_code) )
 
     types = dict(f = 'float', f2 = 'float2', f3 = 'float3', f4 = 'float4', 
@@ -1218,7 +1238,9 @@ def genericFP(inline_code, profile = 'fp40'):
         %s; 
       }
     ''' % (uniforms, inline_code)
-    return CGShader(profile, code)
+    prog = CGShader(profile, code)
+    _genericFP_cache[cache_name] = prog
+    return prog
 
 '''
 # -*- coding: utf-8 -*-
