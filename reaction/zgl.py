@@ -113,8 +113,11 @@ cgProfiles = {"fp30"  : 6149,
               "gp4vp" : 7011,
               "gp4gp" : 7012}
 
+ascont = ascontiguousarray
+
+
 def _cgSetMatrixParam(p, v, rown, coln):
-    v = v[:rown, :coln].astype(float32)
+    v = ascont(v[:rown, :coln], float32)
     cgSetMatrixParameterfr(p, v.ctypes.data_as(POINTER(c_float)))
 
 cgParamSetters = {
