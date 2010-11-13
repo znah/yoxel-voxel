@@ -452,7 +452,7 @@ class ctx:
 
 class Ortho:
     def __init__(self, rect = (0, 0, 1, 1)):
-        self.rect = rect
+        self.rect = ravel(rect)
     def __enter__(self):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
@@ -791,7 +791,7 @@ class ZglAppWX(HasTraits):
         self.canvas = canvas = glcanvas.GLCanvas(frame, -1)
         self.initSize = size
         self.viewControl = viewControl
-        self.viewSize = size
+        self.view_size = size
 
         canvas.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)
         canvas.Bind(wx.EVT_PAINT, self.OnPaint)
@@ -869,7 +869,7 @@ class ZglAppWX(HasTraits):
         t = clock()
         self.dt = t - self.time
         self.time = t
-        self.viewControl.update(self.dt)
+        safe_call(self.viewControl, 'update', self.dt)
         safe_call(self, 'update', t, self.dt)
         self.canvas.Refresh(False)
 
@@ -918,15 +918,15 @@ class ZglAppWX(HasTraits):
 
     def OnSize(self, event):
         x, y = self.canvas.GetClientSize()
+        self.view_size = (x, y)
         safe_call(self.viewControl, 'resize', x, y)
-        self.viewSize = self.viewControl.vp.size
         safe_call(self, 'resize', x, y)
         self.canvas.Refresh(False)
 
     def drawText(self, pos, s, color = (0.5, 1, 0.5, 1)):
-        sx, sy = self.viewControl.vp.size
+        sx, sy = self.view_size
         rect = (0, sy, sx, 0)
-        with ctx( self._textFrag(color = color), glstate(GL_BLEND), Ortho(rect) ):
+        with ctx( Viewport(0, 0, sx, sy), self._textFrag(color = color), glstate(GL_BLEND), Ortho(rect) ):
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glBlendEquation(GL_FUNC_ADD);
 
