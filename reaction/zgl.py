@@ -170,17 +170,17 @@ class Bunch:
 
 def V(*args):
     if len(args) == 1:
-        return array(args[0], float32)
+        return array(args[0], float64)
     else:
-        return array(args, float32)
+        return array(args, float64)
 
 def YX(*args):
     if len(args) == 1:
-        return array((args[0][1], args[0][0]), float32)
+        return array((args[0][1], args[0][0]), float64)
     elif len(args) == 2:
-        return array((args[1], args[0]), float32)
+        return array((args[1], args[0]), float64)
     else:
-        return array([args[1], args[0]] + list(args[2:]), float32)
+        return array([args[1], args[0]] + list(args[2:]), float64)
                             
 class CGShader:
     def __init__(self, profileName, code = None, fileName = None, entry = "main"):
