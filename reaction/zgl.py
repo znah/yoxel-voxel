@@ -528,11 +528,19 @@ def drawAxes(d = 1.0):
 
 
 class Viewport:
-    def __init__(self, x = 0, y = 0, width = 1, height = 1):
+    def __init__(self, *args):
+        if len(args) == 2:
+            x, y = 0, 0
+            width, height = args
+        elif len(args) == 0:
+            x, y, width, height = 0, 0, 1, 1
+        else:
+            x, y, width, height = args
+
         self.origin = (x, y)
         self.size = (width, height)
     def __enter__(self):
-        glViewport(self.origin[0], self.origin[1], self.size[0], self.size[1])
+        glViewport(int(self.origin[0]), int(self.origin[1]), int(self.size[0]), int(self.size[1]))
     def __exit__(self, *args):
         pass
     def aspect(self):
