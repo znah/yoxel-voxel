@@ -932,6 +932,8 @@ class ZglAppWX(HasTraits):
         self.canvas.Refresh(False)
 
     def drawText(self, pos, s, color = (0.5, 1, 0.5, 1)):
+        if s == '':
+            return
         sx, sy = self.view_size
         rect = (0, sy, sx, 0)
         with ctx( Viewport(0, 0, sx, sy), self._textFrag(color = color), glstate(GL_BLEND), Ortho(rect) ):
