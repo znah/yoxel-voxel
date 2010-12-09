@@ -418,7 +418,7 @@ class RenderTexture:
 
     def __enter__(self):
         glBindFramebuffer(GL_FRAMEBUFFER, self.fbo)
-        glViewport(0, 0, self.size()[0], self.size()[1])
+        glViewport(0, 0, int(self.size()[0]), int(self.size()[1]))
 
     def __exit__(self, *args):
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
@@ -1224,7 +1224,7 @@ def setattrs(obj, **args):
 
 _genericFP_cache = {}
 
-def genericFP(inline_code, profile = 'fp40'):
+def genericFP(inline_code, profile = 'fp40', includes=[]):
     cache_name = inline_code + '_' + profile
     if cache_name in _genericFP_cache:
         return _genericFP_cache[cache_name]
@@ -1237,9 +1237,13 @@ def genericFP(inline_code, profile = 'fp40'):
     uniforms = ['uniform %s %s;\n' % (types[t], n) for n, t in uniforms if t in types]
     uniforms = "".join(uniforms)
 
+    inc = "\n".join( ['#include "%s"' % fn for fn in includes] )
+
     if 'return' not in inline_code:
         inline_code = 'return ' + inline_code
     code = '''
+      %s  
+
       %s
 
       const float pi = 3.14159265359f;
@@ -1250,7 +1254,7 @@ def genericFP(inline_code, profile = 'fp40'):
       { 
         %s; 
       }
-    ''' % (uniforms, inline_code)
+    ''' % (inc, uniforms, inline_code)
     prog = CGShader(profile, code)
     _genericFP_cache[cache_name] = prog
     return prog
