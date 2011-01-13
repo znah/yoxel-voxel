@@ -183,9 +183,13 @@ def YX(*args):
         return array([args[1], args[0]] + list(args[2:]), float64)
                             
 class CGShader:
-    def __init__(self, profileName, code = None, fileName = None, entry = "main"):
+    def __init__(self, profileName, code = None, fileName = None, entry = "main", include={}):
         CG_SOURCE = 4112
         self._profile = cgProfiles[profileName]
+
+        for inc_name in include:
+            cg.cgSetCompilerIncludeString(cgContext, inc_name, include[inc_name])
+
         if code is not None:
             self._prog = cg.cgCreateProgram(cgContext, CG_SOURCE, code, self._profile, entry, None)
         else:
@@ -697,6 +701,8 @@ class OrthoCamera(WXAdapter):
         self.mPos = (0, 0)
         self.mPosWld = (0, 0)
         self.with_vp = ctx(self.vp, self)
+
+        self.movable = True
    
     def extent(self):
         (x1, y1, x2, y2) = self.rect
@@ -733,7 +739,7 @@ class OrthoCamera(WXAdapter):
     def mouseMove(self, x, y):
         dx = x - self.mPos[0]
         dy = y - self.mPos[1]
-        if self.mButtons[0]:
+        if self.mButtons[0] and self.movable:
             (sx, sy) = V(-dx, dy) / self.vp.size * self.extent()
             (x1, y1, x2, y2) = self.rect
             self.rect = (x1+sx, y1+sy, x2+sx, y2+sy)
@@ -760,9 +766,9 @@ class OrthoCamera(WXAdapter):
         self.mPosWld = self.scr2wld(x, y)
         if btn < 3:
             self.mButtons[btn] = not up
-        if btn == 3:
+        if btn == 3 and self.movable:
             self.scale(1.0/1.1, self.mPosWld)
-        if btn == 4:
+        if btn == 4 and self.movable:
             self.scale(1.1, self.mPosWld)
 
     def __enter__(self):
@@ -1095,7 +1101,7 @@ def create_box():
     return verts, trg_idxs, quad_idxs
 
     
-def drawArrays(primitive, verts = None, indices = None, tc0 = None, tc1 = None, tc2 = None, tc3 = None, normals = None):
+def draw_arrays(primitive, verts = None, indices = None, tc0 = None, tc1 = None, tc2 = None, tc3 = None, normals = None):
     states = []
     if verts is not None:
         glVertexPointer( verts.shape[-1], arrayToGLType(verts), verts.strides[-2], verts)
@@ -1121,6 +1127,7 @@ def drawArrays(primitive, verts = None, indices = None, tc0 = None, tc1 = None, 
         else:
             glDrawArrays( primitive, 0, prod(verts.shape[:-1]) )
 
+drawArrays = draw_arrays
 
 
 _profileNodes = {}
@@ -1249,6 +1256,7 @@ def genericFP(inline_code, profile = 'fp40', includes=[]):
       const float pi = 3.14159265359f;
 
       float4 main( 
+        float4 v_color : COLOR,
         float4 tc0: TEXCOORD0,
         float4 tc1: TEXCOORD1) : COLOR 
       { 
@@ -1271,7 +1279,7 @@ class App(ZglAppWX):
         def display():
             clearGLBuffers()
             with ctx(self.viewControl.with_vp, fragProg):
-                drawQuad()
+                draw_rect()
         self.display = display
 
 if __name__ == "__main__":
