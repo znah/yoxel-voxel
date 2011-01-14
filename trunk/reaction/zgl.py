@@ -702,6 +702,8 @@ class OrthoCamera(WXAdapter):
         self.mPosWld = (0, 0)
         self.with_vp = ctx(self.vp, self)
 
+        self.move_button = 0
+
         self.movable = True
    
     def extent(self):
@@ -739,7 +741,7 @@ class OrthoCamera(WXAdapter):
     def mouseMove(self, x, y):
         dx = x - self.mPos[0]
         dy = y - self.mPos[1]
-        if self.mButtons[0] and self.movable:
+        if self.mButtons[self.move_button] and self.movable:
             (sx, sy) = V(-dx, dy) / self.vp.size * self.extent()
             (x1, y1, x2, y2) = self.rect
             self.rect = (x1+sx, y1+sy, x2+sx, y2+sy)
