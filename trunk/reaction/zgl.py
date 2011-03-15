@@ -127,6 +127,7 @@ cgParamSetters = {
   cg.cgGetType("float3")    : lambda p, v : cgGLSetParameter3f(p, v[0], v[1], v[2]),
   cg.cgGetType("float4")    : lambda p, v : cgGLSetParameter4f(p, v[0], v[1], v[2], v[3]),
   cg.cgGetType("float3x3")  : lambda p, v : _cgSetMatrixParam(p, v, 3, 3),
+  cg.cgGetType("float3x4")  : lambda p, v : _cgSetMatrixParam(p, v, 3, 4),
   cg.cgGetType("sampler1D") : lambda p, v : cgGLSetTextureParameter(p, v),
   cg.cgGetType("sampler2D") : lambda p, v : cgGLSetTextureParameter(p, v),
   cg.cgGetType("sampler3D") : lambda p, v : cgGLSetTextureParameter(p, v),
@@ -1130,6 +1131,18 @@ def draw_arrays(primitive, verts = None, indices = None, tc0 = None, tc1 = None,
             glDrawArrays( primitive, 0, prod(verts.shape[:-1]) )
 
 drawArrays = draw_arrays
+
+class Blend:
+    def __init__(self, src_coef = GL_SRC_ALPHA, dst_coef = GL_ONE_MINUS_SRC_ALPHA, func = GL_FUNC_ADD):
+        self.src_coef = src_coef 
+        self.dst_coef = dst_coef
+        self.func     = func
+    def __enter__(self):
+        glBlendFunc(self.src_coef, self.dst_coef)
+        glBlendEquation(self.func)
+        glEnable(GL_BLEND)
+    def __exit__(self, *args):
+        glDisable(GL_BLEND)
 
 
 _profileNodes = {}
