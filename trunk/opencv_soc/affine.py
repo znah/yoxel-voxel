@@ -5,6 +5,9 @@ import sys
 def to_list(a):
     return [tuple(p) for p in a]
 
+def anorm(a):
+    return sqrt((a*a).sum(-1))
+
 class AffineWidget:
     def __init__(self, img, winname='affine'):
         self.winname = winname
@@ -15,39 +18,85 @@ class AffineWidget:
         self.vis = cv.CreateMat(h, w, cv.CV_8UC3)
         
         self.M = cv.CreateMat(2, 3, cv.CV_32F)
-        d = min(w, h)/4
-        self.markers0 = array([[w/2, h/2], [w/2+d, h/2], [w/2, h/2+d]], float32)
+        d = min(w, h)/6
+        self.markers0 = array([[w/2, h/2], [w/2+d, h/2], [w/2, h/2-d]], float32)
         self.markers = self.markers0.copy()
         self.transform()
+
+        self.mouse_state = self.onmouse_wait
+    
+    def onmouse(self, event, x, y, flags, param):
+        self.mouse_state(event, x, y, flags)
+
+    def onmouse_wait(self, event, x, y, flags):
+        if event == cv.CV_EVENT_LBUTTONDOWN:
+            d = anorm(self.markers - (x, y))
+            if d.min() > 5:
+                return
+            self.drag_mark_idx = d.argmin()
+            self.mouse_state = self.onmouse_drag
+        if event == cv.CV_EVENT_RBUTTONDOWN:
+            self.markers[:] = self.markers0
+            self.update()
+
+    def onmouse_drag(self, event, x, y, flags):
+        if flags & cv.CV_EVENT_FLAG_LBUTTON == 0:
+            self.mouse_state = self.onmouse_wait
+
+        if self.drag_mark_idx == 0:
+            self.markers += (x, y) - self.markers[0]
+        else:
+            if flags & cv.CV_EVENT_FLAG_SHIFTKEY:
+                self.markers[self.drag_mark_idx] = x, y
+            else:
+                center = self.markers[0]
+                x0, y0 = self.markers[self.drag_mark_idx] - center
+                x1, y1 = (x, y) - center
+                try:
+                    a, b = linalg.solve([[x0, -y0], [y0, x0]], (x1, y1))
+                    A = array([[a, -b], [b, a]])
+                    for i in [1, 2]:
+                        self.markers[i] = dot(A, self.markers[i] - center) + center
+                except linalg.LinAlgError:
+                    self.markers[self.drag_mark_idx] = x, y
+        self.update()
+
+    def update(self):
+        self.transform()
+        self.show()
     
     def transform(self):
         cv.GetAffineTransform(to_list(self.markers0), to_list(self.markers), self.M)
         cv.WarpAffine(self.src, self.dst, self.M)
 
     def show(self):
-        cv.Copy(self.dst, self.vis)	
+        vis = self.vis
+        if self.dst.channels == 1:
+            cv.CvtColor(self.dst, vis, cv.CV_GRAY2BGR)
+        else:
+            cv.Copy(self.dst, vis)
+
+        markers = to_list(int32(self.markers))
+        col = (0, 255, 0)
+        for p in markers:
+            cv.Circle(vis, p, 5, col, 1, cv.CV_AA)
+        cv.Line(vis, markers[0], markers[1], col, 1, cv.CV_AA)
+        cv.Line(vis, markers[0], markers[2], col, 1, cv.CV_AA)
                 
-        cv.NamedWindow(self.winname, 0)
         cv.ShowImage(self.winname, self.vis)
         cv.SetMouseCallback(self.winname, self.onmouse)
 
-    def onmouse(self, event, x, y, flags, param):
-        self.markers[2] = x, y
-        self.transform()
-        self.show()
-     
+if __name__ == '__main__':
+    fn = 'sn.jpg'
+    if len(sys.argv) > 1:
+        fn = sys.argv[1]
 
+    img = cv.LoadImage(fn)
 
+    cv.NamedWindow('affine', 0)
+    aw = AffineWidget(img, winname='affine')
+    aw.show()
 
-fn = 'sn.jpg'
-if len(sys.argv) > 1:
-    fn = sys.argv[1]
-
-img = cv.LoadImage(fn)
-
-aw = AffineWidget(img)
-aw.show()
-
-while cv.WaitKey(0) == chr(27):
-    pass
+    while cv.WaitKey(0) == chr(27):
+        pass
 
