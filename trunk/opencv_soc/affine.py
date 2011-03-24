@@ -2,13 +2,9 @@ from numpy import *
 import cv
 import sys
 
-def to_list(a):
-    return [tuple(p) for p in a]
+from common import to_list, anorm
 
-def anorm(a):
-    return sqrt((a*a).sum(-1))
-
-class AffineWidget:
+class AffineWidget(object):
     def __init__(self, img, winname='affine'):
         self.winname = winname
         self.src = cv.GetMat(img)
@@ -21,17 +17,17 @@ class AffineWidget:
         d = min(w, h)/6
         self.markers0 = array([[w/2, h/2], [w/2+d, h/2], [w/2, h/2-d]], float32)
         self.markers = self.markers0.copy()
-        self.transform()
 
         self.mouse_state = self.onmouse_wait
-    
+        self.transform()
+
     def onmouse(self, event, x, y, flags, param):
         self.mouse_state(event, x, y, flags)
 
     def onmouse_wait(self, event, x, y, flags):
         if event == cv.CV_EVENT_LBUTTONDOWN:
             d = anorm(self.markers - (x, y))
-            if d.min() > 5:
+            if d.min() > 8:
                 return
             self.drag_mark_idx = d.argmin()
             self.mouse_state = self.onmouse_drag
@@ -69,22 +65,21 @@ class AffineWidget:
         cv.GetAffineTransform(to_list(self.markers0), to_list(self.markers), self.M)
         cv.WarpAffine(self.src, self.dst, self.M)
 
-    def draw_overlay(self):
-        vis = self.vis
-        if self.dst.channels == 1:
-            cv.CvtColor(self.dst, vis, cv.CV_GRAY2BGR)
-        else:
-            cv.Copy(self.dst, vis)
-
+    def draw_overlay(self, vis):
         markers = to_list(int32(self.markers))
-        col = (0, 255, 0)
+        col = (0, 255, 255)
         for p in markers:
-            cv.Circle(vis, p, 5, col, 1, cv.CV_AA)
-        cv.Line(vis, markers[0], markers[1], col, 1, cv.CV_AA)
-        cv.Line(vis, markers[0], markers[2], col, 1, cv.CV_AA)
+            cv.Circle(vis, p, 5, col, 2, cv.CV_AA)
+        cv.Line(vis, markers[0], markers[1], col, 2, cv.CV_AA)
+        cv.Line(vis, markers[0], markers[2], col, 2, cv.CV_AA)
 
     def show(self):
-        self.draw_overlay()
+        if self.dst.channels == 1:
+            cv.CvtColor(self.dst, self.vis, cv.CV_GRAY2BGR)
+        else:
+            cv.Copy(self.dst, self.vis)
+        
+        self.draw_overlay(self.vis)
                 
         cv.ShowImage(self.winname, self.vis)
         cv.SetMouseCallback(self.winname, self.onmouse)
