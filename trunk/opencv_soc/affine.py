@@ -69,7 +69,7 @@ class AffineWidget:
         cv.GetAffineTransform(to_list(self.markers0), to_list(self.markers), self.M)
         cv.WarpAffine(self.src, self.dst, self.M)
 
-    def show(self):
+    def draw_overlay(self):
         vis = self.vis
         if self.dst.channels == 1:
             cv.CvtColor(self.dst, vis, cv.CV_GRAY2BGR)
@@ -82,6 +82,9 @@ class AffineWidget:
             cv.Circle(vis, p, 5, col, 1, cv.CV_AA)
         cv.Line(vis, markers[0], markers[1], col, 1, cv.CV_AA)
         cv.Line(vis, markers[0], markers[2], col, 1, cv.CV_AA)
+
+    def show(self):
+        self.draw_overlay()
                 
         cv.ShowImage(self.winname, self.vis)
         cv.SetMouseCallback(self.winname, self.onmouse)
