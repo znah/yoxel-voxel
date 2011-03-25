@@ -85,6 +85,8 @@ class AffineWidget(object):
         cv.SetMouseCallback(self.winname, self.onmouse)
 
 if __name__ == '__main__':
+    print 'INSTRUCTION: drag yellow markers to transform the image, use SHIFT to skew it'
+
     fn = 'sn.jpg'
     if len(sys.argv) > 1:
         fn = sys.argv[1]

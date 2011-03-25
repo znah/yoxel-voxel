@@ -7,36 +7,51 @@ from common import gray2bgr, anorm
 
 class DetectApp(AffineWidget):
     def __init__(self, img):
-        self.src_keypoints, self.src_descriptors = self.detect(img)
-        self.dst_keypoints = None
-        
         AffineWidget.__init__(self, img, 'dst')
-
-        vis = gray2bgr(self.src)
-        self.draw_keypoints(vis, self.src_keypoints)
         
-        cv.ShowImage('src', vis)
-        self.show()
+        self.src_keypoints, self.src_descriptors = self.detect(self.src)
+        self.matches = []
+
+        self.update()
 
     def transform(self):
         AffineWidget.transform(self)
 
+        if not hasattr(self, 'src_keypoints'):
+            return
         if self.mouse_state != self.onmouse_wait:
-            self.dst_keypoints = None
+            self.matches = []
             return
         
-        dst_keypoints, dst_descriptors = self.detect(self.dst)
-        matches = self.match(self.src_descriptors, dst_descriptors)
-        print len(matches), len(self.src_keypoints)
-        self.dst_keypoints = []
-        for i, j in matches:
-            self.dst_keypoints.append(dst_keypoints[j])
+        self.dst_keypoints, self.dst_descriptors = self.detect(self.dst)
+        self.matches = self.match(self.src_descriptors, self.dst_descriptors)
 
 
     def draw_overlay(self, vis):
         AffineWidget.draw_overlay(self, vis)
-        if self.dst_keypoints is not None:
-            self.draw_keypoints(vis, self.dst_keypoints)
+        if not hasattr(self, 'src_keypoints') or len(self.matches) == 0:
+            return
+
+
+        matches = [(i, j) for i, j, r in self.matches if r < 0.6]
+        print '%d / %d matched' % (len(matches), len(self.src_keypoints))
+        
+        src_vis = gray2bgr(self.src)
+        for i, j in matches:
+            
+            # (x, y), laplacian, size, angle, hessian
+            kp0 = self.src_keypoints[i]
+            kp1 = self.dst_keypoints[j]
+
+            (sx, sy), size = int32(kp0[0]), kp0[2]
+            cv.Circle(src_vis, (sx, sy), size/2, (0, 255, 0), 1, cv.CV_AA)
+            (dx, dy), size = int32(kp1[0]), kp1[2]
+            cv.Circle(vis, (dx, dy), size/2, (0, 255, 0), 1, cv.CV_AA)
+            ex, ey = int32(dot(self.M, (sx, sy, 1)))
+            cv.Line(vis, (dx, dy), (ex, ey), (0, 0, 255), 1, cv.CV_AA)
+
+        
+        cv.ShowImage('src', src_vis)
 
     def detect(self, img):
         self.surf_params = (0, 2000, 3, 4) # (extended, hessianThreshold, nOctaves, nOctaveLayers)
@@ -48,19 +63,9 @@ class DetectApp(AffineWidget):
         for i in xrange(len(desc1)):
             dist = anorm( desc2 - desc1[i] )
             n1, n2 = dist.argsort()[:2]
-            if dist[n1] / dist[n2] < 0.5:
-                res.append((i, n1))
+            r = dist[n1] / dist[n2]
+            res.append((i, n1, r))
         return res
-
-    def draw_keypoints(self, vis, keypoints):
-        for (x, y), laplacian, size, angle, hessian in keypoints:
-            cv.Circle(vis, (int(x), int(y)), size/2, (0, 255, 0))
-
-
-        
-
-            
-        
 
 if __name__ == '__main__':
     import sys
