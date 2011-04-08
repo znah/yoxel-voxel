@@ -21,7 +21,7 @@ if __name__ == '__main__':
     sg = detect(img)
 
     vis = gray2bgr(img)
-    for x1, y1, x2, y2, w in sg:
+    for x1, y1, x2, y2, w in int32(sg):
         cv.Line(vis, (x1, y1), (x2, y2), (0, 255, 0), 1, cv.CV_AA)
     
     #cv.NamedWindow('img', 0)
