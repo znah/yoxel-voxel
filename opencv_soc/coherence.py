@@ -51,7 +51,7 @@ def coference_filter(img, sigma = 11, blend = 0.5, iter_n = 4):
 if __name__ == '__main__':
     import sys
     try: fn = sys.argv[1]
-    except: fn = 'thai.jpg'
+    except: fn = 'images/thai.jpg'
 
     src = cv.LoadImage(fn)
 

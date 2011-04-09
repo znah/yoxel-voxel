@@ -70,7 +70,7 @@ class DetectApp(AffineWidget):
 if __name__ == '__main__':
     import sys
 
-    fn = 'sn.jpg'
+    fn = 'images/sn.jpg'
     if len(sys.argv) > 1:
         fn = sys.argv[1]
     
