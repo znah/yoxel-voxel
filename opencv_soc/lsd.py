@@ -15,7 +15,7 @@ def detect(img):
 if __name__ == '__main__':
     import sys
     try: fn = sys.argv[1]
-    except: fn = 'thai.jpg'
+    except: fn = 'images/thai.jpg'
 
     img = cv.LoadImage(fn, 0)
     sg = detect(img)
