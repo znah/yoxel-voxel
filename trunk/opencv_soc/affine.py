@@ -96,7 +96,4 @@ if __name__ == '__main__':
     cv.NamedWindow('affine', 0)
     aw = AffineWidget(img, winname='affine')
     aw.show()
-
-    while cv.WaitKey(0) == chr(27):
-        pass
-
+    cv.WaitKey(0)
