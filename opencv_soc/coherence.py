@@ -10,7 +10,7 @@ from numpy import *
 import cv
 
 
-def coference_filter(img, sigma = 11, blend = 0.5, iter_n = 4):
+def coherence_filter(img, sigma = 11, str_sigma = 11, blend = 0.5, iter_n = 4):
     img = asarray(cv.GetMat(img)).copy()
     h, w = img.shape[:2]
 
@@ -27,7 +27,7 @@ def coference_filter(img, sigma = 11, blend = 0.5, iter_n = 4):
         print i,
         
         cv.CvtColor(img, gray, cv.CV_BGR2GRAY)
-        cv.CornerEigenValsAndVecs(gray, eigen_buf, 11)
+        cv.CornerEigenValsAndVecs(gray, eigen_buf, str_sigma)
         eigen = eigen_buf.reshape(h, w, 3, 2)  # [[e1, e2], v1, v2]
         x, y = eigen[:,:,1,0], eigen[:,:,1,1]
         
@@ -59,15 +59,17 @@ if __name__ == '__main__':
         pass
 
     def update():
-        sigma = cv.GetTrackbarPos('sigma', 'dst')*2+1
-        blend = cv.GetTrackbarPos('blend', 'dst') / 10.0
-        print 'sigma: %d   blend_coef: %f' % (sigma, blend)
-        dst = coference_filter(src, sigma=sigma, blend = blend)
+        sigma = cv.GetTrackbarPos('sigma', 'control')*2+1
+        str_sigma = cv.GetTrackbarPos('str_sigma', 'control')*2+1
+        blend = cv.GetTrackbarPos('blend', 'control') / 10.0
+        print 'sigma: %d  str_sigma: %d  blend_coef: %f' % (sigma, str_sigma, blend)
+        dst = coherence_filter(src, sigma=sigma, str_sigma = str_sigma, blend = blend)
         cv.ShowImage('dst', dst)
 
-    cv.NamedWindow('dst')
-    cv.CreateTrackbar('sigma', 'dst', 11, 15, nothing)
-    cv.CreateTrackbar('blend', 'dst', 5, 10, nothing)
+    cv.NamedWindow('control', 0)
+    cv.CreateTrackbar('sigma', 'control', 3, 15, nothing)
+    cv.CreateTrackbar('blend', 'control', 5, 10, nothing)
+    cv.CreateTrackbar('str_sigma', 'control', 10, 15, nothing)
 
 
     print 'Press SPACE to update the image\n'
