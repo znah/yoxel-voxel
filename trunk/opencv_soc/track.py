@@ -14,12 +14,14 @@ w, h = cv.GetSize(frame)
 gray = cv.CreateMat(h, w, cv.CV_8U)
 mask = cv.CreateMat(h, w, cv.CV_8U)
 
+print w, h
+
 
 def detect(img, mask = None):
     quality = 0.05
-    min_distance = 3
+    min_distance = 5
     MAX_COUNT = 1000
-    block = 7
+    block = 5
     #win_size = 5
     
     features = cv.GoodFeaturesToTrack (
@@ -56,19 +58,20 @@ while True:
     p0r = track(gray, prev_gray, p1)
     good = (anorm(array(p0)-p0r) < 1.0) 
 
-    new_tracks = []
-    for tr, p, good_flag in zip(tracks, p1, good):
-        if good_flag:
-            tr.append(p)
-            new_tracks.append(tr)
-    tracks = new_tracks
+    if len(p1) > 0:
+        new_tracks = []
+        for tr, p, good_flag in zip(tracks, p1, good):
+            if good_flag:
+                tr.append(p)
+                new_tracks.append(tr)
+        tracks = new_tracks
 
     cv.Set(mask, 255)
     for x, y in int32(p1):
-        cv.Circle(mask, (x, y), 3, 0, -1)
+        cv.Circle(mask, (x, y), 5, 0, -1)
     tracks.extend( [ [p] for p in detect(gray, mask) ] )
     
-    vis = gray2bgr(gray)
+    vis = cv.CloneImage(frame)#gray2bgr(gray)
     #cv.Zero(vis)
     #for x, y in int32(detect(gray)):
     #    cv.Circle(vis, (x, y), 2, (0, 255, 0), 1)
@@ -82,7 +85,17 @@ while True:
         cv.Line(vis, (x1, y1), (x2, y2), (0, 255, 0), 1)
     '''
 
-    for x, y in int32(p1):
+    for tr in tracks:
+        '''
+        if len(tr) < 10:
+            continue
+        tr = array(tr)
+        d = anorm(tr[-1]-tr[-4])
+        if d < 2:
+            continue
+        x, y = int32(tr[-1])             
+        '''
+        x, y = int32(tr[-1]) 
         cv.Circle(vis, (x, y), 2, (0, 255, 0), -1)
 
     pnum.append(len(tracks))
