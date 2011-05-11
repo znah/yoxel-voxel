@@ -2,8 +2,10 @@ from numpy import *
 import cv
 from common import anorm, gray2bgr
 
-fn1 = 'images/DSCN7794.JPG'
-fn2 = 'images/DSCN7796.JPG'
+#fn1 = 'images/DSCN7794.JPG'
+#fn2 = 'images/DSCN7796.JPG'
+fn1 = 'out/shot_0000.bmp'
+fn2 = 'out/shot_0004.bmp'
 
 def scale(img, d):
     w, h = cv.GetSize(img)
@@ -26,8 +28,10 @@ def match(desc1, desc2):
     return res
 
 
-img1 = scale(cv.LoadImage(fn1, 0), 4)
-img2 = scale(cv.LoadImage(fn2, 0), 4)
+#img1 = scale(cv.LoadImage(fn1, 0), 4)
+#img2 = scale(cv.LoadImage(fn2, 0), 4)
+img1 = cv.LoadImage(fn1, 0)
+img2 = cv.LoadImage(fn2, 0)
 
 k1, d1 = detect(img1)
 k2, d2 = detect(img2)
