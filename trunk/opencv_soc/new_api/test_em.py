@@ -23,7 +23,7 @@ def draw_gaussain(img, mean, cov, color):
     w, u, vt = cv2.SVDecomp(cov)
     ang = np.rad2deg( np.arctan2(u[1, 0], u[0, 0]) )
     s1, s2 = np.sqrt(w)*3.0
-    cv.Ellipse(img, (x, y), (s1, s2), ang, 0, 360, color)
+    cv.Ellipse(img, (x, y), (s1, s2), ang, 0, 360, color)  # FIXME
 
 
 if __name__ == '__main__':
@@ -38,9 +38,9 @@ if __name__ == '__main__':
 
         print 'EM...'
         em = cv2.EM(points, params = dict( nclusters = cluster_n, cov_mat_type = cv2.EM_COV_MAT_GENERIC) )
-        means = em.getMeans(**{})       # FIXME
-        covs = np.zeros((cluster_n, 2, 2), np.float32) # FIXME
-        covs = em.getCovs(covs)
+        means = em.getMeans(**{})       # FIXME (similar to ticket null argument #848), know how to fix
+        covs = np.zeros((cluster_n, 2, 2), np.float32) 
+        covs = em.getCovs(covs)         # FIXME
         found_distrs = zip(means, covs)
         
         print 'ready!\n'
