@@ -30,7 +30,7 @@ if __name__ == '__main__':
     cluster_n = 5
     img_size = 512
 
-    print 'press any key to update distributions\n'
+    print 'press any key to update distributions, ESC - exit\n'
 
     while True:
         print 'sampling distributions...'
@@ -38,8 +38,8 @@ if __name__ == '__main__':
 
         print 'EM...'
         em = cv2.EM(points, params = dict( nclusters = cluster_n, cov_mat_type = cv2.EM_COV_MAT_GENERIC) )
-        means = em.getMeans(**{})
-        covs = np.zeros((cluster_n, 2, 2), np.float32)
+        means = em.getMeans(**{})       # FIXME
+        covs = np.zeros((cluster_n, 2, 2), np.float32) # FIXME
         covs = em.getCovs(covs)
         found_distrs = zip(means, covs)
         
