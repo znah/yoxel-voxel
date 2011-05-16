@@ -1,7 +1,6 @@
 import numpy as np
 from numpy import random
-import cv, cv2
-
+import cv2, cv
 
 
 def make_gaussians(cluster_n, img_size):
@@ -23,7 +22,7 @@ def draw_gaussain(img, mean, cov, color):
     w, u, vt = cv2.SVDecomp(cov)
     ang = np.rad2deg( np.arctan2(u[1, 0], u[0, 0]) )
     s1, s2 = np.sqrt(w)*3.0
-    cv.Ellipse(img, (x, y), (s1, s2), ang, 0, 360, color)  # FIXME
+    cv2.ellipse(img, (x, y), (s1, s2), ang, 0, 360, color, 1, cv.CV_AA)
 
 
 if __name__ == '__main__':
@@ -36,18 +35,18 @@ if __name__ == '__main__':
         print 'sampling distributions...'
         points, ref_distrs = make_gaussians(cluster_n, img_size)
 
-        print 'EM...'
+        print 'EM (opencv) ...'
         em = cv2.EM(points, params = dict( nclusters = cluster_n, cov_mat_type = cv2.EM_COV_MAT_GENERIC) )
-        means = em.getMeans(**{})       # FIXME (similar to ticket null argument #848), know how to fix
+        means = em.getMeans()
         covs = np.zeros((cluster_n, 2, 2), np.float32) 
         covs = em.getCovs(covs)         # FIXME
         found_distrs = zip(means, covs)
-        
+
         print 'ready!\n'
 
         img = np.zeros((img_size, img_size, 3), np.uint8)
         for x, y in np.int32(points):
-            cv.Circle(img, (x, y), 1, (255, 255, 255), -1)
+            cv2.circle(img, (x, y), 1, (255, 255, 255), -1)
         for m, cov in ref_distrs:
             draw_gaussain(img, m, cov, (0, 255, 0))
         for m, cov in found_distrs:
