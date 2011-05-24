@@ -72,13 +72,16 @@ class CLEye(object):
         dll.CLEyeSetCameraParameter(cam, CLEYE_AUTO_GAIN, 0)
         dll.CLEyeSetCameraParameter(cam, CLEYE_AUTO_EXPOSURE, 0)
         dll.CLEyeSetCameraParameter(cam, CLEYE_AUTO_WHITEBALANCE, 0)
-        dll.CLEyeSetCameraParameter(cam, CLEYE_WHITEBALANCE_RED, 255)
-        dll.CLEyeSetCameraParameter(cam, CLEYE_WHITEBALANCE_GREEN, 255)
-        dll.CLEyeSetCameraParameter(cam, CLEYE_WHITEBALANCE_BLUE, 255)
+        self.set_wb(255, 255, 255)
         self.gain = 20
         self.exposure = 128
 
         self.frame = np.zeros((480, 640, 4), np.uint8)
+
+    def set_wb(self, r, g, b):
+        dll.CLEyeSetCameraParameter(self.cam, CLEYE_WHITEBALANCE_RED, r)
+        dll.CLEyeSetCameraParameter(self.cam, CLEYE_WHITEBALANCE_GREEN, g)
+        dll.CLEyeSetCameraParameter(self.cam, CLEYE_WHITEBALANCE_BLUE, b)
 
     @property
     def gain(self):
