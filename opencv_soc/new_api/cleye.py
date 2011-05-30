@@ -63,7 +63,7 @@ CLEYE_LENSBRIGHTNESS        # [-500, 500]
 
 
 class CLEye(object):
-    def __init__(self, fps = 30.0):
+    def __init__(self, fps = 60.0):
         self.guid = dll.CLEyeGetCameraUUID(0)
         self.cam = cam = dll.CLEyeCreateCamera( self.guid, CLEYE_COLOR_PROCESSED, CLEYE_VGA, fps )
 
