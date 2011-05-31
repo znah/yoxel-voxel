@@ -38,9 +38,16 @@ def test_knearest(base):
     sample_n, var_n = samples.shape
 
     print 'training...'
-    kn = cv2.KNearest(samples)
+    kn = cv2.KNearest(samples[:10000], responses[:10000])
+
+    print 'testing...'
+    retval, results, neigh_resp, dists = kn.find_nearest(samples, k = 10)
+    results = np.ravel(results)
+    print 'recognition rate: ', np.mean(results == responses)*100
+
+
    
 
 if __name__ == '__main__':
     base = load_base('letter-recognition.data')
-    test_rtrees(base)
+    test_knearest(base)
