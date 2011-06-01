@@ -54,13 +54,16 @@ def test_boosting(base):
     new_samples = np.repeat(samples, class_n, axis=0)
     class_col = np.tile(np.arange(class_n), sample_n).reshape(-1, 1)
     new_samples = np.append(new_samples, class_col, axis = 1)
+    new_samples = np.float32(new_samples)
     
     resp_idx = np.int32( responses + np.arange(sample_n)*class_n )
     new_responses = np.zeros(sample_n*class_n, np.int32)
     new_responses[resp_idx] = 1
 
-
-
+    # train
+    var_types = np.array([CV_VAR_NUMERICAL] * var_n + [CV_VAR_CATEGORICAL, CV_VAR_CATEGORICAL], np.int8)
+    boost = cv2.Boost(new_samples[:1000*class_n], CV_ROW_SAMPLE, new_responses[:1000*class_n], varType = var_types)
+    print boost
 
 
 
