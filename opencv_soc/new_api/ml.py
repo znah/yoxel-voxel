@@ -45,9 +45,32 @@ def test_knearest(base):
     results = np.ravel(results)
     print 'recognition rate: ', np.mean(results == responses)*100
 
+def test_boosting(base):
+    samples, responses = base
+    sample_n, var_n = samples.shape
+    class_n = 26
+
+    # unroll
+    new_samples = np.repeat(samples, class_n, axis=0)
+    class_col = np.tile(np.arange(class_n), sample_n).reshape(-1, 1)
+    new_samples = np.append(new_samples, class_col, axis = 1)
+    
+    resp_idx = np.int32( responses + np.arange(sample_n)*class_n )
+    new_responses = np.zeros(sample_n*class_n, np.int32)
+    new_responses[resp_idx] = 1
+
+
+
+
+
+
+
+    # boost.train( new_data, CV_ROW_SAMPLE, new_responses, 0, 0, var_type, 0,
+    # CvBoostParams(CvBoost::REAL, 100, 0.95, 5, false, 0 ));
+
 
    
 
 if __name__ == '__main__':
     base = load_base('letter-recognition.data')
-    test_knearest(base)
+    test_boosting(base)
