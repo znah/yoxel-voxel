@@ -15,6 +15,15 @@ CV_VAR_ORDERED     = 0
 CV_VAR_CATEGORICAL = 1
 
 
+class StatModel(object):
+    def load(self):
+        self.obj
+
+class RTrees:
+    def train(self):
+        
+
+
 def test_rtrees(base):
     samples, responses = base
     sample_n, var_n = samples.shape
@@ -62,14 +71,15 @@ def test_boosting(base):
     print 'training...'
     var_types = np.array([CV_VAR_NUMERICAL] * var_n + [CV_VAR_CATEGORICAL, CV_VAR_CATEGORICAL], np.int8)
     #CvBoostParams(CvBoost::REAL, 100, 0.95, 5, false, 0 )
-    params = dict(max_depth=5)
+    params = dict(max_depth=5, use_surrogates=False)
     boost = cv2.Boost(new_samples[:10000*class_n], CV_ROW_SAMPLE, new_responses[:10000*class_n], varType = var_types, params=params)
     
     
     print 'testing...'
 
-    resp =  np.array( [boost.predict(s) for s in new_samples] )
-    print (resp == new_responses).reshape(-1, class_n).all(axis=1).mean()
+    resp = np.array( [boost.predict(s, returnSum = True) for s in new_samples] )
+    resp = resp.reshape(-1, class_n).argmax(1)
+    print (resp == responses).mean()
 
 
 
