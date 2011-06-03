@@ -51,20 +51,25 @@ def test_boosting(base):
     class_n = 26
 
     # unroll
-    new_samples = np.repeat(samples, class_n, axis=0)
-    class_col = np.tile(np.arange(class_n), sample_n).reshape(-1, 1)
-    new_samples = np.append(new_samples, class_col, axis = 1)
-    new_samples = np.float32(new_samples)
+    new_samples = np.zeros((sample_n*class_n, var_n+1), np.float32)
+    new_samples[:,:-1] = np.repeat(samples, class_n, axis=0)
+    new_samples[:,-1] = np.tile(np.arange(class_n), sample_n)
     
-    resp_idx = np.int32( responses + np.arange(sample_n)*class_n )
     new_responses = np.zeros(sample_n*class_n, np.int32)
+    resp_idx = np.int32( responses + np.arange(sample_n)*class_n )
     new_responses[resp_idx] = 1
 
-    # train
+    print 'training...'
     var_types = np.array([CV_VAR_NUMERICAL] * var_n + [CV_VAR_CATEGORICAL, CV_VAR_CATEGORICAL], np.int8)
-    boost = cv2.Boost(new_samples[:1000*class_n], CV_ROW_SAMPLE, new_responses[:1000*class_n], varType = var_types)
-    print boost
+    #CvBoostParams(CvBoost::REAL, 100, 0.95, 5, false, 0 )
+    params = dict(max_depth=5)
+    boost = cv2.Boost(new_samples[:10000*class_n], CV_ROW_SAMPLE, new_responses[:10000*class_n], varType = var_types, params=params)
+    
+    
+    print 'testing...'
 
+    resp =  np.array( [boost.predict(s) for s in new_samples] )
+    print (resp == new_responses).reshape(-1, class_n).all(axis=1).mean()
 
 
 
