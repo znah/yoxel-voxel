@@ -1,5 +1,3 @@
-import argparse
-
 import numpy as np
 import cv2
 
@@ -15,80 +13,124 @@ CV_VAR_ORDERED     = 0
 CV_VAR_CATEGORICAL = 1
 
 
-class StatModel(object):
-    def load(self):
-        self.obj
+class LetterStatModel(object):
+    train_ratio = 0.5
+    def load(self, fn):
+        self.model.load(fn)
+    def save(self, fn):
+        self.model.save(fn)
 
-class RTrees:
-    def train(self):
+class RTrees(LetterStatModel):
+    def __init__(self):
+        self.model = cv2.RTrees()
+
+    def train(self, samples, responses):
+        sample_n, var_n = samples.shape
+        var_types = np.array([CV_VAR_NUMERICAL] * var_n + [CV_VAR_CATEGORICAL], np.uint8)
+        #CvRTParams(10,10,0,false,15,0,true,4,100,0.01f,CV_TERMCRIT_ITER));
+        params = dict(max_depth=10 )
+        self.model.train(samples, CV_ROW_SAMPLE, responses, varType = var_types, params = params)
+
+    def predict(self, samples):
+        return np.float32( [self.model.predict(s) for s in samples] )
         
 
+class KNearest(LetterStatModel):
+    def __init__(self):
+        self.model = cv2.KNearest()
 
-def test_rtrees(base):
-    samples, responses = base
-    sample_n, var_n = samples.shape
+    def train(self, samples, responses):
+        self.model.train(samples, responses)
 
-    print 'training...'
-    forest = cv2.RTrees()
-    var_types = np.array([CV_VAR_NUMERICAL] * var_n + [CV_VAR_CATEGORICAL], np.int8)
+    def predict(self, samples):
+        retval, results, neigh_resp, dists = self.model.find_nearest(samples, k = 10)
+        return results.ravel()
 
-    #CvRTParams(10,10,0,false,15,0,true,4,100,0.01f,CV_TERMCRIT_ITER));
-    params = dict(max_depth=10 )
 
-    forest.train(samples[:10000], CV_ROW_SAMPLE, responses[:10000], varType = var_types, params = params)
-
-    print 'testing...'
-    predicted = [forest.predict(s) for s in samples]
-
-    print 'recognition rate: ', np.mean(predicted==responses)*100
-
-def test_knearest(base):
-    samples, responses = base
-    sample_n, var_n = samples.shape
-
-    print 'training...'
-    kn = cv2.KNearest(samples[:10000], responses[:10000])
-
-    print 'testing...'
-    retval, results, neigh_resp, dists = kn.find_nearest(samples, k = 10)
-    results = np.ravel(results)
-    print 'recognition rate: ', np.mean(results == responses)*100
-
-def test_boosting(base):
-    samples, responses = base
-    sample_n, var_n = samples.shape
-    class_n = 26
-
-    # unroll
-    new_samples = np.zeros((sample_n*class_n, var_n+1), np.float32)
-    new_samples[:,:-1] = np.repeat(samples, class_n, axis=0)
-    new_samples[:,-1] = np.tile(np.arange(class_n), sample_n)
+class Boost(LetterStatModel):
+    def __init__(self):
+        self.model = cv2.Boost()
+        self.class_n = 26
     
-    new_responses = np.zeros(sample_n*class_n, np.int32)
-    resp_idx = np.int32( responses + np.arange(sample_n)*class_n )
-    new_responses[resp_idx] = 1
+    def train(self, samples, responses):
+        sample_n, var_n = samples.shape
+        new_samples = self.unroll_samples(samples)
+        new_responses = self.unroll_responses(responses)
+        var_types = np.array([CV_VAR_NUMERICAL] * var_n + [CV_VAR_CATEGORICAL, CV_VAR_CATEGORICAL], np.uint8)
+        #CvBoostParams(CvBoost::REAL, 100, 0.95, 5, false, 0 )
+        params = dict(max_depth=5) #, use_surrogates=False)
+        self.model.train(new_samples, CV_ROW_SAMPLE, new_responses, varType = var_types, params=params)
 
-    print 'training...'
-    var_types = np.array([CV_VAR_NUMERICAL] * var_n + [CV_VAR_CATEGORICAL, CV_VAR_CATEGORICAL], np.int8)
-    #CvBoostParams(CvBoost::REAL, 100, 0.95, 5, false, 0 )
-    params = dict(max_depth=5, use_surrogates=False)
-    boost = cv2.Boost(new_samples[:10000*class_n], CV_ROW_SAMPLE, new_responses[:10000*class_n], varType = var_types, params=params)
+    def predict(self, samples):
+        new_samples = self.unroll_samples(samples)
+        pred = np.array( [self.model.predict(s, returnSum = True) for s in new_samples] )
+        pred = pred.reshape(-1, self.class_n).argmax(1)
+        return pred
+
+    def unroll_samples(self, samples):
+        sample_n, var_n = samples.shape
+        new_samples = np.zeros((sample_n * self.class_n, var_n+1), np.float32)
+        new_samples[:,:-1] = np.repeat(samples, self.class_n, axis=0)
+        new_samples[:,-1] = np.tile(np.arange(self.class_n), sample_n)
+        return new_samples
     
-    
-    print 'testing...'
-
-    resp = np.array( [boost.predict(s, returnSum = True) for s in new_samples] )
-    resp = resp.reshape(-1, class_n).argmax(1)
-    print (resp == responses).mean()
-
-
-
-    # boost.train( new_data, CV_ROW_SAMPLE, new_responses, 0, 0, var_type, 0,
-    # CvBoostParams(CvBoost::REAL, 100, 0.95, 5, false, 0 ));
+    def unroll_responses(self, responses):
+        sample_n = len(responses)
+        new_responses = np.zeros(sample_n*self.class_n, np.int32)
+        resp_idx = np.int32( responses + np.arange(sample_n)*self.class_n )
+        new_responses[resp_idx] = 1
+        return new_responses
 
 
-   
+class SVM(LetterStatModel):
+    train_ratio = 0.1
+    def __init__(self):
+        self.model = cv2.SVM()
+
+    def train(self, samples, responses):
+        params = dict( kernel_type = cv2.SVM_LINEAR, 
+                       svm_type = cv2.SVM_C_SVC,
+                       C = 1 )
+        self.model.train(samples, responses, params = params)
+
+    def predict(self, samples):
+        return np.float32( [self.model.predict(s) for s in samples] )
+
 
 if __name__ == '__main__':
-    base = load_base('letter-recognition.data')
-    test_boosting(base)
+    import argparse
+
+    models = [RTrees, KNearest, Boost, SVM] # MLP, NBayes
+    models = dict( [(cls.__name__.lower(), cls) for cls in models] )
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-model', default='rtrees', choices=models.keys())
+    parser.add_argument('-data', nargs=1, default='letter-recognition.data')
+    parser.add_argument('-load', nargs=1)
+    parser.add_argument('-save', nargs=1)
+    args = parser.parse_args()
+
+    print 'loading data %s ...' % args.data
+    samples, responses = load_base(args.data)
+    Model = models[args.model]
+    model = Model()
+
+    train_n = int(len(samples)*model.train_ratio)
+    if args.load is None:
+        print 'training %s ...' % Model.__name__
+        model.train(samples[:train_n], responses[:train_n])
+    else:
+        fn = args.load[0]
+        print 'loading model from %s ...' % fn
+        model.load(fn)
+
+    print 'testing...'
+    train_rate = np.mean(model.predict(samples[:train_n]) == responses[:train_n])
+    test_rate  = np.mean(model.predict(samples[train_n:]) == responses[train_n:])
+
+    print 'train rate: %f  test rate: %f' % (train_rate*100, test_rate*100)
+
+    if args.save is not None:
+        fn = args.save[0]
+        print 'saving model to %s ...' % fn
+        model.save(fn)
