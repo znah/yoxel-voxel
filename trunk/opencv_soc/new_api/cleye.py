@@ -1,5 +1,5 @@
 import numpy as np
-import cv
+import cv, cv2
 from numpy.ctypeslib import ndpointer
 from ctypes import cdll, Structure, c_int, c_float, c_void_p
 from ctypes.wintypes import BYTE, WORD, DWORD
@@ -143,7 +143,13 @@ if __name__ == '__main__':
                 dst[:] = cam.get_frame()
                 cv2.imshow( "camera", dst )
                 cv2.waitKey(1)
+
+
             print 'capture done'
+            wr = cv2.VideoWriter('t.avi', cv.CV_FOURCC('M','J','P','G'), 60, (640, 480))
+            for frame in rec_frames:
+                wr.write(frame[:,:,:3].copy())
+            del wr
             
             def show_frame(i):
                 cv2.imshow('rec', rec_frames[i])
