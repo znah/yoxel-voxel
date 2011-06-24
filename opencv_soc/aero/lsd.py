@@ -7,7 +7,8 @@ def detect(img):
     cv.SaveImage(tmp_fn, img)
     p = subprocess.Popen(['lsd.exe', tmp_fn, '-'], stdout = subprocess.PIPE)
     return fromstring(p.communicate()[0], float32, sep=' ').reshape(-1, 5)
-    
+
+#def draw_segments(img, segments): 
     
 
 if __name__ == '__main__':
