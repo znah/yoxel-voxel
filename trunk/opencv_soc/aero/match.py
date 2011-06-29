@@ -155,10 +155,10 @@ class App:
         d1.shape = (-1, surf.descriptorSize())
         d2.shape = (-1, surf.descriptorSize())
         print len(kp1), len(kp2)
-        #m = match(d1, d2, ratio_thrs)
-        p1 = [p.pt for p in kp1]
-        p2 = [p.pt for p in kp2]
-        m = local_match(p1, p2, d1, d2, max_dist = 5.0 / pixel_extent, min_neigh = 5, r_threshold = ratio_thrs)
+        m = match(d1, d2, ratio_thrs)
+        #p1 = [p.pt for p in kp1]
+        #p2 = [p.pt for p in kp2]
+        #m = local_match(p1, p2, d1, d2, max_dist = 5.0 / pixel_extent, min_neigh = 5, r_threshold = ratio_thrs)
         
         pairs = np.float32( [(kp1[i].pt, kp2[j].pt) for i, j in m] )
         mp1, mp2 = pairs[:,0].copy(), pairs[:,1].copy()
@@ -177,7 +177,6 @@ class App:
         print '%d / %d' % (sum(status), len(status))
         mp1, mp2 = mp1[status], mp2[status]
 
-
         
         rectified_size = (800, 800)
         retval, H1, H2 = cv2.stereoRectifyUncalibrated(mp1.reshape(1, -1, 2), mp2.reshape(1, -1, 2), F, rectified_size)
@@ -193,19 +192,9 @@ class App:
         vis1 = draw_vis(self.frames[0].lods[0], gH1, rectified_size)
         vis2 = draw_vis(self.frames[1].lods[0], gH2, rectified_size)
 
-        white = (255, 255, 255)
-        for (x1, y1), (x2, y2) in np.int32(zip(mp1.reshape(-1, 2), mp2.reshape(-1, 2))):
-            cv2.circle(vis1, (x1, y1), 2, white)
-            cv2.circle(vis2, (x2, y2), 2, white)
-            #cv2.line(vis1, (x1, y1), (x2, y2), white)
-            #cv2.line(vis2, (x1, y1), (x2, y2), white)
-        
         anaglyph = vis2.copy()
         anaglyph[..., 2] = vis1[..., 2]
 
-        cv2.imshow('anaglyph', anaglyph)
-        
-        
         #e1 = cv2.canny(cv2.cvtColor(vis1, cv.CV_BGR2GRAY), 100, 200)
         #e2 = cv2.canny(cv2.cvtColor(vis2, cv.CV_BGR2GRAY), 100, 200)
         #edge_anaglyph = np.dstack([e2, e2, e1])
@@ -229,8 +218,8 @@ class App:
         vis_disp /= np.percentile(vis_disp, 99)
         vis_disp = np.uint8(np.clip(vis_disp, 0, 1)*255)
         
-        #cv2.imshow('disp', vis_disp)
-        #cv2.imshow('anaglyph', anaglyph)
+        cv2.imshow('disp', vis_disp)
+        cv2.imshow('anaglyph', anaglyph)
 
         #cv2.imwrite(fnbase+'l.bmp', vis1)
         #cv2.imwrite(fnbase+'r.bmp', vis2)
