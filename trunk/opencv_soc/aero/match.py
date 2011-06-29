@@ -1,10 +1,10 @@
 import numpy as np
 import cv2, cv
-import lsd
+#import lsd
 
 from common import anorm, homotrans, rect2rect_mtx
 
-from scipy.spatial import KDTree
+#from scipy.spatial import KDTree
 
 from numpy.linalg import inv
 
@@ -23,7 +23,7 @@ def match(desc1, desc2, r_threshold = 0.6):
             res.append((i, n1))
     return np.array(res)
 
-
+'''
 def local_match(p1, p2, desc1, desc2, max_dist, min_neigh = 5, r_threshold = 0.5):
     kd1 = KDTree(p1)
     kd2 = KDTree(p2)
@@ -40,7 +40,7 @@ def local_match(p1, p2, desc1, desc2, max_dist, min_neigh = 5, r_threshold = 0.5
         if r < r_threshold:
             res.append((i, neigh[n1]))
     return np.array(res) #match(desc1, desc2, r_threshold)
-
+'''
 
 ply_header = '''ply
 format ascii 1.0
