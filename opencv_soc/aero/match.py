@@ -108,6 +108,7 @@ class App:
         #fnames = ['data/racurs/48.tif', 'data/racurs/49.tif']
         self.frames = frames = [Frame(fn) for fn in fnames]
         H12, p1, p2 = find_homography(frames[0], frames[1])
+        np.save('h', H12)
 
         preview_size = (800, 800)
         extent = (-1000, -1000, 8000, 8000)

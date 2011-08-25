@@ -1,73 +1,56 @@
 # -*- coding: utf-8 -*-
 from zgl import *
 import cv2
+from homography import decomposeH
     
-ply_header = '''ply
-format ascii 1.0
-element vertex %(vert_num)d
-property float x
-property float y
-property float z
-property uchar red
-property uchar green
-property uchar blue
-end_header
-'''
+h, w = 7216, 5412
+sensor_width = 49.0
+focal_length = 50.0
 
-def write_ply(fn, verts, colors):
-    verts = verts.reshape(-1, 3)
-    colors = colors.reshape(-1, 3)
-    verts = hstack([verts, colors])
-    verts = verts[verts[:,2] > verts[:,2].min()]
-    with open(fn, 'w') as f:
-        f.write(ply_header % dict(vert_num=len(verts)))
-        savetxt(f, verts, '%f %f %f %d %d %d')
+class SaveTransform:
+    def __enter__(self):
+        glPushMatrix()
+    def __exit__(self):
+        glPopMatrix()
     
-    '''
-    with open(fn, 'w') as f:
-        f.write(ply_header % dict(vert_num=len(verts)))
-        for (x, y, z), (r, g, b) in zip(verts, colors):
-           f.write( '%f %f %f %d %d %d\n' % (x, y, z, r, g, b) )
-    '''    
-
 
 class App(ZglAppWX):
     def __init__(self):
         ZglAppWX.__init__(self, viewControl = FlyCamera())
         fragProg = genericFP('tc0')
 
-        src_idx = 0
+        f = w * focal_length / sensor_width
+        K = float64([[ f, 0, 0.5*w],
+                     [ 0, f, 0.5*h],
+                     [ 0, 0,     1]])
+        Ki = linalg.inv(K)
+        Himg = load('h.npy')
+        H = dot(Ki, dot(Himg, K))
 
-        disp = load('%02d_disp.npy' % src_idx)
-        h, w = disp.shape
-        verts = zeros((h, w, 3), float32)
-        verts[...,1], verts[...,0] = ogrid[:h,:w]
-        verts[...,2] = disp
-        verts[...,:] *= (0.1, 0.1, 0.5)
-        verts *= 0.1
+        print decomposeH(H)
 
         '''
-        idxgrid = arange(h*w).reshape(h, w)
-        idxs = zeros((h-1, w-1, 4), uint32)
-        idxs[...,0] = idxgrid[ :-1, :-1 ]
-        idxs[...,1] = idxgrid[ :-1,1:   ]  
-        idxs[...,2] = idxgrid[1:  ,1:   ]
-        idxs[...,3] = idxgrid[1:  , :-1 ]
-        idxs = idxs.flatten()
+        texs = []
+        for fn in ['data/g125.jpg', 'data/g126.jpg']:
+            img = cv2.imread(fn)
+            img = cv2.pyrDown(cv2.pyrDown(img))
+            tex = Texture2D(img)
+            tex.filterLinearMipmap()
+            tex.genMipmaps()
+            tex.aniso(8)
         '''
 
-        colors = cv2.imread('%02d_l.bmp' % src_idx)[:,:,::-1]
-        colors[disp == disp.min()] = 0
-        colorsf = float32(colors) / 255.0
+    def draw_frustum(self, P, tex):
+        pass
+        
 
-        write_ply('%02d_cloud.ply' % src_idx, verts, colors)
-    
-        def display():
-            clearGLBuffers()
-            with ctx(self.viewControl.with_vp, glstate(GL_DEPTH_TEST), fragProg):
-                glPointSize(3.0)
-                draw_arrays(GL_POINTS, verts=verts, tc0=colorsf)#, indices=idxs)
-        self.display = display
+    def display(self):
+        clearGLBuffers()
+        with ctx(self.viewControl.with_vp, glstate(GL_DEPTH_TEST)):
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+            drawGrid(10, 10, True)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+            #self.draw_frustum()
 
 if __name__ == "__main__":
     App().run()
