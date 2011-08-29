@@ -1,5 +1,5 @@
 import numpy as np
-import cv2, cv
+import cv2, cv2.cv as cv
 #import lsd
 
 from common import anorm, homotrans, rect2rect_mtx
@@ -222,8 +222,8 @@ class App:
         cv2.imshow('disp', vis_disp)
         cv2.imshow('anaglyph', anaglyph)
 
-        #cv2.imwrite(fnbase+'l.bmp', vis1)
-        #cv2.imwrite(fnbase+'r.bmp', vis2)
+        cv2.imwrite(fnbase+'l.png', vis1)
+        cv2.imwrite(fnbase+'r.png', vis2)
         #cv2.imwrite(fnbase+'anaglyph.bmp', anaglyph)
         #cv2.imwrite(fnbase+'disp.bmp', vis_disp)
         #cv2.imwrite(fnbase+'small.bmp', self.cur_preview)
