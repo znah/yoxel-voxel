@@ -54,6 +54,19 @@ property uchar blue
 end_header
 '''
 
+ply_header_bin = '''ply
+format binary_little_endian 1.0
+element vertex %(vert_num)d
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+end_header
+'''
+
+
 def write_ply(fn, verts, colors):
     verts = verts.reshape(-1, 3)
     colors = colors.reshape(-1, 3)
@@ -63,6 +76,20 @@ def write_ply(fn, verts, colors):
         f.write(ply_header % dict(vert_num=len(verts)))
         np.savetxt(f, verts, '%f %f %f %d %d %d')
 
+def write_ply_bin(fn, verts, colors):
+    verts = verts.reshape(-1, 3)
+    mask = verts[:,2] > verts[:,2].min()
+    verts = verts[mask]
+    colors = colors.reshape(-1, 3)[mask]
+
+    vert_t = np.dtype([('vert', np.float32, 3), ('color', np.uint8, 3)])
+    data = np.zeros(len(verts), vert_t)
+    data['vert'] = verts
+    data['color'] = colors
+
+    with open(fn, 'wb') as f:
+        f.write(ply_header_bin % dict(vert_num=len(verts)))
+        data.tofile(f)
 
 class Frame:
     def __init__(self, fn):
@@ -211,7 +238,7 @@ class App:
         verts[...,1], verts[...,0] = np.ogrid[ :rectified_size[1], :rectified_size[0] ]
         verts[...,2] = disp*4
         verts *= 0.1
-        write_ply(fnbase+'cloud.ply', verts, cv2.cvtColor(vis1, cv.CV_BGR2RGB))
+        write_ply_bin(fnbase+'cloud.ply', verts, cv2.cvtColor(vis1, cv.CV_BGR2RGB))
         
         
         vis_disp = disp.copy()
