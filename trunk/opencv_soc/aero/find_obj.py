@@ -4,12 +4,20 @@ import numpy as np
 import cv2
 from common import anorm
 
+from numpy import dot
+
 import pose
 
 FLANN_INDEX_KDTREE = 1  # bug: flann enums are missing
 
 flann_params = dict(algorithm = FLANN_INDEX_KDTREE,
                     trees = 4)
+
+def skew(p):
+    x, y, z = p
+    return np.float64([[ 0,-z, y],
+                       [ z, 0,-x],
+                       [-y, x, 0]])
 
 def match(desc1, desc2, r_threshold = 0.75):
     res = []
@@ -30,11 +38,11 @@ def match_flann(desc1, desc2, r_threshold = 0.6):
     pairs = np.int32( zip(idx1, idx2[:,0]) )
     return pairs[mask]
 
-def draw_features(img, points, sizes):
+def draw_features(img, points, sizes, thickness=1):
     img = cv2.cvtColor( img, cv2.cv.CV_GRAY2BGR )
     for (x, y), r in zip( np.int32( points.reshape(-1, 2) ), sizes ):
         #r = 3
-        cv2.circle(img, (x, y), int(r/2), (0, 255, 0), 2, cv2.CV_AA)
+        cv2.circle(img, (x, y), int(r/2), (0, 255, 0), thickness, cv2.CV_AA)
     return img
 
 def load_img(fn):
@@ -52,8 +60,8 @@ if __name__ == '__main__':
     import sys
     try: fn1, fn2 = sys.argv[1:3]
     except:
-        fn1 = 'data/karmanov/house1.jpg'
-        fn2 = 'data/karmanov/house2.jpg'
+        fn1 = 'data/karmanov/DSCF4726.JPG'
+        fn2 = 'data/karmanov/DSCF4728.JPG'
 
     img1 = load_img(fn1)
     img2 = load_img(fn2)
@@ -70,8 +78,8 @@ if __name__ == '__main__':
     matched_p2 = np.array([kp2[j].pt for i, j in m])
     r1 = np.array([kp1[i].size for i, j in m])
     r2 = np.array([kp2[j].size for i, j in m])
-    H, Hstatus = cv2.findHomography(matched_p1, matched_p2, cv2.RANSAC, 5.0)
-    F, Fstatus = cv2.findFundamentalMat(matched_p1, matched_p2, cv2.FM_RANSAC, 1.0)
+    H, Hstatus = cv2.findHomography(matched_p1, matched_p2, cv2.RANSAC, 3.0)
+    F, Fstatus = cv2.findFundamentalMat(matched_p1, matched_p2, cv2.RANSAC, 3.0)
     status = Fstatus
     print '%d / %d  inliers/matched' % (np.sum(status), len(status))
     status = status.ravel() > 0
@@ -80,8 +88,11 @@ if __name__ == '__main__':
     
     vis1 = draw_features(img1, in_p1, r1[status])
     vis2 = draw_features(img2, in_p2, r2[status])
-    #cv2.imwrite('vis1.bmp', vis1)
-    #cv2.imwrite('vis2.bmp', vis2)
+
+    h, w = img2.shape[:2]
+    hvis = cv2.addWeighted(img2, 0.5, cv2.warpPerspective(img1, H, (w, h)), 0.5, 0.0)
+    hvis = draw_features(hvis, in_p2, r2[status], 1)
+    cv2.imshow('hvis', hvis)
 
     cv2.imshow('img1', vis1)
     cv2.imshow('img2', vis2)
@@ -92,19 +103,27 @@ if __name__ == '__main__':
 
     K = pose.makeK((4000, 3000), 6.0, 8.08)
     Ki = np.linalg.inv(K)
-    pos1h, pos2h = pose.decomposeH(dot3(K, H, Ki))
+    pos1h, pos2h = pose.decomposeH(dot3(Ki, H, K))
     pos1e, pos2e =  pose.decomposeE(dot3(K, F, Ki))
-
-
-    def show_epiline(event, x, y, flags, param):
+    Fh1 = dot3(K, dot(skew(pos1h[1]), pos1h[0]), Ki)
+    Fh2 = dot3(K, dot(skew(pos2h[1]), pos2h[0]), Ki)
+    print Fh1
+   
+    def draw_epiline(vis, F, p, color = (0, 255, 255)):
+        x, y = p
         a, b, c = np.dot([x, y, 1.0], F.T)
-        vis = vis2.copy()
         y1 = -c/b
         y2 = -(4000*a + c)/b
-        cv2.line(vis, (0, int(y1)), (4000, int(y2)), (0, 255, 255))
+        cv2.line(vis, (0, int(y1)), (4000, int(y2)), color)
+
+    def onmouse(event, x, y, flags, param):
+        vis = vis2.copy()
+        draw_epiline(vis, F, (x, y), (0, 255, 255))
+        #draw_epiline(vis, Fh1, (x, y), (255, 0, 0))
+        #draw_epiline(vis, Fh2, (x, y), (0, 255, 0))
         cv2.imshow('img2', vis)
 
-    cv2.setMouseCallback('img1', show_epiline)
+    cv2.setMouseCallback('img1', onmouse)
 
     cv2.waitKey()
 
