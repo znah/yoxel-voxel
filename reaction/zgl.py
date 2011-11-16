@@ -693,9 +693,9 @@ class FlyCamera(WXAdapter):
 
 
 class OrthoCamera(WXAdapter):
-    def __init__(self):
+    def __init__(self, rect = (0.0, 0.0, 1.0, 1.0)):
         self.vp = Viewport()
-        self.rect = (0.0, 0.0, 1.0, 1.0)
+        self.rect = rect
         self.unsized = True
 
         self.mButtons = zeros((3,), bool)  # left, middle, right
