@@ -711,6 +711,11 @@ class OrthoCamera(WXAdapter):
         (x1, y1, x2, y2) = self.rect
         return V(x2-x1, y2-y1)
 
+    def get_screen_scale(self):
+        (x1, y1, x2, y2) = self.rect
+        w, h = self.vp.size
+        return w/(x2-x1)
+
     def resize(self, x, y):
         oldSize = self.vp.size
         self.vp.size = V(max(x, 1), max(y, 1))
@@ -1104,7 +1109,7 @@ def create_box():
     return verts, trg_idxs, quad_idxs
 
     
-def draw_arrays(primitive, verts = None, indices = None, tc0 = None, tc1 = None, tc2 = None, tc3 = None, normals = None):
+def draw_arrays(primitive, verts = None, indices = None, tc0 = None, tc1 = None, tc2 = None, tc3 = None, normals = None, colors = None):
     states = []
     if verts is not None:
         glVertexPointer( verts.shape[-1], arrayToGLType(verts), verts.strides[-2], verts)
@@ -1112,6 +1117,9 @@ def draw_arrays(primitive, verts = None, indices = None, tc0 = None, tc1 = None,
     if normals is not None:
         glNormalPointer( arrayToGLType(verts), verts.strides[-2], normals)
         states.append( GL_NORMAL_ARRAY )
+    if colors is not None:
+        glColorPointer( colors.shape[-1], arrayToGLType(colors), colors.strides[-2], colors)
+        states.append( GL_COLOR_ARRAY )
 
     def set_tc(i, tc):
         if tc is not None:
