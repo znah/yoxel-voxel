@@ -1,5 +1,7 @@
 import numpy as np
 
+acont = np.ascontiguousarray
+
 def V(*v):
     return np.float64(v)
 
