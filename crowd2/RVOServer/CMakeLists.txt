@@ -35,7 +35,7 @@ add_library(RVOServer SHARED
     #path_field.cpp
     )
 set_target_properties(RVOServer 
-    PROPERTIES SUFFIX ".pyd")
+    PROPERTIES SUFFIX ".pyd" PREFIX "")
 
 install (TARGETS RVOServer DESTINATION "${CMAKE_SOURCE_DIR}/..")
 
