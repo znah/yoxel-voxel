@@ -31,8 +31,9 @@ add_library(RVOServer SHARED
     stdafx.cpp
     numpy_boost.hpp
     common.h
-    path_field.h
-    path_field.cpp)
+    #path_field.h
+    #path_field.cpp
+    )
 set_target_properties(RVOServer 
     PROPERTIES SUFFIX ".pyd")
 

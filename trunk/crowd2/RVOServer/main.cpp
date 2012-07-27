@@ -1,14 +1,14 @@
 #include "stdafx.h"
 #include "common.h"
 
-#include "path_field.h"
+//#include "path_field.h"
 //#include "RVO.h"
 //#include "KdTree.h"
 
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 
-py::object py_calc_distmap(py::object py_obst) 
+/*py::object py_calc_distmap(py::object py_obst) 
 {
     numpy_boost<float, 2> obst_array(py_obst.ptr());
     numpy_boost<float, 2> dist_array(obst_array.shape());
@@ -18,7 +18,7 @@ py::object py_calc_distmap(py::object py_obst)
     
     calc_distmap(obst_array, dist_array, path_array);
     return py::make_tuple(to_object(dist_array), to_object(path_array));
-}
+}*/
 
 template <class T>
 void export_vector()
@@ -32,6 +32,12 @@ void export_vector()
 //extern void export_sim();
 //extern void export_graph();
 
+void test()
+{
+    std::cout << "OK!" << std::endl;
+
+}
+
 BOOST_PYTHON_MODULE(RVOServer)
 {
     import_array();
@@ -39,7 +45,8 @@ BOOST_PYTHON_MODULE(RVOServer)
     export_vector<int>();
     export_vector<float2>();
 
-    py::def("calc_distmap", py_calc_distmap);
+    py::def("test", test);
+    //py::def("calc_distmap", py_calc_distmap);
 
     //export_graph();
     //export_sim();
