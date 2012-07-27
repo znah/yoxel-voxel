@@ -21,10 +21,10 @@
 #include <boost/scoped_ptr.hpp>
 #pragma warning( pop )
 
-/*#include <glm/glm.hpp>
+#include <glm/glm.hpp>
 #include <glm/gtx/noise.hpp>
 
-#pragma warning (disable:4018)
+/*#pragma warning (disable:4018)
 
 #include "Box2D/Collision/b2DynamicTree.h"
 #include "Box2D/Collision/Shapes/b2EdgeShape.h"
