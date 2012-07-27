@@ -4,8 +4,8 @@ namespace py = boost::python;
 
 using boost::scoped_ptr;
 
-typedef glm::ivec2 int2;
-typedef glm::vec2 float2;
+//typedef glm::ivec2 int2;
+//typedef glm::vec2 float2;
 
 
 template<class T, int D>
