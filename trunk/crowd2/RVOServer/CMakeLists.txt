@@ -13,8 +13,16 @@ link_directories(${Boost_LIBRARY_DIRS})
 
 # get python
 find_package(PythonLibs REQUIRED)
+find_package(PythonInterp REQUIRED)
 include_directories(${PYTHON_INCLUDE_DIRS})
 link_directories(${PYTHON_LIBRARIES})
+
+
+execute_process(COMMAND python -c "import numpy;print numpy.get_include()" 
+                OUTPUT_VARIABLE  NUMPY_PATH)
+message("numpy: ${NUMPY_PATH}")
+include_directories(${NUMPY_PATH})
+
 
 add_library(RVOServer SHARED  
     main.cpp 
