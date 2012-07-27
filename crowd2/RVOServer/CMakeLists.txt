@@ -40,6 +40,6 @@ set_target_properties(RVOServer
 install (TARGETS RVOServer DESTINATION "${CMAKE_SOURCE_DIR}/..")
 
 
-#target_link_libraries(RVOServer
-#        ${Boost_LIBRARIES}
-#        ${PYTHON_LIBRARIES} )
+target_link_libraries(RVOServer
+        ${Boost_LIBRARIES}
+        ${PYTHON_LIBRARIES} )
