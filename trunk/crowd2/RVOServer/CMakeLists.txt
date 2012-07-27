@@ -25,6 +25,11 @@ include_directories(${NUMPY_PATH})
 
 include_directories("ext/include")
 
+execute_process(COMMAND python -c "import distutils.sysconfig; print distutils.sysconfig.get_config_var('SO')"
+                OUTPUT_VARIABLE PY_SUFFIX
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+
 add_library(RVOServer SHARED  
     main.cpp 
     stdafx.h 
@@ -35,7 +40,7 @@ add_library(RVOServer SHARED
     #path_field.cpp
     )
 set_target_properties(RVOServer 
-    PROPERTIES SUFFIX ".pyd" PREFIX "")
+    PROPERTIES SUFFIX ${PY_SUFFIX} PREFIX "")
 
 install (TARGETS RVOServer DESTINATION "${CMAKE_SOURCE_DIR}/..")
 
