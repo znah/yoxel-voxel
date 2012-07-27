@@ -48,53 +48,48 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    Provides a mapping from C++ datatypes to Numpy type
    numbers. */
 namespace detail {
-  template<class T>
-  class numpy_type_map {
-  public:
-    static const int typenum;
-  };
+  template<class T>  inline int numpy_type_map() {}
+  template<> 
+  inline int numpy_type_map<float>() { return NPY_FLOAT; }
+  
+  template<>
+  inline int numpy_type_map<std::complex<float> >() { return NPY_CFLOAT; }
 
   template<>
-  const int numpy_type_map<float>::typenum = NPY_FLOAT;
+  inline int numpy_type_map<double>() { return NPY_DOUBLE; }
 
   template<>
-  const int numpy_type_map<std::complex<float> >::typenum = NPY_CFLOAT;
+  inline int numpy_type_map<std::complex<double> >() { return NPY_CDOUBLE; }
 
   template<>
-  const int numpy_type_map<double>::typenum = NPY_DOUBLE;
+  inline int numpy_type_map<long double>() { return NPY_LONGDOUBLE; }
 
   template<>
-  const int numpy_type_map<std::complex<double> >::typenum = NPY_CDOUBLE;
+  inline int numpy_type_map<std::complex<long double> >() { return NPY_CLONGDOUBLE; }
 
   template<>
-  const int numpy_type_map<long double>::typenum = NPY_LONGDOUBLE;
+  inline int numpy_type_map<boost::int8_t>() { return NPY_INT8; }
 
   template<>
-  const int numpy_type_map<std::complex<long double> >::typenum = NPY_CLONGDOUBLE;
+  inline int numpy_type_map<boost::uint8_t>() { return NPY_UINT8; }
 
   template<>
-  const int numpy_type_map<boost::int8_t>::typenum = NPY_INT8;
+  inline int numpy_type_map<boost::int16_t>() { return NPY_INT16; }
 
   template<>
-  const int numpy_type_map<boost::uint8_t>::typenum = NPY_UINT8;
+  inline int numpy_type_map<boost::uint16_t>() { return NPY_UINT16; }
 
   template<>
-  const int numpy_type_map<boost::int16_t>::typenum = NPY_INT16;
+  inline int numpy_type_map<boost::int32_t>() { return NPY_INT32; }
 
   template<>
-  const int numpy_type_map<boost::uint16_t>::typenum = NPY_UINT16;
+  inline int numpy_type_map<boost::uint32_t>() { return NPY_UINT32; }
 
   template<>
-  const int numpy_type_map<boost::int32_t>::typenum = NPY_INT32;
+  inline int numpy_type_map<boost::int64_t>() { return NPY_INT64; }
 
   template<>
-  const int numpy_type_map<boost::uint32_t>::typenum = NPY_UINT32;
-
-  template<>
-  const int numpy_type_map<boost::int64_t>::typenum = NPY_INT64;
-
-  template<>
-  const int numpy_type_map<boost::uint64_t>::typenum = NPY_UINT64;
+  inline int numpy_type_map<boost::uint64_t>() { return NPY_UINT64; }
 }
 
 class python_exception : public std::exception {
@@ -197,7 +192,7 @@ public:
     PyArrayObject* a;
 
     a = (PyArrayObject*)PyArray_FromObject(
-        obj, detail::numpy_type_map<T>::typenum, NDims, NDims);
+        obj, detail::numpy_type_map<T>(), NDims, NDims);
     if (a == NULL) {
       throw python_exception();
     }
@@ -226,7 +221,7 @@ public:
     boost::detail::multi_array::copy_n(extents, NDims, shape);
 
     a = (PyArrayObject*)PyArray_SimpleNew(
-        NDims, shape, detail::numpy_type_map<T>::typenum);
+        NDims, shape, detail::numpy_type_map<T>());
     if (a == NULL) {
       throw python_exception();
     }

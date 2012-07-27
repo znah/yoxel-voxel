@@ -23,15 +23,21 @@ execute_process(COMMAND python -c "import numpy;print numpy.get_include()"
 message("numpy: ${NUMPY_PATH}")
 include_directories(${NUMPY_PATH})
 
+include_directories("ext/include")
 
 add_library(RVOServer SHARED  
     main.cpp 
     stdafx.h 
-    stdafx.cpp)
+    stdafx.cpp
+    numpy_boost.hpp
+    common.h
+    path_field.h
+    path_field.cpp)
 set_target_properties(RVOServer 
     PROPERTIES SUFFIX ".pyd")
 
-install (TARGETS RVOServer DESTINATION .)
+install (TARGETS RVOServer DESTINATION "${CMAKE_SOURCE_DIR}/..")
+
 
 #target_link_libraries(RVOServer
 #        ${Boost_LIBRARIES}
