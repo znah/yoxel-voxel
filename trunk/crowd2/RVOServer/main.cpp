@@ -43,7 +43,7 @@ BOOST_PYTHON_MODULE(RVOServer)
     import_array();
 
     export_vector<int>();
-    export_vector<float2>();
+    //export_vector<float2>();
 
     py::def("test", test);
     //py::def("calc_distmap", py_calc_distmap);

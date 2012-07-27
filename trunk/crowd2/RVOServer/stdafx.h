@@ -21,8 +21,7 @@
 #include <boost/scoped_ptr.hpp>
 #pragma warning( pop )
 
-#include <glm/glm.hpp>
-#include <glm/gtx/noise.hpp>
+//#include <glm/glm.hpp>
 
 /*#pragma warning (disable:4018)
 
