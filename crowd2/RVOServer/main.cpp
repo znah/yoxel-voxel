@@ -25,7 +25,7 @@
 
 void test123(float *p, int dim[2])
 {
-  boost::multi_array_ref<float, 2> arr(p, boost::extents[dim[0]][dim[0]]);
+  /*boost::multi_array_ref<float, 2> arr(p, boost::extents[dim[0]][dim[0]]);
 
   for (int i = 0; i < dim[0]; ++i)
   {
@@ -34,5 +34,5 @@ void test123(float *p, int dim[2])
     printf("%f ", arr[i][j]);
   }
     printf("\n");
-  }
+  } */
 }

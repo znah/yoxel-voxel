@@ -2,30 +2,36 @@
 
 #include "common.h"
 
-
-template<class T, int N>
-class multi_array_ref_wrap : public boost::multi_array_ref<T, N>
+template<class T>
+class array_2d_ref
 {
-private:
-  typedef boost::multi_array_ref<T, N> super;
 public:
-  multi_array_ref_wrap() : super(NULL, std::vector<int>(N, 0)) {}
-  multi_array_ref_wrap(T* base, const int dims[N]) : super(base, std::vector<int>(dims, dims+N)) 
-  {
-    printf("%d %d\n", dims[0], dims[1]);
-  }
+   enum {NDim = 2};
+   T * data;
+   int shape[2];
+   array_2d_ref() : data(NULL) 
+   { 
+     std::fill(shape, shape+NDim, 0);
+   }
+   array_2d_ref(int shape_[NDim], T* data_) : data(data_)
+   {
+     for (int i = 0; i < NDim; ++i)
+       shape[i] = shape_[i];
+   }
+
+   T& operator()(int i, int j) { return data[i*shape[1] + j]; }
+   const T& operator()(int i, int j) const { return data[i*shape[1] + j]; }
+
+   T& operator()(int2 p) { return data[p.y*shape[1] + p.x]; }
+   const T& operator()(int2 p) const { return data[p.y*shape[1] + p.x]; }
+
+   bool inside(int2 p) const 
+   { return p.x >= 0 && p.y >= 0 && p.x < shape[1] && p.y < shape[0]; }
 };
 
-typedef multi_array_ref_wrap<float, 2> Grid2Dref;
-typedef multi_array_ref_wrap<float, 3> V2Grid2Dref;
-typedef boost::multi_array<float, 2> Grid2D;
-typedef boost::multi_array<float, 3> V2Grid2D;
 
-template <class TGird>
-inline bool inside(const TGird & grid, int2 p)
-{
-    return p.x >= 0 && p.y >= 0 && p.x < grid.shape()[1] && p.y < grid.shape()[0];
-}
+typedef array_2d_ref<float> Grid2Dref;
+typedef array_2d_ref<float2> V2Grid2Dref;
 
 
 void calc_distmap(const Grid2Dref & obstmap, Grid2Dref & distmap, V2Grid2Dref & pathmap);

@@ -6,12 +6,12 @@ const float Inf = std::numeric_limits<float>::infinity();
 
 inline float & get(Grid2Dref & grid, int2 p)
 {
-    return grid[p.y][p.x];
+    return grid(p);
 }
 
 inline float get(const Grid2Dref & grid, int2 p)
 {
-    return grid[p.y][p.x];
+    return grid(p);
 }
 
 
@@ -31,7 +31,7 @@ inline float get_min_val(const Grid2Dref & distmap, int2 p1, int2 p2, int & dir)
 {
     float v_min = Inf;
     dir = 0;
-    if (inside(distmap, p1))
+    if (distmap.inside(p1))
     {
         float v = get(distmap, p1);
         if (v >= 0 && v < v_min)
@@ -40,7 +40,7 @@ inline float get_min_val(const Grid2Dref & distmap, int2 p1, int2 p2, int & dir)
             dir = 1;
         }
     }
-    if (inside(distmap, p2))
+    if (distmap.inside(p2))
     {
         float v = get(distmap, p2);
         if (v >= 0 && v < v_min)
@@ -77,23 +77,21 @@ inline float estimate_dist(const Grid2Dref & obstmap, Grid2Dref & distmap, V2Gri
         path = glm::normalize(path);
     }
     get(distmap, p) = v;
-    pathmap[y][x][0] = path.x * dir_x;
-    pathmap[y][x][1] = path.y * dir_y;
+    pathmap(p) = path * float2(dir_x, dir_y);
     return v;
 }
 
 void calc_distmap(const Grid2Dref & obstmap, Grid2Dref & distmap, V2Grid2Dref & pathmap)
 {
-    const int h = obstmap.shape()[0];
-    const int w = obstmap.shape()[1];
+    const int h = obstmap.shape[0];
+    const int w = obstmap.shape[1];
     std::priority_queue<grid_cell> q;
     for (int y = 0; y < h; ++y)
     for (int x = 0; x < w; ++x)
     {
         int2 p(x, y);
         get(distmap, p) = Inf;
-        pathmap[y][x][0] = 0;
-        pathmap[y][x][1] = 0;
+        pathmap(p) = float2(0, 0);
         if (get(obstmap, p) < 0)
         {
             q.push(grid_cell(p, 0.0f));
@@ -110,7 +108,7 @@ void calc_distmap(const Grid2Dref & obstmap, Grid2Dref & distmap, V2Grid2Dref & 
         for (int i = 0; i < 4; ++i)
         {
             int2 np = neibs[i];
-            if (!inside(distmap, np) || get(obstmap, np) == Inf || get(distmap, np) != Inf)
+            if (!distmap.inside(np) || get(obstmap, np) == Inf || get(distmap, np) != Inf)
                 continue;
             float v = estimate_dist(obstmap, distmap, pathmap, np);
             grid_cell new_cell(np, v);
