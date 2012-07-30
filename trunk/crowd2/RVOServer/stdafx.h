@@ -12,16 +12,11 @@
 #pragma warning( push )
 #pragma warning (disable:4996; disable:4290)
 #include <boost/multi_array.hpp>
-#include <boost/python.hpp>
-#include <boost/python/stl_iterator.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/mpl/vector.hpp>
-#include "numpy_boost.hpp"
-
 #include <boost/scoped_ptr.hpp>
 #pragma warning( pop )
 
-//#include <glm/glm.hpp>
+#include <glm/glm.hpp>
 
 /*#pragma warning (disable:4018)
 

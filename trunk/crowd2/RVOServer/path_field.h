@@ -2,8 +2,22 @@
 
 #include "common.h"
 
-typedef boost::multi_array_ref<float, 2> Grid2Dref;
-typedef boost::multi_array_ref<float, 3> V2Grid2Dref;
+
+template<class T, int N>
+class multi_array_ref_wrap : public boost::multi_array_ref<T, N>
+{
+private:
+  typedef boost::multi_array_ref<T, N> super;
+public:
+  multi_array_ref_wrap() : super(NULL, std::vector<int>(N, 0)) {}
+  multi_array_ref_wrap(T* base, const int dims[N]) : super(base, std::vector<int>(dims, dims+N)) 
+  {
+    printf("%d %d\n", dims[0], dims[1]);
+  }
+};
+
+typedef multi_array_ref_wrap<float, 2> Grid2Dref;
+typedef multi_array_ref_wrap<float, 3> V2Grid2Dref;
 typedef boost::multi_array<float, 2> Grid2D;
 typedef boost::multi_array<float, 3> V2Grid2D;
 
