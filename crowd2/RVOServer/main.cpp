@@ -1,11 +1,10 @@
 #include "stdafx.h"
 #include "common.h"
+#include "RVOServer.h"
 
 //#include "path_field.h"
 //#include "RVO.h"
 //#include "KdTree.h"
-
-#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 
 /*py::object py_calc_distmap(py::object py_obst) 
@@ -20,34 +19,20 @@
     return py::make_tuple(to_object(dist_array), to_object(path_array));
 }*/
 
-template <class T>
-void export_vector()
-{
-    typedef std::vector<T> V;
-    std::string s = typeid(V).name();
-    py::class_<V>(s.c_str())
-        .def(py::vector_indexing_suite<V>() );
-}
 
 //extern void export_sim();
 //extern void export_graph();
 
-void test()
+void test123(float *p, int dim[2])
 {
-    std::cout << "OK!" << std::endl;
+  boost::multi_array_ref<float, 2> arr(p, boost::extents[dim[0]][dim[0]]);
 
-}
-
-BOOST_PYTHON_MODULE(RVOServer)
-{
-    import_array();
-
-    export_vector<int>();
-    //export_vector<float2>();
-
-    py::def("test", test);
-    //py::def("calc_distmap", py_calc_distmap);
-
-    //export_graph();
-    //export_sim();
+  for (int i = 0; i < dim[0]; ++i)
+  {
+  for (int j = 0; j < dim[1]; ++j)
+  {
+    printf("%f ", arr[i][j]);
+  }
+    printf("\n");
+  }
 }
