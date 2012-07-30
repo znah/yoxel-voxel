@@ -3,36 +3,32 @@ cimport numpy as np
 from libcpp.vector cimport vector
 
 
-cdef extern from "RVOServer.h":
-    void test123(float*, int[2])
 
 cdef extern from "path_field.h":
-    cdef cppclass Grid2Dref:
-         Grid2Dref()
-         Grid2Dref(float*, int[2])
-    cdef cppclass V2Grid2Dref:  
-         Grid2Dref()
-         #Grid2Dref(float*, int[3])
+    cdef cppclass array_2d_ref[T]:
+        array_2d_ref()
+        array_2d_ref(int[2], T*)
+    cdef cppclass float2:
+        pass
+    ctypedef array_2d_ref[float] Grid2Dref
+    ctypedef array_2d_ref[float2] V2Grid2Dref
     void calc_distmap(Grid2Dref & obstmap, Grid2Dref & distmap, V2Grid2Dref & pathmap)
 
+def test1(dens):
+    h, w = dens.shape
+    distmap = np.zeros((h, w), np.float32)
+    pathmap = np.zeros((h, w, 2), np.float32)
 
-def test1():                                                              
-    cdef np.ndarray[float, ndim=2] A = np.float32(np.arange(25)).reshape(5, 5)
+    cdef np.ndarray[float, ndim=2] dens_view = dens
+    cdef np.ndarray[float, ndim=2] dist_view = distmap
+    cdef np.ndarray[float, ndim=3] path_view = pathmap
 
-    '''
-    cdef vector[int] vec
-    vec.push_back(5)
-    test123(vec)
-    for i in xrange(vec.size()):
-        print vec[i]
-    '''
-    test123(<float*>A.data, A.shape)
+    cdef Grid2Dref dens_ref = Grid2Dref(dens_view.shape, <float*>dens_view.data)
+    cdef Grid2Dref dist_ref = Grid2Dref(dist_view.shape, <float*>dist_view.data)
+    cdef V2Grid2Dref path_ref = V2Grid2Dref(path_view.shape, <float2*>path_view.data)
 
-
-    #cdef Grid2Dref grid = Grid2Dref(<float*>A.data, [10, 10])
-
-    #del grid
-    #print 'asdfasf'
+    calc_distmap(dens_ref, dist_ref, path_ref)
+    return distmap, pathmap
 
         
 
