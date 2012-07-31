@@ -1,3 +1,3 @@
 import pyximport; pyximport.install()
-import t
-t.test1()
+import info
+#t.test1()
