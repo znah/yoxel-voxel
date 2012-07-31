@@ -23,9 +23,9 @@ def test1(dens):
     cdef np.ndarray[float, ndim=2] dist_view = distmap
     cdef np.ndarray[float, ndim=3] path_view = pathmap
 
-    cdef Grid2Dref dens_ref = Grid2Dref(dens_view.shape, <float*>dens_view.data)
-    cdef Grid2Dref dist_ref = Grid2Dref(dist_view.shape, <float*>dist_view.data)
-    cdef V2Grid2Dref path_ref = V2Grid2Dref(path_view.shape, <float2*>path_view.data)
+    cdef Grid2Dref dens_ref = Grid2Dref([h, w], <float*>dens_view.data)
+    cdef Grid2Dref dist_ref = Grid2Dref([h, w], <float*>dist_view.data)
+    cdef V2Grid2Dref path_ref = V2Grid2Dref([h, w], <float2*>path_view.data)
 
     calc_distmap(dens_ref, dist_ref, path_ref)
     return distmap, pathmap
