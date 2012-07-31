@@ -1,13 +1,17 @@
 #
+import os
 
 def make_ext(modname, pyxfilename):
     from distutils.extension import Extension
     import numpy
+    args = []
+    if os.name == 'nt':
+        args = ['/EHsc']
     return Extension(name = modname,
                      language='C++',
                      sources=[pyxfilename],
-                     include_dirs=['RVOServer', 'D:/dev/sdk/boost', 'RVOServer/ext/include', numpy.get_include()],
+                     include_dirs=['RVOServer', 'RVOServer/ext/include', numpy.get_include()],
                      library_dirs=['RVOServer/lib'],
                      libraries=['RVOServer'],
-                     extra_compile_args=['/EHsc', '-m32'])
+                     extra_compile_args=args)
     
