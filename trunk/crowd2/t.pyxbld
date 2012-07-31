@@ -9,5 +9,5 @@ def make_ext(modname, pyxfilename):
                      include_dirs=['RVOServer', 'D:/dev/sdk/boost', 'RVOServer/ext/include', numpy.get_include()],
                      library_dirs=['RVOServer/lib'],
                      libraries=['RVOServer'],
-                     extra_compile_args=['/EHsc'])
+                     extra_compile_args=['/EHsc', '-m32'])
     
