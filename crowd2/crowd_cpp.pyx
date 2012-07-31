@@ -2,8 +2,6 @@ import numpy as np
 cimport numpy as np
 from libcpp.vector cimport vector
 
-
-
 cdef extern from "path_field.h":
     cdef cppclass array_2d_ref[T]:
         array_2d_ref()
@@ -14,7 +12,7 @@ cdef extern from "path_field.h":
     ctypedef array_2d_ref[float2] V2Grid2Dref
     void calc_distmap(Grid2Dref & obstmap, Grid2Dref & distmap, V2Grid2Dref & pathmap)
 
-def test1(dens):
+def _calc_distmap(dens):
     h, w = dens.shape
     distmap = np.zeros((h, w), np.float32)
     pathmap = np.zeros((h, w, 2), np.float32)
