@@ -13,4 +13,10 @@ add_library(RVOServer
     path_field.cpp
     )
 
+set(CMAKE_BUILD_TYPE Release)
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+    set(CMAKE_CXX_FLAGS "-m32")
+endif()
+
 install (TARGETS RVOServer DESTINATION "${CMAKE_SOURCE_DIR}/lib")
