@@ -1,3 +1,7 @@
 cimport numpy as np
 
-print sizeof(int), sizeof(np.npy_int)
+cdef f(np.npy_int * a):
+    print *a
+
+cdef np.npy_int i = 5
+f(&i)
